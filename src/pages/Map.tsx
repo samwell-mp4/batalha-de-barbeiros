@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { MOCK_BARBERS, STATUS } from '@/constants/mockData';
 import { MapPin, Star, Navigation, X, Share2, ChevronRight, Clock, CheckCircle2, Zap, Flame, Calendar, Trash2, LayoutGrid, Loader2, Eye, EyeOff, User, Camera, Scissors, Share, Plus, ChevronLeft, Radar, Check, DollarSign, QrCode, CalendarDays, List, Heart, MessageCircle, Info, CreditCard, Wallet, Swords, AlertTriangle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 
 // Fix for default marker icons
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -63,6 +63,7 @@ export default function MapPage() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [showOpportunityAlert, setShowOpportunityAlert] = useState<string | null>(null);
   const [prevSlotCount, setPrevSlotCount] = useState(0);
+  const dragControls = useDragControls();
 
   useEffect(() => {
     const today = 16;
@@ -328,12 +329,22 @@ export default function MapPage() {
             animate={{ y: isDrawerMinimized ? "calc(100% - 130px)" : 0 }} 
             exit={{ y: "100%" }} 
             transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+            drag="y"
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 50) setIsDrawerMinimized(true);
+              else if (info.offset.y < -50) setIsDrawerMinimized(false);
+            }}
             className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2005] bg-white rounded-t-[50px] px-0 pb-28 shadow-[0_-20px_80px_rgba(0,0,0,0.3)] border-t border-gray-100 max-h-[85vh] overflow-y-auto no-scrollbar"
           >
             <div className="sticky top-0 bg-white/90 backdrop-blur-md z-10 pt-4 pb-2 px-8 flex flex-col">
               <button 
+                onPointerDown={(e) => dragControls.start(e)}
                 onClick={() => setIsDrawerMinimized(!isDrawerMinimized)}
-                className="w-full py-4 mb-2 flex justify-center group"
+                className="w-full py-4 mb-2 flex justify-center group touch-none"
               >
                 <div className={`w-12 h-1.5 rounded-full transition-all ${isDrawerMinimized ? 'bg-blue-600 w-16' : 'bg-gray-100 group-hover:bg-gray-200'}`} />
               </button>
@@ -684,6 +695,8 @@ export default function MapPage() {
             exit={{ y: "100%" }} 
             transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
             drag="y"
+            dragControls={dragControls}
+            dragListener={false}
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={0.2}
             onDragEnd={(_, info) => {
@@ -693,8 +706,9 @@ export default function MapPage() {
             className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[1001] bg-white rounded-t-[40px] px-8 pb-28 shadow-[0_-20px_60px_rgba(0,0,0,0.1)] border-t border-gray-100 max-h-[85vh] overflow-y-auto no-scrollbar"
           >
             <button 
+              onPointerDown={(e) => dragControls.start(e)}
               onClick={() => setIsDrawerMinimized(!isDrawerMinimized)}
-              className="w-full py-4 mb-2 flex justify-center group pointer-events-auto"
+              className="w-full py-4 mb-2 flex justify-center group pointer-events-auto touch-none"
             >
               <div className={`w-12 h-1.5 rounded-full transition-all ${isDrawerMinimized ? 'bg-blue-600 w-16' : 'bg-gray-100 group-hover:bg-gray-200'}`} />
             </button>
@@ -951,6 +965,8 @@ export default function MapPage() {
             exit={{ y: "100%" }} 
             transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
             drag="y"
+            dragControls={dragControls}
+            dragListener={false}
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={0.2}
             onDragEnd={(_, info) => {
@@ -960,8 +976,9 @@ export default function MapPage() {
             className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2000] bg-white rounded-t-[40px] px-6 pb-28 shadow-2xl border-t border-gray-100 max-h-[85vh] overflow-y-auto no-scrollbar"
           >
             <button 
+              onPointerDown={(e) => dragControls.start(e)}
               onClick={() => setIsDrawerMinimized(!isDrawerMinimized)}
-              className="w-full py-4 flex justify-center group"
+              className="w-full py-4 flex justify-center group touch-none"
             >
               <div className={`w-12 h-1.5 rounded-full transition-all ${isDrawerMinimized ? 'bg-blue-600 w-16' : 'bg-gray-100 group-hover:bg-gray-200'}`} />
             </button>
