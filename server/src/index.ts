@@ -58,6 +58,9 @@ app.get(/.*/, (req, res) => {
   if (req.path.includes('.') && !req.path.endsWith('.html')) {
     return res.status(404).send('File not found');
   }
+  
+  // NUNCA cacheia o index.html para evitar telas brancas por arquivos antigos
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.sendFile(path.join(publicPath, 'index.html'));
 });
 

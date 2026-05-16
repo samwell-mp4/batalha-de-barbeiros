@@ -57,6 +57,18 @@ export default function Profile() {
             status: { id: 's1', icon: '⚡', color: '#22c55e' },
             waitTime: 0
           });
+        } else if (isOwnProfile && loggedUser) {
+          // Fallback para perfil de usuário comum se não for barbeiro
+          setBarber({
+            id: loggedUser.id,
+            name: loggedUser.name || 'Usuário da Arena',
+            username: (loggedUser.name || 'arena_user').toLowerCase().replace(/\s/g, '_'),
+            avatar: loggedUser.avatar || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&h=400&fit=crop',
+            xp: loggedUser.xp || 0,
+            status: { id: 's1', icon: '⚡', color: '#22c55e' },
+            waitTime: 0,
+            isClientOnly: true
+          });
         }
       } catch (e) {
         console.error('Erro ao carregar perfil do banco:', e);

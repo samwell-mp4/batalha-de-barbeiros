@@ -59,8 +59,14 @@ router.post('/status', async (req, res) => {
 // Get barber profile details
 router.get('/:id', async (req, res) => {
   try {
-    const barber = await prisma.barber.findUnique({
-      where: { id: req.params.id },
+    const { id } = req.params;
+    const barber = await prisma.barber.findFirst({
+      where: {
+        OR: [
+          { id: id },
+          { userId: id }
+        ]
+      },
       include: {
         user: true,
         posts: { take: 10, orderBy: { createdAt: 'desc' } },
