@@ -17,9 +17,9 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Serve os arquivos estáticos primeiro com prioridade total
-const distPath = path.join(__dirname, '../../dist');
-app.use(express.static(distPath));
+// Pasta pública do Front-end (será populada no build)
+const publicPath = path.resolve(__dirname, '../public');
+app.use(express.static(publicPath));
 
 // --- ROUTES ---
 
@@ -30,7 +30,11 @@ app.use('/api/auth', authRoutes);
 
 // Wildcard route to serve index.html for client-side routing
 app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
+  // Se a rota parecer um arquivo (tiver extensão), não entrega o index.html
+  if (req.path.includes('.') && !req.path.endsWith('.html')) {
+    return res.status(404).send('File not found');
+  }
+  res.sendFile(path.join(publicPath, 'index.html'));
 });
 
 // Health Check

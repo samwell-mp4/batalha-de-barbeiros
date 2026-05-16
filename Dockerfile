@@ -20,7 +20,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copiar arquivos necessários
-COPY --from=build-frontend /app/dist ./dist
+COPY --from=build-frontend /app/dist ./server/public
 COPY --from=build-backend /app/server/dist ./server/dist
 COPY --from=build-backend /app/server/package*.json ./server/
 COPY --from=build-backend /app/server/node_modules ./server/node_modules
