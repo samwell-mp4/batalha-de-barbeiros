@@ -136,7 +136,7 @@ export default function League() {
   );
 
   const renderCreate = () => (
-    <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-0 z-[6000] bg-white flex flex-col">
+    <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[6000] bg-white flex flex-col shadow-2xl">
       <div className="px-6 py-8 flex items-center justify-between border-b border-gray-100">
         <button onClick={() => { if(createStep > 0) setCreateStep(s=>s-1); else setView('home'); }} className="p-3 bg-gray-50 rounded-2xl text-blue-950"><ChevronLeft size={24} /></button>
         <div className="text-center"><p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Passo {createStep + 1} de 4</p><h2 className="text-sm font-black text-blue-950 uppercase italic font-orbitron">Novo Campeonato</h2></div>
@@ -146,7 +146,13 @@ export default function League() {
         {createStep === 0 && (
           <div className="space-y-6">
             <h3 className="text-2xl font-black text-blue-950 uppercase italic font-orbitron">Qual o nome da arena?</h3>
-            <input type="text" placeholder="Ex: Batalha de Gigantes" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="w-full p-6 bg-gray-50 rounded-[25px] border border-gray-100 text-lg font-bold outline-none focus:border-blue-600 transition-all" />
+            <input 
+              type="text" 
+              placeholder="Ex: Batalha de Gigantes" 
+              value={form.name} 
+              onChange={e=>setForm({...form,name:e.target.value})} 
+              className="w-full p-6 bg-white rounded-[25px] border-2 border-gray-100 text-lg font-black outline-none focus:border-blue-600 transition-all text-blue-950 placeholder:text-gray-300 shadow-inner" 
+            />
             <div className="grid grid-cols-2 gap-4">
               {LEAGUES.map(l => (
                 <button key={l.id} onClick={() => setForm({...form, liga: l.id} as any)} className={`p-6 rounded-[30px] border-2 flex flex-col items-center space-y-3 transition-all ${form.liga === l.id ? 'border-blue-600 bg-blue-50' : 'border-gray-100 bg-white'}`}>
@@ -185,9 +191,15 @@ export default function League() {
           <div className="space-y-6">
             <h3 className="text-2xl font-black text-blue-950 uppercase italic font-orbitron">Configurações Finais</h3>
             <div className="space-y-4">
-              <div className="bg-gray-50 p-6 rounded-[30px] border border-gray-100">
+              <div className="bg-white p-6 rounded-[30px] border-2 border-gray-100 shadow-inner">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Premiação</p>
-                <input type="text" placeholder="Ex: R$ 5.000 + Kit Barba" value={form.prize} onChange={e=>setForm({...form,prize:e.target.value})} className="w-full bg-transparent text-lg font-black outline-none text-blue-950 uppercase" />
+                <input 
+                  type="text" 
+                  placeholder="Ex: R$ 5.000 + Kit Barba" 
+                  value={form.prize} 
+                  onChange={e=>setForm({...form,prize:e.target.value})} 
+                  className="w-full bg-transparent text-lg font-black outline-none text-blue-950 uppercase placeholder:text-gray-300" 
+                />
               </div>
               <div className="bg-gray-50 p-6 rounded-[30px] border border-gray-100">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Vagas no Torneio</p>
@@ -210,7 +222,7 @@ export default function League() {
   );
 
   const renderDetail = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[5500] bg-[#F8FAFC] flex flex-col">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[5500] bg-[#F8FAFC] flex flex-col shadow-2xl">
       <div className="px-6 py-6 flex items-center justify-between bg-white border-b border-gray-100">
         <button onClick={() => setView('home')} className="p-3 bg-gray-50 rounded-2xl text-blue-950"><ChevronLeft size={24} /></button>
         <div className="text-center"><span className="text-[8px] font-black text-red-500 uppercase flex items-center justify-center"><div className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1 animate-pulse" /> SEMIFINAL LIVE</span><h2 className="text-sm font-black text-blue-950 font-orbitron italic uppercase">{selectedChamp?.name}</h2></div>
@@ -269,7 +281,7 @@ export default function League() {
   );
 
   const renderReferee = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[7000] bg-black flex flex-col">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[7000] bg-black flex flex-col">
        <div className="px-6 py-8 flex items-center justify-between border-b border-white/10">
           <button onClick={() => setView('detail')} className="p-3 bg-white/10 rounded-2xl text-white"><ChevronLeft size={24} /></button>
           <div className="text-center"><p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">Sala do Árbitro</p><h2 className="text-sm font-black text-white font-orbitron italic uppercase">Avaliação Técnica</h2></div>
@@ -296,7 +308,7 @@ export default function League() {
   );
 
   const renderVoting = () => (
-    <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="fixed inset-0 z-[7000] bg-white flex flex-col">
+    <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[7000] bg-white flex flex-col shadow-2xl">
        <div className="px-6 py-8 flex items-center justify-between border-b border-gray-100">
           <button onClick={() => setView('detail')} className="p-3 bg-gray-50 rounded-2xl text-blue-950"><ChevronLeft size={24} /></button>
           <div className="text-center"><p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Arena de Votação</p><h2 className="text-sm font-black text-blue-950 font-orbitron italic uppercase">Quem vence essa?</h2></div>
@@ -325,7 +337,7 @@ export default function League() {
   );
 
   const renderFinal = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[8000] bg-blue-950 flex flex-col items-center justify-center text-center p-8 overflow-hidden">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[8000] bg-blue-950 flex flex-col items-center justify-center text-center p-8 overflow-hidden shadow-2xl">
        <div className="absolute top-0 left-0 w-full h-full"><div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-600/20 blur-[120px] rounded-full animate-pulse" /></div>
        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', bounce: 0.5, delay: 0.2 }} className="relative z-10 mb-12">
           <div className="w-48 h-48 bg-yellow-400 rounded-[60px] flex items-center justify-center shadow-2xl rotate-12 relative"><Trophy size={100} className="text-blue-950 -rotate-12" /><div className="absolute -top-4 -right-4 bg-white p-4 rounded-3xl shadow-xl text-blue-600 rotate-12"><Star size={32} fill="currentColor" /></div></div>
