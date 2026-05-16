@@ -78,4 +78,23 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Busca dados atualizados do usuário logado
+router.get('/me/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id: parseInt(id) },
+      include: { barberProfile: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    res.json(user);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

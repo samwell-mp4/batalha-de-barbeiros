@@ -36,22 +36,54 @@ export default function Profile() {
   const isOwnProfile = !id || (loggedUser && loggedUser.id.toString() === id);
   
   // Dados do Barbeiro (do banco/URL ou do usuário logado)
-  const [barber] = useState<any>(() => {
-    if (isOwnProfile && loggedUser) {
-      return {
-        id: loggedUser.id,
-        name: loggedUser.name || 'Usuário da Arena',
-        username: (loggedUser.name || 'arena_user').toLowerCase().replace(/\s/g, '_'),
-        avatar: loggedUser.avatar || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&h=400&fit=crop',
-        xp: loggedUser.xp || 0,
-        status: { id: 's1', icon: '⚡', color: '#22c55e' },
-        waitTime: 0,
-        ...loggedUser.barberProfile
-      };
+  const [barber, setBarber] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadProfile() {
+      setLoading(true);
+      try {
+        const targetId = id || loggedUser?.id;
+        if (!targetId) return;
+
+        // Busca dados reais do barbeiro ou usuário
+        const response = await api.getBarber(targetId.toString());
+        if (response) {
+          setBarber({
+            ...response,
+            name: response.user?.name || response.name,
+            avatar: response.user?.avatar || response.avatar || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&h=400&fit=crop',
+            xp: response.user?.xp || response.xp || 0,
+            status: { id: 's1', icon: '⚡', color: '#22c55e' },
+            waitTime: 0
+          });
+        }
+      } catch (e) {
+        console.error('Erro ao carregar perfil do banco:', e);
+      } finally {
+        setLoading(false);
+      }
     }
-    const found = MOCK_BARBERS.find(b => b.id.toString() === id);
-    return found || MOCK_BARBERS[0];
-  });
+
+    loadProfile();
+  }, [id, loggedUser?.id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-blue-950 flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!barber) {
+    return (
+      <div className="min-h-screen bg-blue-950 flex flex-col items-center justify-center p-6 text-center">
+        <h2 className="text-2xl font-black text-white uppercase italic mb-4">Perfil Não Encontrado</h2>
+        <button onClick={() => navigate('/')} className="px-8 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl">Voltar ao Mapa</button>
+      </div>
+    );
+  }
 
   const [isFavorited, setIsFavorited] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);

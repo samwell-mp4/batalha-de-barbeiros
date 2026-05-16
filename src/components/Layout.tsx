@@ -6,29 +6,41 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Sistema de Sessão Blindado
-  const user = useMemo(() => {
+  // Sistema de Sessão Blindada com Sincronização de Banco
+  const [user, setUser] = useState<any>(() => {
     const saved = localStorage.getItem('user');
-    if (!saved || saved === 'undefined' || saved === 'null') {
-      return null;
-    }
+    if (!saved || saved === 'undefined' || saved === 'null') return null;
     try {
       const parsed = JSON.parse(saved);
-      if (!parsed || !parsed.id) return null;
-      return parsed;
+      return parsed?.id ? parsed : null;
     } catch (e) {
-      console.error('Sessão corrompida, limpando...');
-      localStorage.removeItem('user');
       return null;
     }
-  }, [location.pathname]); // Re-valida a cada troca de página
+  });
 
   useEffect(() => {
-    // Redirecionamento forçado se não estiver logado
+    async function syncUser() {
+      if (user?.id) {
+        try {
+          // Busca dados fresquinhos do banco
+          const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/auth/me/${user.id}`);
+          if (response.ok) {
+            const freshUser = await response.json();
+            setUser(freshUser);
+            localStorage.setItem('user', JSON.stringify(freshUser));
+          }
+        } catch (e) {
+          console.error('Erro ao sincronizar com banco:', e);
+        }
+      }
+    }
+
+    syncUser();
+
     if (!user && location.pathname !== '/auth') {
       navigate('/auth');
     }
-  }, [user, location.pathname, navigate]);
+  }, [location.pathname]); 
 
   const isBarberView = user?.role === 'BARBER';
 

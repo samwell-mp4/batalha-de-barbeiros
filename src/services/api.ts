@@ -16,9 +16,14 @@ export const api = {
     return res.json();
   },
 
-  // MAP
+  // BARBERS
   getBarberLocations: async () => {
     const res = await fetch(`${API_URL}/barbers/locations`);
+    return res.json();
+  },
+  getBarber: async (id: string) => {
+    const res = await fetch(`${API_URL}/barbers/${id}`);
+    if (!res.ok) return null;
     return res.json();
   },
 
