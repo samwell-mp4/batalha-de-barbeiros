@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Swords, MapPin, Trophy, User, Repeat, Search, Calendar } from 'lucide-react';
+import { Swords, MapPin, Trophy, User, Calendar } from 'lucide-react';
 
 export default function Layout() {
   const navigate = useNavigate();

@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { MOCK_BARBERS, STATUS } from '@/constants/mockData';
-import { Search, MapPin, Star, Shield, Navigation, X, Swords, Clock, CheckCircle2, ChevronRight, MessageCircle, Music, Coffee, Settings, Flame, Medal, Zap, Share2, Download, TrendingUp, CreditCard, Wallet, AlertTriangle, Ban, Heart, Info, Trash2, LayoutGrid, Loader2, Filter, Eye, EyeOff, User, Camera, Trophy, Scissors, Calendar, Share, MoreHorizontal, Plus, ChevronLeft, Ticket, Radar, Check, DollarSign, QrCode, CalendarDays, List } from 'lucide-react';
+import { MapPin, Star, Navigation, X, Share2, ChevronRight, Clock, CheckCircle2, Zap, Flame, Calendar, Trash2, LayoutGrid, Loader2, Eye, EyeOff, User, Camera, Scissors, Share, Plus, ChevronLeft, Radar, Check, DollarSign, QrCode, CalendarDays, List, Heart, MessageCircle, Info, CreditCard, Wallet, Swords, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Fix for default marker icons
@@ -46,7 +46,7 @@ export default function MapPage() {
   const [isRadarOpen, setIsRadarOpen] = useState(false);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [proposalPrice, setProposalPrice] = useState<number>(0);
-  const [observations, setObservations] = useState('');
+  const [observations] = useState('');
   const [selectedBarber, setSelectedBarber] = useState<any>(null);
   const [viewingStory, setViewingStory] = useState<boolean>(false);
 
@@ -56,11 +56,8 @@ export default function MapPage() {
 
   // EVALUATION & PAYMENT STATE
   const [stars, setStars] = useState(0);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [isBlocked, setIsBlocked] = useState(false);
   const [tipAmount, setTipAmount] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'credit' | 'debit' | null>(null);
-  const [isReporting, setIsReporting] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showCancelledToast, setShowCancelledToast] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -165,7 +162,6 @@ export default function MapPage() {
 
   // VARREDURA DE RADARES ABERTOS (5KM)
   const radarBarbers = useMemo(() => {
-    const today = 16;
     const hour = new Date().getHours();
     const globalAgenda = matchSession.globalAgenda || {};
 
@@ -207,41 +203,7 @@ export default function MapPage() {
     return [b.coordinates.latitude, b.coordinates.longitude] as [number, number];
   }, [matchSession?.activeMatch?.barberId]);
 
-  const handleRadarBooking = (barber: any, slot: any) => {
-    const today = 16;
-    const newMatch = {
-      id: 'radar_' + Date.now(),
-      barberId: barber.id,
-      client: { name: 'Luis', avatar: 'https://i.pravatar.cc/150?u=luis' },
-      services: ['Corte Expresso (Radar)'],
-      price: 40,
-      time: slot.time
-    };
 
-    setMatchSession((prev: any) => {
-      const currentAgenda = prev.globalAgenda || {};
-      const barberId = barber.name.includes("Gustavo") ? 16 : barber.id;
-      const dateData = currentAgenda[today] || {};
-      const dateSlots = dateData.slots || [];
-
-      const updatedSlots = [
-        ...dateSlots.filter((s: any) => s.time !== slot.time),
-        { time: slot.time, status: 'occupied', client_name: 'Luis (Radar)', services: ['Corte Expresso'], price: 40, isMyBooking: true }
-      ];
-
-      return {
-        ...prev,
-        status: 'accepted',
-        activeMatch: newMatch,
-        globalAgenda: {
-          ...currentAgenda,
-          [today]: { ...dateData, slots: updatedSlots }
-        },
-        notifications: [{ id: Date.now(), type: 'radar_filled', time: slot.time, client: 'Luis', services: ['Corte Expresso'] }, ...(prev.notifications || [])]
-      };
-    });
-    setClientMode('expresso'); // Volta para o modo padrÃƒÂ£o apÃƒÂ³s reservar
-  };
 
   // PEGA SLOTS DO GUSTAVO EM TEMPO REAL (SINCRONIZADO COM AGENDA.TSX)
   const barberSlots = useMemo(() => {
@@ -256,8 +218,8 @@ export default function MapPage() {
     const endIdx = parseInt(workingHours.end.split(':')[0]);
 
     // Gera a grade de 24h e filtra pela jornada e pelo tempo presente
-    return Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`)
-      .filter((time, i) => {
+    return Array.from({ length: 24 }, (_, h) => `${h.toString().padStart(2, '0')}:00`)
+      .filter((time) => {
         const h = parseInt(time.split(':')[0]);
         const isWithinShift = h >= startIdx && h <= endIdx;
         const isFuture = selectedBookingDate > today || (selectedBookingDate === today && h >= currentHour);
@@ -782,7 +744,7 @@ export default function MapPage() {
                       {!isBarberView && (
                         <div className="space-y-4">
                           <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2">Barbeiros DisponÃƒÂ­veis</p>
-                          {radarBarbers.length > 0 ? radarBarbers.map((barber) => (
+                          {radarBarbers.length > 0 ? radarBarbers.map((barber: any) => (
                             <div key={barber.id} className="bg-white border-2 border-gray-100 p-5 rounded-[35px] shadow-sm hover:border-blue-600 transition-all group">
                               <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center space-x-3">
@@ -795,7 +757,7 @@ export default function MapPage() {
                                 <div className="flex items-center text-yellow-500 bg-yellow-50 px-2 py-0.5 rounded-lg"><Star size={10} className="fill-yellow-500 mr-1" /><span className="text-[10px] font-black">{barber.rating}</span></div>
                               </div>
                               <div className="grid grid-cols-2 gap-2">
-                                {barber.openRadars.map((slot: any, idx: number) => (
+                                {barber?.openRadars?.map((slot: any, idx: number) => (
                                   <button
                                     key={idx}
                                     onClick={() => { setSelectedBarber(barber); setSelectedBookingDate(16); setIsBookingAgenda(true); }}
@@ -915,7 +877,7 @@ export default function MapPage() {
                 <button disabled={!paymentMethod || isProcessingPayment} onClick={handleFinalizePayment} className="w-full py-6 bg-green-500 text-white rounded-[30px] font-black text-sm uppercase shadow-xl flex items-center justify-center space-x-3">{isProcessingPayment ? <><Loader2 size={20} className="animate-spin" /> <span>Processando...</span></> : <span>Confirmar Pagamento</span>}</button>
               </div>
             ) : (
-              <div className="text-center py-10"><motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6"><Clock size={32} className="text-green-400" /></motion.div><h3 className="text-2xl font-black text-white uppercase italic mb-2">Aguardando Pagamento</h3><button onClick={() => setIsReporting(true)} className="w-full flex items-center justify-center space-x-2 bg-red-500/10 text-red-400 py-6 rounded-[30px] font-black text-xs uppercase mt-12 border border-red-500/20"><AlertTriangle size={18} /> <span>Reportar Problema</span></button></div>
+              <div className="text-center py-10"><motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6"><Clock size={32} className="text-green-400" /></motion.div><h3 className="text-2xl font-black text-white uppercase italic mb-2">Aguardando Pagamento</h3><button onClick={() => console.log('Reportar problema')} className="w-full flex items-center justify-center space-x-2 bg-red-500/10 text-red-400 py-6 rounded-[30px] font-black text-xs uppercase mt-12 border border-red-500/20"><AlertTriangle size={18} /> <span>Reportar Problema</span></button></div>
             )}
           </motion.div>
         )}
@@ -932,7 +894,7 @@ export default function MapPage() {
         {matchSession?.status === 'receipt' && (
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="absolute inset-0 z-[4000] bg-blue-950 flex flex-col items-center p-8 text-center overflow-y-auto no-scrollbar">
             <div className="mt-12 bg-white w-full rounded-[48px] p-8 shadow-2xl relative overflow-hidden"><h2 className="text-3xl font-black text-blue-950 uppercase italic mb-2 tracking-tighter">Atendimento Finalizado</h2><div className="border-t-2 border-dashed border-gray-100 py-6 flex justify-between text-sm font-black text-blue-950 uppercase"><span>Total Pago</span><span>R$ {matchSession.activeMatch.price + tipAmount},00</span></div><div className="bg-blue-600 rounded-[32px] p-6 text-white mb-8"><span className="text-xl font-black italic">+500 Pontos</span></div><div className="grid grid-cols-2 gap-3"><button className="bg-gray-900 text-white py-5 rounded-[24px] font-black text-[10px] uppercase">Compartilhar</button><button className="bg-gray-50 text-gray-400 py-5 rounded-[24px] font-black text-[10px] uppercase">Baixar Recibo</button></div></div>
-            <button onClick={() => { setMatchSession((prev: any) => ({ ...prev, status: 'idle', activeMatch: null })); setIsRequesting(false); setIsRadarOpen(false); setSelectedServices([]); setStars(0); setSelectedTags([]); setTipAmount(0); setPaymentMethod(null); }} className="mt-12 w-full bg-white/10 text-white py-6 rounded-[30px] font-black text-sm uppercase">Voltar ao Mapa</button>
+            <button onClick={() => { setMatchSession((prev: any) => ({ ...prev, status: 'idle', activeMatch: null })); setIsRequesting(false); setIsRadarOpen(false); setSelectedServices([]); setStars(0); setTipAmount(0); setPaymentMethod(null); }} className="mt-12 w-full bg-white/10 text-white py-6 rounded-[30px] font-black text-sm uppercase">Voltar ao Mapa</button>
           </motion.div>
         )}
 

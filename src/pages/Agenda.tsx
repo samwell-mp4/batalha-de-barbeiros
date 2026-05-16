@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useState, useMemo } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar as CalendarIcon, Clock, User, ChevronRight, ChevronLeft, CheckCircle2, AlertTriangle, Plus, X, Scissors, Zap, Bell, MoreHorizontal, LayoutGrid, Filter, CalendarDays, List, Search, TrendingUp, MapPin, BarChart3, ShieldOff, Timer, Check, Info, Ticket, QrCode, Scissors as ScissorsIcon, DollarSign, RefreshCcw, Trash2, Star, Copy, Wallet, Settings } from 'lucide-react';
+import { User, ChevronRight, ChevronLeft, Plus, X, Zap, Bell, ShieldOff, Check, Scissors as ScissorsIcon, Star, Settings } from 'lucide-react';
 
 export default function Agenda() {
-  const navigate = useNavigate();
   const context = useOutletContext<{ isBarberView: boolean, matchSession: any, setMatchSession: (s: any) => void }>() || { isBarberView: true, matchSession: {}, setMatchSession: () => {} };
   const { isBarberView, matchSession, setMatchSession } = context;
 
@@ -14,7 +13,7 @@ export default function Agenda() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [isSelectingServices, setIsSelectingServices] = useState(false);
+  const [, setIsSelectingServices] = useState(false);
   const [showHoursConfig, setShowHoursConfig] = useState(false);
 
   const globalAgenda = matchSession.globalAgenda || {};

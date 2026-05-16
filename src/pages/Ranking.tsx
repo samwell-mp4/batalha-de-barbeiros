@@ -1,7 +1,6 @@
-import React from 'react';
-import { MOCK_BARBERS, MOCK_TOURNAMENTS } from '@/constants/mockData';
-import { Trophy, ChevronRight, Zap, Target, TrendingUp, TrendingDown, Swords, Calendar, Flame, Filter, Search, Globe, Award, Medal, Star, MapPin, ChevronDown } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { MOCK_BARBERS } from '@/constants/mockData';
+import { Trophy, ChevronRight, Zap, Target, TrendingUp, TrendingDown, Swords, Flame, Filter, Search, Globe, Award, MapPin, ChevronDown } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,7 +8,6 @@ export default function Ranking() {
   const navigate = useNavigate();
   const [timeFilter, setTimeFilter] = useState<'weekly' | 'monthly' | 'all'>('weekly');
   const [regionFilter, setRegionFilter] = useState('bairro'); // bairro, cidade, estado, global
-  const [tournamentFilter, setTournamentFilter] = useState('all');
   
   const sortedBarbers = [...MOCK_BARBERS].sort((a, b) => b.xp - a.xp);
 

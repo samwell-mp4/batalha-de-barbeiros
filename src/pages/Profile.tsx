@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MOCK_BARBERS } from '@/constants/mockData';
-import { Share2, Settings, Trophy, Grid, Play, Swords, ChevronDown, CheckCircle2, Shield, Zap, Flame, Star, MapPin, Calendar, Heart, Clock, MessageCircle, MoreHorizontal, UserCheck, UserPlus, Image as ImageIcon, Bookmark, Scissors, Award, Medal, Target, Navigation, ChevronRight, X } from 'lucide-react';
+import { 
+  Share2, Settings, Trophy, Play, ChevronDown, CheckCircle2, Zap, Flame, Clock, Heart, Medal, Award,
+  Star, MapPin, Calendar, ChevronRight, X, Shield,
+  Navigation, UserPlus, Bookmark, Target
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { calculateLevel } from '@/constants/xpSystem';
 
@@ -12,7 +16,6 @@ export default function Profile() {
   
   const barber = MOCK_BARBERS.find(b => b.id.toString() === id) || MOCK_BARBERS[0];
   
-  const [activeTab, setActiveTab] = useState('grid');
   const [isFollowing, setIsFollowing] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
   const [likedItems, setLikedItems] = useState<Set<number>>(new Set());
@@ -292,7 +295,7 @@ export default function Profile() {
                       <h4 className="text-2xl font-black text-blue-950 uppercase italic leading-tight">{barber.name}</h4>
                       <div className="flex items-center space-x-2 mt-1">
                         <span className="text-[10px] font-black text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100 uppercase tracking-widest">RANK {typeof barber.id === 'number' ? (barber.id % 5 + 1) : 1}º</span>
-                        <div className="flex items-center text-yellow-500 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100"><Star size={10} className="fill-yellow-500 mr-1" /><span className="text-[10px] font-black">{barber.rating || '4.9'}</span></div>
+                         <div className="flex items-center text-yellow-500 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100"><Star size={10} className="fill-yellow-500 mr-1" /><span className="text-[10px] font-black">4.9</span></div>
                       </div>
                     </div>
                   </div>

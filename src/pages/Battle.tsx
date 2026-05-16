@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { MOCK_BARBERS, MOCK_TOURNAMENTS, TOURNAMENT_TYPES, MOCK_BATTLES } from '@/constants/mockData';
-import { Swords, Trophy, Flame, Zap, MapPin, Search, ChevronRight, Users, Medal } from 'lucide-react';
+import { Swords, Trophy, Zap, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Arena() {
@@ -13,7 +13,7 @@ export default function Arena() {
 
   const battle = MOCK_BATTLES[currentBattleIndex];
 
-  const handleVote = (side: 'left' | 'right') => {
+  const handleVote = (_side: 'left' | 'right') => {
     setVoted(true);
     setTimeout(() => {
       setVoted(false);
