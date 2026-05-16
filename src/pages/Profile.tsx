@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MOCK_BARBERS } from '@/constants/mockData';
 import { 
-  Settings, Trophy, Play, ChevronDown, CheckCircle2, Zap, Flame, Clock, Heart, Medal, Award,
+  Settings, Play, ChevronDown, CheckCircle2, Zap, Flame, Clock, Heart,
   Star, MapPin, Calendar, ChevronRight, X, Shield,
   Navigation, UserPlus, Bookmark, Target, Plus, Camera, Send
 } from 'lucide-react';
@@ -258,7 +258,7 @@ export default function Profile() {
             </div>
          </div>
          <div className="flex space-x-3 overflow-x-auto no-scrollbar py-2">
-            {merits.map(merit => (
+            {merits.map((merit: any) => (
                <div key={merit.id} className="min-w-[31%] bg-white p-4 rounded-[28px] border border-gray-50 shadow-sm flex flex-col items-center text-center">
                   <div className={`p-3 rounded-xl mb-3 ${merit.bg} ${merit.color}`}>{merit.icon}</div>
                   <p className="text-[8px] font-black text-blue-950 uppercase tracking-tighter">{merit.title}</p>
@@ -273,7 +273,7 @@ export default function Profile() {
             <div className="flex items-center space-x-4">
                <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><MapPin size={20}/></div>
                <div>
-                  <h4 className="text-[10px] font-black text-blue-950 uppercase mb-0.5">Vila Matilde, SP</h4>
+                  <h4 className="text-[10px] font-black text-blue-950 uppercase mb-0.5">{barber.city || 'Sua Cidade'}, {barber.state || 'UF'}</h4>
                   <p className="text-[9px] font-bold text-gray-400 uppercase">Endereço Privado</p>
                </div>
             </div>
@@ -285,7 +285,7 @@ export default function Profile() {
 
       {/* DESTAQUES (GEOMÉTRICOS) */}
       <div className="px-6 mb-10 flex space-x-5 overflow-x-auto no-scrollbar">
-         {highlights.map(h => (
+         {highlights.map((h: any) => (
             <button key={h.id} onClick={() => { setSelectedHighlight(h); setStoryIndex(0); }} className="flex flex-col items-center space-y-2 flex-shrink-0">
                <div className="w-16 h-16 rounded-[24px] p-0.5 border-2 border-blue-50 bg-white shadow-sm overflow-hidden">
                   <img src={h.img} className="w-full h-full rounded-[20px] object-cover hover:scale-110 transition-transform" />
@@ -297,7 +297,7 @@ export default function Profile() {
 
       {/* FEED GRID COM LIKE ÚNICO */}
       <div className="px-6 grid grid-cols-3 gap-2">
-         {feedImages.map((img) => (
+         {feedImages.map((img: any) => (
             <motion.div 
               key={img.id} 
               whileTap={{ scale: 0.98 }}
