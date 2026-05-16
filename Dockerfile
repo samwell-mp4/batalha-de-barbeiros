@@ -1,5 +1,5 @@
 # Estágio 1: Build Frontend
-FROM node:20-alpine as build-frontend
+FROM node:20-alpine AS build-frontend
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
@@ -7,7 +7,7 @@ COPY . .
 RUN npm run build
 
 # Estágio 2: Build Backend
-FROM node:20-alpine as build-backend
+FROM node:20-alpine AS build-backend
 WORKDIR /app/server
 COPY server/package*.json ./
 RUN npm install

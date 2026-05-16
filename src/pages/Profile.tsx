@@ -28,7 +28,7 @@ export default function Profile() {
   const isOwnProfile = !id || (loggedUser && loggedUser.id.toString() === id);
   
   // Dados do Barbeiro (do banco/URL ou do usuário logado)
-  const [barber, setBarber] = useState<any>(() => {
+  const [barber] = useState<any>(() => {
     if (isOwnProfile && loggedUser) {
       return {
         ...loggedUser.barberProfile,
@@ -41,6 +41,9 @@ export default function Profile() {
     }
     return MOCK_BARBERS.find(b => b.id.toString() === id) || MOCK_BARBERS[0];
   });
+
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [likedItems, setLikedItems] = useState<Set<number>>(new Set());
   const [selectedHighlight, setSelectedHighlight] = useState<any>(null);
   const [storyIndex, setStoryIndex] = useState(0);
@@ -336,8 +339,13 @@ export default function Profile() {
                      <div>
                       <h4 className="text-2xl font-black text-blue-950 uppercase italic leading-tight">{barber.name}</h4>
                       <div className="flex items-center space-x-2 mt-1">
-                        <span className="text-[10px] font-black text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100 uppercase tracking-widest">RANK {typeof barber.id === 'number' ? (barber.id % 5 + 1) : 1}º</span>
-                         <div className="flex items-center text-yellow-500 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100"><Star size={10} className="fill-yellow-500 mr-1" /><span className="text-[10px] font-black">4.9</span></div>
+                        <span className="text-[10px] font-black text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100 uppercase tracking-widest">
+                          RANK {typeof barber.id === 'number' ? (barber.id % 5 + 1) : (barber.id ? (barber.id.length % 5 + 1) : 1)}º
+                        </span>
+                         <div className="flex items-center text-yellow-500 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100">
+                           <Star size={10} className="fill-yellow-500 mr-1" />
+                           <span className="text-[10px] font-black">{barber.rating || '4.9'}</span>
+                         </div>
                       </div>
                     </div>
                   </div>
