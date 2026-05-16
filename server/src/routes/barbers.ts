@@ -14,14 +14,28 @@ router.get('/locations', async (req, res) => {
           select: {
             name: true,
             avatar: true,
-            location: true
+            city: true
           }
         }
       }
     });
     res.json(barbers);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch barber locations' });
+  } catch (error: any) {
+    console.error('[API ERROR] Failed to fetch locations:', error.message);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// Get all barbers
+router.get('/', async (req, res) => {
+  try {
+    const barbers = await prisma.barber.findMany({
+      include: { user: true }
+    });
+    res.json(barbers);
+  } catch (error: any) {
+    console.error('[API ERROR] Failed to fetch barbers:', error.message);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

@@ -105,7 +105,12 @@ export default function MapPage() {
     setLoading(true);
     try {
       const data = await api.getBarberLocations();
-      setDbBarbers(data);
+      if (data && data.length > 0) {
+        setDbBarbers(data);
+      } else {
+        // Se a API retornar vazio, usamos os mocks para o site não ficar morto
+        console.log('Using mock barbers as fallback');
+      }
     } catch (error) {
       console.error('Failed to fetch barber locations', error);
     } finally {
@@ -376,7 +381,20 @@ export default function MapPage() {
             <Marker position={mapCenter} icon={L.divIcon({ className: 'radar-pulse', html: '<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-blue-500/20 rounded-full border-2 border-blue-500/40 animate-ping"></div>', iconSize: [0, 0] })} />
           )}
           {filteredBarbers.map((barber) => (
-            <Marker key={barber.id} position={[barber.coordinates.latitude, barber.coordinates.longitude]} icon={createBarberIcon(barber)} eventHandlers={{ click: () => { if (matchSession.status === 'idle') { setSelectedBarber(barber); setIsBookingAgenda(false); setIsDrawerMinimized(false); } } }} />
+            <Marker 
+              key={barber.id} 
+              position={[barber.coordinates.latitude, barber.coordinates.longitude]} 
+              icon={createBarberIcon(barber)} 
+              eventHandlers={{ 
+                click: () => { 
+                  if (matchSession.status === 'idle') { 
+                    setSelectedBarber(barber); 
+                    setIsBookingAgenda(false); 
+                    setIsDrawerMinimized(false); 
+                  } 
+                } 
+              }} 
+            />
           ))}
           {activeBarberCoords && <Polyline positions={[initialPosition, activeBarberCoords]} pathOptions={{ color: '#2563eb', weight: 6, opacity: 0.5, dashArray: '10, 10' }} />}
           <RecenterButton coords={initialPosition} />
