@@ -18,7 +18,7 @@ app.use(cors());
 app.use(express.json());
 
 // Pasta pública do Front-end (será populada no build)
-const publicPath = path.resolve(__dirname, '../public');
+const publicPath = path.resolve(process.cwd(), 'public');
 app.use(express.static(publicPath));
 
 // --- ROUTES ---
