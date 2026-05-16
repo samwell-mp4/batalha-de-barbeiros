@@ -686,7 +686,7 @@ export default function MapPage() {
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={0.2}
-            onDragEnd={(e, info) => {
+            onDragEnd={(_, info) => {
               if (info.offset.y > 50) setIsDrawerMinimized(true);
               else if (info.offset.y < -50) setIsDrawerMinimized(false);
             }}
@@ -953,7 +953,7 @@ export default function MapPage() {
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={0.2}
-            onDragEnd={(e, info) => {
+            onDragEnd={(_, info) => {
               if (info.offset.y > 50) setIsDrawerMinimized(true);
               else if (info.offset.y < -50) setIsDrawerMinimized(false);
             }}
