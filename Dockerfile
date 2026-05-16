@@ -1,32 +1,33 @@
-# Estágio 1: Build
-FROM node:20-alpine as build-stage
-
-# Definir diretório de trabalho
+# Estágio 1: Build Frontend
+FROM node:20-alpine as build-frontend
 WORKDIR /app
-
-# Copiar arquivos de dependências
 COPY package*.json ./
-
-# Instalar dependências
 RUN npm install
-
-# Copiar o restante dos arquivos do projeto
 COPY . .
-
-# Rodar o build do projeto (Vite + TS)
 RUN npm run build
 
-# Estágio 2: Produção (Nginx)
-FROM nginx:stable-alpine
+# Estágio 2: Build Backend
+FROM node:20-alpine as build-backend
+WORKDIR /app/server
+COPY server/package*.json ./
+RUN npm install
+COPY server/ .
+RUN npx prisma generate
+RUN npm run build
 
-# Copiar os arquivos compilados do estágio anterior
-COPY --from=build-stage /app/dist /usr/share/nginx/html
+# Estágio 3: Produção
+FROM node:20-alpine
+WORKDIR /app
 
-# Copiar a configuração personalizada do Nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copiar arquivos necessários
+COPY --from=build-frontend /app/dist ./dist
+COPY --from=build-backend /app/server/dist ./server/dist
+COPY --from=build-backend /app/server/package*.json ./server/
+COPY --from=build-backend /app/server/node_modules ./server/node_modules
+COPY --from=build-backend /app/server/prisma ./server/prisma
 
-# Expor a porta 80
-EXPOSE 80
+WORKDIR /app/server
+EXPOSE 3000
 
-# Comando para rodar o Nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Comando para rodar a aplicação completa
+CMD ["npm", "start"]
