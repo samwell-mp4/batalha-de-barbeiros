@@ -32,8 +32,6 @@ function RecenterButton({ coords }: { coords: [number, number] }) {
 export default function MapPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
-  if (loading) return null;
   const initialPosition: [number, number] = [-23.525, -46.522];
 
   const context = useOutletContext<{
@@ -281,6 +279,7 @@ export default function MapPage() {
 
   return (
     <div className="flex flex-col w-full h-full bg-[#f8fafc] font-inter overflow-hidden relative" style={{ height: 'calc(100vh - 6rem)' }}>
+      {loading && <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-[999] flex items-center justify-center"><div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" /></div>}
       <style>{`
         .leaflet-container {
           background: #f8fafc !important;
