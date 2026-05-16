@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { MOCK_BARBERS } from '@/constants/mockData';
 import { 
   Settings, Trophy, Play, ChevronDown, CheckCircle2, Zap, Flame, Clock, Heart, Medal, Award,
-  Star, MapPin, Calendar, ChevronRight, X, Shield, Share2,
-  Navigation, UserPlus, Bookmark, Target, Plus, Camera, Image, Send, Filter, Video, Scissors
+  Star, MapPin, Calendar, ChevronRight, X, Shield,
+  Navigation, UserPlus, Bookmark, Target, Plus, Camera, Send
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { calculateLevel } from '@/constants/xpSystem';

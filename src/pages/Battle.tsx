@@ -12,7 +12,7 @@ export default function Arena() {
   const [currentBattleIndex, setCurrentBattleIndex] = useState(0);
   const [voted, setVoted] = useState(false);
   const [dbPosts, setDbPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchPosts();
@@ -25,7 +25,7 @@ export default function Arena() {
     } catch (error) {
       console.error('Failed to fetch posts', error);
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   };
 

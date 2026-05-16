@@ -32,6 +32,8 @@ function RecenterButton({ coords }: { coords: [number, number] }) {
 export default function MapPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  if (loading) return null;
   const initialPosition: [number, number] = [-23.525, -46.522];
 
   const context = useOutletContext<{

@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  User, Scissors, Mail, Lock, MapPin, ChevronRight,
-  ChevronLeft, Check, Star, Zap, ShieldCheck, Camera,
-  Target, Award, Rocket, ChevronDown, Clock
+  User, Scissors, Mail, Lock, MapPin, ChevronRight, 
+  ChevronLeft, Check, Target, Rocket, ChevronDown, Clock
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
@@ -462,7 +461,7 @@ export default function Auth() {
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-4 rounded-3xl border border-blue-50 shadow-sm flex items-center space-x-4">
             <div className="w-12 h-12 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 rounded-full p-0.5">
               <div className="w-full h-full bg-white rounded-full p-0.5">
-                <img src={`https://unavatar.io/instagram/${form.instagram}`} className="w-full h-full rounded-full object-cover" onError={(e: any) => e.target.src = 'https://ui-avatars.com/api/?name=' + form.instagram} />
+                <img src={`https://unavatar.io/instagram/${form.instagram}`} className="w-full h-full rounded-full object-cover" onError={(e: any) => e.target.src = 'https://ui-avatars.com/api/?name=' + form.instagram} alt="profile" />
               </div>
             </div>
             <div>
@@ -619,8 +618,9 @@ export default function Auth() {
       <div className="absolute -top-20 -right-20 w-80 h-80 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md bg-white rounded-[60px] p-10 shadow-[0_40px_100px_rgba(0,0,0,0.08)] relative z-10 border border-gray-100">
-
+      <div className="bg-white rounded-[60px] p-10 shadow-[0_40px_100px_rgba(0,0,0,0.08)] relative z-10 border border-gray-100">
+        {loading && <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-50 rounded-[60px] flex items-center justify-center"><div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" /></div>}
+        
         {step !== 'success' && (
           <div className="flex items-center justify-between mb-12">
             <button

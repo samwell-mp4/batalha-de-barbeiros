@@ -71,6 +71,7 @@ export default function League() {
 
   const renderHome = () => (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full bg-[#F8FAFC]">
+      {loading && <div className="fixed inset-0 bg-white/50 backdrop-blur-sm z-[999] flex items-center justify-center"><div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" /></div>}
       <div className="bg-white border-b border-gray-100 px-6 py-6 z-30 shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
@@ -144,7 +145,7 @@ export default function League() {
             <div>
               <div className="flex items-center justify-between mb-4 px-2">
                 <p className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] italic">
-                  {activeTab === 'my_tournaments' ? 'Torneios Criados por Você' : 'Torneios em Andamento'}
+                  {(activeTab as any) === 'my_tournaments' ? 'Torneios Criados por Você' : 'Torneios em Andamento'}
                 </p>
                 <div className="flex items-center space-x-1">
                   <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -166,7 +167,7 @@ export default function League() {
                     </div>
                   </div>
                 )}
-                {(activeTab as string) === 'my_tournaments' && !newlyCreated && (
+                {(activeTab as any) === 'my_tournaments' && !newlyCreated && (
                   <div className="text-center py-20 border-2 border-dashed border-gray-200 rounded-[40px] bg-gray-50/50">
                     <Trophy size={40} className="mx-auto mb-4 text-gray-300" />
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Você ainda não criou nenhum campeonato.</p>
