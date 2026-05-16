@@ -22,9 +22,14 @@ app.use(cors());
 app.use(express.json());
 
 // Pasta pública do Front-end (será populada no build)
-const publicPath = path.resolve(process.cwd(), 'public');
-console.log(`[SERVER] Tentando servir de: ${publicPath}`);
-app.use(express.static(publicPath));
+const publicPath = path.join(__dirname, '..', '..', 'public');
+console.log(`[SERVER] Caminho absoluto da pasta public: ${publicPath}`);
+
+// Serve arquivos estáticos com cache agressivo
+app.use(express.static(publicPath, {
+  maxAge: '1d',
+  immutable: true
+}));
 
 // Rota de Debug para ver arquivos na VPS
 app.get('/api/debug-files', (req, res) => {
