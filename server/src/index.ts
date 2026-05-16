@@ -16,7 +16,10 @@ const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('../dist')); // Serve o front-end compilado
+
+// Serve os arquivos estáticos primeiro com prioridade total
+const distPath = path.join(__dirname, '../../dist');
+app.use(express.static(distPath));
 
 // --- ROUTES ---
 
@@ -27,7 +30,7 @@ app.use('/api/auth', authRoutes);
 
 // Wildcard route to serve index.html for client-side routing
 app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(__dirname, '../../dist/index.html'));
+  res.sendFile(path.join(distPath, 'index.html'));
 });
 
 // Health Check
