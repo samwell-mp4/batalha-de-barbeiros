@@ -14,15 +14,28 @@ export default function League() {
   const [activeTab, setActiveTab] = useState<'tournaments' | 'rankings' | 'referee'>('tournaments');
   const [selectedLeague, setSelectedLeague] = useState<number>(1);
   const [createStep, setCreateStep] = useState(0);
-  const [form, setForm] = useState({ name: '', modality: '', arbitration: 'hybrid', maxParticipants: 16, prize: '', votingTime: 24, judges: [] as string[], liga: 1 });
+  const [form, setForm] = useState({ 
+    name: '', 
+    modality: 'x1', 
+    arbitration: 'hybrid', 
+    maxParticipants: 16, 
+    prize: '', 
+    votingTime: 24, 
+    judges: [] as string[], 
+    liga: 1, 
+    opponentNick: '',
+    theme: '',
+    startDate: '',
+    startTime: ''
+  });
   const [selectedChamp, setSelectedChamp] = useState<any>(null);
 
   const LEAGUES = [
-    { id: 1, name: 'Liga 1', type: 'X1 CLASSIC', players: '2', radius: '5km / Nickname', duration: '2h - 24h', icon: <Swords size={18} /> },
-    { id: 2, name: 'Liga 2', type: 'BAIRRO', players: '8/16/32', radius: '5km', duration: '1 - 3 dias', icon: <MapPin size={18} /> },
-    { id: 3, name: 'Liga 3', type: 'REGIONAL', players: '32 - 128', radius: 'Região Auto', duration: '5 dias', icon: <LayoutGrid size={18} /> },
-    { id: 4, name: 'Liga 4', type: 'ESTADUAL', players: '64 - 256', radius: 'Estado', duration: '7 dias', icon: <Globe size={18} /> },
-    { id: 5, name: 'Liga 5', type: 'BRASILEIRO', players: '512 - 1024', radius: 'Nacional', duration: '15 dias', icon: <Trophy size={18} /> },
+    { id: 1, name: 'Duelo 1x1', type: 'X1 CLASSIC', players: '2', radius: 'Global (Nickname)', duration: 'Definido pelo usuário', icon: <Swords size={18} />, canCreate: true },
+    { id: 2, name: 'Campeonato do Bairro', type: 'BAIRRO', players: '8/16/32', radius: '5km', duration: 'Definido pelo usuário', icon: <MapPin size={18} />, canCreate: true },
+    { id: 3, name: 'Campeonato Regional', type: 'REGIONAL', players: '32 - 128', radius: 'Região Auto', duration: '5 dias', icon: <LayoutGrid size={18} />, canCreate: true },
+    { id: 4, name: 'Campeonato Estadual', type: 'ESTADUAL', players: '64 - 256', radius: 'Estado', duration: '1x por semana', icon: <Globe size={18} />, canCreate: false },
+    { id: 5, name: 'Campeonato Brasileiro', type: 'BRASILEIRO', players: '512 - 1024', radius: 'Nacional', duration: '15 dias', icon: <Trophy size={18} />, canCreate: false },
   ];
 
   const ACTIVE_TOURNAMENTS = [
@@ -89,7 +102,17 @@ export default function League() {
                     <div className="grid grid-cols-2 gap-6 mb-8">
                       {[{lab:'Participantes',val:l.players+' JOGADORES'},{lab:'Raio de Ação',val:l.radius},{lab:'Duração',val:l.duration},{lab:'Criação',val:selectedLeague<=3?'USUÁRIOS':'PLATAFORMA'}].map((item,i)=>(<div key={i}><p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-1">{item.lab}</p><p className="text-lg font-black italic">{item.val}</p></div>))}
                     </div>
-                    <button onClick={() => setView('create')} className="w-full py-4 bg-white text-blue-950 rounded-[20px] font-black text-xs uppercase italic tracking-widest shadow-xl active:scale-95 transition-transform">{selectedLeague===1?'Lançar Desafio 1x1':'Criar Novo Campeonato'}</button>
+                    <button 
+                      onClick={() => { 
+                        if (!l.canCreate) return;
+                        setForm({...form, liga: selectedLeague, maxParticipants: selectedLeague === 1 ? 2 : 16}); 
+                        setView('create'); 
+                      }} 
+                      disabled={!l.canCreate}
+                      className={`w-full py-4 rounded-[20px] font-black text-xs uppercase italic tracking-widest shadow-xl active:scale-95 transition-transform ${l.canCreate ? 'bg-white text-blue-950' : 'bg-white/10 text-white/40 cursor-not-allowed'}`}
+                    >
+                      {!l.canCreate ? 'Sistema Automático' : selectedLeague === 1 ? 'Lançar Desafio 1x1' : 'Criar Novo Campeonato'}
+                    </button>
                   </div>
                 </div>
               );
@@ -145,19 +168,17 @@ export default function League() {
       <div className="flex-1 overflow-y-auto px-6 py-8 space-y-8">
         {createStep === 0 && (
           <div className="space-y-6">
-            <h3 className="text-2xl font-black text-blue-950 uppercase italic font-orbitron">Qual o nome da arena?</h3>
-            <input 
-              type="text" 
-              placeholder="Ex: Batalha de Gigantes" 
-              value={form.name} 
-              onChange={e=>setForm({...form,name:e.target.value})} 
-              className="w-full p-6 bg-white rounded-[25px] border-2 border-gray-100 text-lg font-black outline-none focus:border-blue-600 transition-all text-blue-950 placeholder:text-gray-300 shadow-inner" 
-            />
-            <div className="grid grid-cols-2 gap-4">
+            <h3 className="text-2xl font-black text-blue-950 uppercase italic font-orbitron">{form.liga === 1 ? 'Qual o nome do Desafio?' : 'Qual o nome da Arena?'}</h3>
+            <input type="text" placeholder={form.liga === 1 ? "Ex: Duelo de Gigantes" : "Ex: Batalha do Bairro"} value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="w-full p-6 bg-gray-50 rounded-[25px] border-2 border-gray-200 text-lg font-black outline-none focus:border-blue-600 transition-all !text-blue-950 placeholder:text-gray-400 shadow-sm" />
+            
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 mt-4">Tema do Campeonato</p>
+            <input type="text" placeholder="Ex: Estilo Retro / Degradê Perfeito" value={form.theme} onChange={e=>setForm({...form,theme:e.target.value})} className="w-full p-6 bg-gray-50 rounded-[25px] border-2 border-gray-200 text-lg font-black outline-none focus:border-blue-600 transition-all !text-blue-950 placeholder:text-gray-400 shadow-sm" />
+
+            <div className="grid grid-cols-2 gap-4 mt-6">
               {LEAGUES.map(l => (
-                <button key={l.id} onClick={() => setForm({...form, liga: l.id} as any)} className={`p-6 rounded-[30px] border-2 flex flex-col items-center space-y-3 transition-all ${form.liga === l.id ? 'border-blue-600 bg-blue-50' : 'border-gray-100 bg-white'}`}>
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${form.liga === l.id ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}>{l.icon}</div>
-                  <span className="text-[10px] font-black uppercase italic">{l.name}</span>
+                <button key={l.id} disabled={!l.canCreate} onClick={() => setForm({...form, liga: l.id, maxParticipants: l.id === 1 ? 2 : 16} as any)} className={`p-6 rounded-[30px] border-2 flex flex-col items-center space-y-3 transition-all ${!l.canCreate ? 'opacity-30 grayscale cursor-not-allowed' : ''} ${form.liga === l.id ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${form.liga === l.id ? 'bg-blue-600 text-white' : 'bg-gray-100 !text-blue-950'}`}>{l.icon}</div>
+                  <span className={`text-[10px] font-black uppercase italic ${form.liga === l.id ? 'text-blue-600' : '!text-blue-950'}`}>{l.name}</span>
                 </button>
               ))}
             </div>
@@ -165,23 +186,31 @@ export default function League() {
         )}
         {createStep === 1 && (
           <div className="space-y-6">
-            <h3 className="text-2xl font-black text-blue-950 uppercase italic font-orbitron">Escolha a Modalidade</h3>
-            <div className="grid grid-cols-1 gap-4">
-              {MODALITIES.map(m => (
-                <button key={m.id} onClick={() => setForm({...form, modality: m.id})} className={`p-6 rounded-[30px] border-2 flex items-center justify-between transition-all ${form.modality === m.id ? 'border-blue-600 bg-blue-50' : 'border-gray-100 bg-white'}`}>
-                  <div className="flex items-center space-x-4"><span className="text-3xl">{m.icon}</span><div className="text-left"><p className="text-sm font-black text-blue-950 uppercase">{m.name}</p><p className="text-[10px] font-bold text-gray-400 uppercase">{m.desc}</p></div></div>
-                  {form.modality === m.id && <Check className="text-blue-600" />}
-                </button>
-              ))}
-            </div>
+            <h3 className="text-2xl font-black text-blue-950 uppercase italic font-orbitron">{form.liga === 1 ? 'Desafiar quem?' : 'Escolha a Modalidade'}</h3>
+            {form.liga === 1 ? (
+              <div className="space-y-4">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2">Digite o Nickname do Oponente</p>
+                <input type="text" placeholder="@nickname_do_barbeiro" value={form.opponentNick} onChange={e=>setForm({...form, opponentNick: e.target.value})} className="w-full p-6 bg-gray-50 rounded-[25px] border-2 border-gray-200 text-lg font-black outline-none focus:border-blue-600 transition-all !text-blue-950 placeholder:text-gray-400 shadow-sm" />
+                <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex items-center space-x-3"><Info size={18} className="text-blue-600" /><p className="text-[10px] font-bold text-blue-600 uppercase leading-tight">O oponente receberá uma notificação para aceitar o desafio.</p></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {MODALITIES.map(m => (
+                  <button key={m.id} onClick={() => setForm({...form, modality: m.id})} className={`p-6 rounded-[30px] border-2 flex items-center justify-between transition-all ${form.modality === m.id ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+                    <div className="flex items-center space-x-4"><span className="text-3xl">{m.icon}</span><div className="text-left"><p className={`text-sm font-black uppercase ${form.modality === m.id ? 'text-blue-600' : '!text-blue-950'}`}>{m.name}</p><p className="text-[10px] font-bold text-gray-400 uppercase">{m.desc}</p></div></div>
+                    {form.modality === m.id && <Check className="text-blue-600" />}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {createStep === 2 && (
           <div className="space-y-6">
             <h3 className="text-2xl font-black text-blue-950 uppercase italic font-orbitron">Modo de Arbitragem</h3>
             {[{id:'hybrid',lab:'Híbrido (Pro)',desc:'IA + Público + Jurados',icon:<Users />},{id:'ia',lab:'IA Técnica',desc:'Análise do Sistema',icon:<BrainCircuit />},{id:'public',lab:'Público Total',desc:'Voto da Galera',icon:<LayoutGrid />}].map(m => (
-              <button key={m.id} onClick={() => setForm({...form, arbitration: m.id})} className={`w-full p-6 rounded-[30px] border-2 flex items-center justify-between transition-all ${form.arbitration === m.id ? 'border-blue-600 bg-blue-50' : 'border-gray-100 bg-white'}`}>
-                <div className="flex items-center space-x-4"><div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-blue-600">{m.icon}</div><div className="text-left"><p className="text-sm font-black text-blue-950 uppercase">{m.lab}</p><p className="text-[10px] font-bold text-gray-400 uppercase">{m.desc}</p></div></div>
+              <button key={m.id} onClick={() => setForm({...form, arbitration: m.id})} className={`w-full p-6 rounded-[30px] border-2 flex items-center justify-between transition-all ${form.arbitration === m.id ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+                <div className="flex items-center space-x-4"><div className={`w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center ${form.arbitration === m.id ? 'text-white bg-blue-600' : '!text-blue-950'}`}>{m.icon}</div><div className="text-left"><p className={`text-sm font-black uppercase ${form.arbitration === m.id ? 'text-blue-600' : '!text-blue-950'}`}>{m.lab}</p><p className="text-[10px] font-bold text-gray-400 uppercase">{m.desc}</p></div></div>
                 {form.arbitration === m.id && <Check className="text-blue-600" />}
               </button>
             ))}
@@ -192,23 +221,42 @@ export default function League() {
             <h3 className="text-2xl font-black text-blue-950 uppercase italic font-orbitron">Configurações Finais</h3>
             <div className="space-y-4">
               <div className="bg-white p-6 rounded-[30px] border-2 border-gray-100 shadow-inner">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Premiação</p>
-                <input 
-                  type="text" 
-                  placeholder="Ex: R$ 5.000 + Kit Barba" 
-                  value={form.prize} 
-                  onChange={e=>setForm({...form,prize:e.target.value})} 
-                  className="w-full bg-transparent text-lg font-black outline-none text-blue-950 uppercase placeholder:text-gray-300" 
-                />
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Data e Horário de Início</p>
+                <div className="flex space-x-2">
+                   <input type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})} className="flex-1 bg-transparent text-sm font-black outline-none !text-blue-950 uppercase" />
+                   <input type="time" value={form.startTime} onChange={e=>setForm({...form,startTime:e.target.value})} className="flex-1 bg-transparent text-sm font-black outline-none !text-blue-950 uppercase" />
+                </div>
               </div>
-              <div className="bg-gray-50 p-6 rounded-[30px] border border-gray-100">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Vagas no Torneio</p>
-                <div className="flex space-x-3">
-                  {[8, 16, 32, 64].map(v => (
-                    <button key={v} onClick={() => setForm({...form, maxParticipants: v})} className={`flex-1 py-3 rounded-xl font-black text-[10px] ${form.maxParticipants===v?'bg-blue-600 text-white shadow-lg':'bg-white text-gray-400 border border-gray-200'}`}>{v} VAGAS</button>
+
+              <div className="bg-white p-6 rounded-[30px] border-2 border-gray-100 shadow-inner">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Duração da Votação</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {[1, 2, 6, 12, 24, 48].map(h => (
+                    <button key={h} onClick={() => setForm({...form, votingTime: h})} className={`py-2 rounded-lg font-black text-[10px] ${form.votingTime===h?'bg-blue-600 text-white shadow-lg':'bg-gray-100 text-gray-400'}`}>{h}h</button>
                   ))}
                 </div>
               </div>
+
+              <div className="bg-white p-6 rounded-[30px] border-2 border-gray-100 shadow-inner">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Premiação</p>
+                <input type="text" placeholder="Ex: R$ 5.000 + Kit Barba" value={form.prize} onChange={e=>setForm({...form,prize:e.target.value})} className="w-full bg-transparent text-lg font-black outline-none !text-blue-950 uppercase placeholder:text-gray-400" />
+              </div>
+              {form.liga !== 1 && (
+                <div className="bg-gray-50 p-6 rounded-[30px] border border-gray-100">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Vagas no Torneio</p>
+                  <div className="flex space-x-3">
+                    {[8, 16, 32, 64].map(v => (
+                      <button key={v} onClick={() => setForm({...form, maxParticipants: v})} className={`flex-1 py-3 rounded-xl font-black text-[10px] ${form.maxParticipants===v?'bg-blue-600 text-white shadow-lg':'bg-white text-gray-400 border border-gray-200'}`}>{v} VAGAS</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {form.liga === 1 && (
+                <div className="bg-blue-600 p-6 rounded-[30px] text-white flex items-center justify-between">
+                  <div><p className="text-[8px] font-black uppercase opacity-60">Status do Desafio</p><p className="text-sm font-black uppercase italic">2 Participantes (1x1)</p></div>
+                  <Swords size={24} />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -353,7 +401,7 @@ export default function League() {
   );
 
   return (
-    <div className="h-full relative font-inter overflow-hidden">
+    <div className="h-full relative font-inter overflow-hidden no-scrollbar">
       <AnimatePresence mode="wait">
         {view === 'home' && renderHome()}
         {view === 'create' && renderCreate()}
