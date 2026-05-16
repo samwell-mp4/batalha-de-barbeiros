@@ -31,15 +31,18 @@ export default function Profile() {
   const [barber] = useState<any>(() => {
     if (isOwnProfile && loggedUser) {
       return {
-        ...loggedUser.barberProfile,
-        name: loggedUser.name,
-        username: loggedUser.name.toLowerCase().replace(/\s/g, ''),
+        id: loggedUser.id,
+        name: loggedUser.name || 'Usuário',
+        username: (loggedUser.name || 'user').toLowerCase().replace(/\s/g, ''),
         avatar: loggedUser.avatar || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&h=400&fit=crop',
-        xp: 4500, // Mock XP inicial
-        status: { id: 's1', icon: '⚡', color: '#22c55e' }
+        xp: loggedUser.xp || 4500,
+        status: { id: 's1', icon: '⚡', color: '#22c55e' },
+        waitTime: 0,
+        ...loggedUser.barberProfile
       };
     }
-    return MOCK_BARBERS.find(b => b.id.toString() === id) || MOCK_BARBERS[0];
+    const found = MOCK_BARBERS.find(b => b.id.toString() === id);
+    return found || MOCK_BARBERS[0];
   });
 
   const [isFavorited, setIsFavorited] = useState(false);
