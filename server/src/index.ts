@@ -19,7 +19,20 @@ app.use(express.json());
 
 // Pasta pública do Front-end (será populada no build)
 const publicPath = path.resolve(process.cwd(), 'public');
+console.log(`[SERVER] Tentando servir de: ${publicPath}`);
 app.use(express.static(publicPath));
+
+// Rota de Debug para ver arquivos na VPS
+app.get('/api/debug-files', (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  try {
+    const files = fs.readdirSync(publicPath, { recursive: true });
+    res.json({ publicPath, cwd: process.cwd(), files });
+  } catch (e: any) {
+    res.json({ error: e.message, publicPath, cwd: process.cwd() });
+  }
+});
 
 // --- ROUTES ---
 
