@@ -49,9 +49,9 @@ router.post('/register', async (req, res) => {
     });
 
     res.json(user);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Registration failed' });
+  } catch (error: any) {
+    console.error('[API ERROR] Registration failed:', error.message);
+    res.status(500).json({ error: `Registration failed: ${error.message}` });
   }
 });
 
@@ -59,18 +59,22 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email } = req.body;
+    console.log(`[API] Tentativa de login para: ${email}`);
+    
     const user = await prisma.user.findUnique({
       where: { email },
       include: { barberProfile: true }
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      console.log(`[API] Usuário não encontrado: ${email}`);
+      return res.status(404).json({ error: 'E-mail não encontrado' });
     }
 
     res.json(user);
-  } catch (error) {
-    res.status(500).json({ error: 'Login failed' });
+  } catch (error: any) {
+    console.error('[API ERROR] Login failed:', error.message);
+    res.status(500).json({ error: `Login failed: ${error.message}` });
   }
 });
 

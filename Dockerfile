@@ -29,5 +29,5 @@ COPY --from=build-backend /app/server/prisma ./server/prisma
 WORKDIR /app/server
 EXPOSE 3000
 
-# Comando para rodar a aplicação completa
-CMD ["npm", "start"]
+# Comando para rodar a aplicação completa com sincronização de banco
+CMD ["sh", "-c", "npx prisma generate && npx prisma db push --accept-data-loss && npm start"]
