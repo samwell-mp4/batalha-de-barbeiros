@@ -1,8 +1,9 @@
+import 'leaflet/dist/leaflet.css';
 import { useState, useMemo, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { useOutletContext, useNavigate } from 'react-router-dom';
+import { api } from '../services/api';
 import { MOCK_BARBERS, STATUS } from '@/constants/mockData';
 import { MapPin, Star, Navigation, X, Share2, ChevronRight, Clock, CheckCircle2, Zap, Flame, Calendar, Trash2, LayoutGrid, Loader2, Eye, EyeOff, User, Camera, Scissors, Share, Plus, ChevronLeft, Radar, Check, DollarSign, QrCode, CalendarDays, List, Heart, MessageCircle, Info, CreditCard, Wallet, Swords, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
@@ -18,12 +19,18 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 function RecenterButton({ coords }: { coords: [number, number] }) {
   const map = useMap();
+  useEffect(() => {
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 500);
+  }, [map]);
   return (
     <button onClick={() => map.setView(coords, 15)} className="absolute top-20 right-4 z-[1000] bg-white p-3 rounded-2xl shadow-xl border border-gray-100 text-blue-600 active:scale-95 transition-transform"><Navigation size={20} /></button>
   );
 }
 
 export default function MapPage() {
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const initialPosition: [number, number] = [-23.525, -46.522];
 
@@ -53,7 +60,8 @@ export default function MapPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'livre' | 'ocupado' | 'acabando' | 'radar'>('all');
   const [showRadius, setShowRadius] = useState(true);
   const [isDrawerMinimized, setIsDrawerMinimized] = useState(false);
-
+  const [dbBarbers, setDbBarbers] = useState<any[]>([]);
+  
   // EVALUATION & PAYMENT STATE
   const [stars, setStars] = useState(0);
   const [tipAmount, setTipAmount] = useState<number>(0);
@@ -61,8 +69,26 @@ export default function MapPage() {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showCancelledToast, setShowCancelledToast] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  
   const [showOpportunityAlert, setShowOpportunityAlert] = useState<string | null>(null);
   const [prevSlotCount, setPrevSlotCount] = useState(0);
+
+  useEffect(() => {
+    fetchBarberLocations();
+  }, []);
+
+  const fetchBarberLocations = async () => {
+    setLoading(true);
+    try {
+      const data = await api.getBarberLocations();
+      setDbBarbers(data);
+    } catch (error) {
+      console.error('Failed to fetch barber locations', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const dragControls = useDragControls();
 
   useEffect(() => {
@@ -166,8 +192,17 @@ export default function MapPage() {
     const hour = new Date().getHours();
     const globalAgenda = matchSession.globalAgenda || {};
 
+    const allBarbers = [...dbBarbers.map(b => ({
+      id: b.id,
+      name: b.user.name,
+      avatar: b.user.avatar,
+      coordinates: { latitude: b.latitude, longitude: b.longitude },
+      status: b.isOnline ? STATUS.LIVRE : STATUS.FECHADO,
+      waitTime: 0
+    })), ...MOCK_BARBERS.filter(mb => !dbBarbers.find(db => db.user.name === mb.name))];
+
     // Varre os barbeiros e encontra quem tem slot 'radar' futuro hoje
-    return MOCK_BARBERS.map(barber => {
+    return allBarbers.map(barber => {
       const dayData = globalAgenda[barber.id] || (barber.name.includes("Gustavo") ? globalAgenda[16] : null) || {};
       const slots = dayData.slots || [];
       const activeRadars = slots.filter((s: any) => parseInt(s.time) >= hour && s.status === 'radar');
@@ -180,7 +215,17 @@ export default function MapPage() {
   }, [matchSession.globalAgenda]);
 
   const filteredBarbers = useMemo(() => {
-    return MOCK_BARBERS.filter(b => {
+    // Combine mock and db barbers for testing, but prioritize DB
+    const allBarbers = [...dbBarbers.map(b => ({
+      id: b.id,
+      name: b.user.name,
+      avatar: b.user.avatar,
+      coordinates: { latitude: b.latitude, longitude: b.longitude },
+      status: b.isOnline ? STATUS.LIVRE : STATUS.FECHADO,
+      waitTime: 0
+    })), ...MOCK_BARBERS.filter(mb => !dbBarbers.find(db => db.user.name === mb.name))];
+
+    return allBarbers.filter(b => {
       if (!b.coordinates?.latitude || !b.coordinates?.longitude) return false;
       
       if (statusFilter === 'radar') {
@@ -195,7 +240,7 @@ export default function MapPage() {
       if (statusFilter === 'acabando') return isAcabando;
       return true;
     });
-  }, [statusFilter, radarBarbers]);
+  }, [statusFilter, radarBarbers, dbBarbers]);
 
   const activeBarberCoords = useMemo(() => {
     if (!matchSession?.activeMatch?.barberId) return null;
@@ -233,7 +278,14 @@ export default function MapPage() {
   }, [selectedBookingDate, matchSession.globalAgenda]);
 
   return (
-    <div className="flex flex-col w-full h-full bg-[#f8fafc] font-inter overflow-hidden relative" style={{ height: 'calc(100vh - 4rem)' }}>
+    <div className="flex flex-col w-full h-full bg-[#f8fafc] font-inter overflow-hidden relative" style={{ height: 'calc(100vh - 6rem)' }}>
+      <style>{`
+        .leaflet-container {
+          background: #f8fafc !important;
+          height: 100%;
+          width: 100%;
+        }
+      `}</style>
       <AnimatePresence>
         {showOpportunityAlert && (
           <motion.div initial={{ y: -100, opacity: 0 }} animate={{ y: 20, opacity: 1 }} exit={{ y: -100, opacity: 0 }} className="absolute top-4 left-4 right-4 z-[5000] flex justify-center">
@@ -284,9 +336,9 @@ export default function MapPage() {
         <button onClick={() => setShowRadius(!showRadius)} className={`p-3 rounded-2xl shadow-xl border border-gray-100 transition-all active:scale-95 ${showRadius ? 'bg-blue-600 text-white' : 'bg-white text-blue-600'}`}>{showRadius ? <Eye size={20} /> : <EyeOff size={20} />}</button>
       </div>
 
-      <div className="flex-1 relative z-0 w-full h-full">
-        <MapContainer center={initialPosition} zoom={15} style={{ height: '100%', width: '100%' }} zoomControl={false}>
-          <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+      <div className="flex-1 relative z-0 w-full bg-[#f8fafc]" style={{ minHeight: '400px' }}>
+        <MapContainer center={initialPosition} zoom={15} style={{ height: '100%', width: '100%', background: '#f8fafc' }} zoomControl={false}>
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
           {showRadius && <Circle center={initialPosition} radius={1000} pathOptions={{ fillColor: '#3b82f6', fillOpacity: 0.05, color: '#3b82f6', weight: 2, dashArray: '5, 10' }} />}
           <Marker position={initialPosition} icon={userIcon} />
           {!isBarberView && matchSession.status === 'searching' && (

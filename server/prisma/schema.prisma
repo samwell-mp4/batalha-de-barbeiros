@@ -1,0 +1,221 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- CORE MODULES ---
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  avatar        String?
+  bio           String?
+  role          Role      @default(CLIENT)
+  city          String?
+  state         String?
+  neighborhood  String?
+  address       String?
+  number        String?
+  instagram     String?
+  whatsapp      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  barberProfile Barber?
+  appointments  Appointment[] @relation("ClientAppointments")
+  likes         Like[]
+  comments      Comment[]
+  votes         Vote[]
+  posts         Post[]
+}
+
+enum Role {
+  CLIENT
+  BARBER
+  ADMIN
+}
+
+model Barber {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id])
+  barberShop    String
+  latitude      Float
+  longitude     Float
+  specialties   String[]
+  workingHours  String?
+  schedule      String?   @db.Text
+  bio           String?
+  rating        Float     @default(5.0)
+  isPremium     Boolean   @default(false)
+  gallery       String[]
+  isOnline      Boolean   @default(false)
+  statsWins     Int       @default(0)
+  statsLosses   Int       @default(0)
+  
+  // Relations
+  appointments  Appointment[] @relation("BarberAppointments")
+  posts         Post[]
+  championships Championship[] @relation("BarberParticipants")
+}
+
+model Appointment {
+  id          String            @id @default(uuid())
+  clientId    String
+  client      User              @relation("ClientAppointments", fields: [clientId], references: [id])
+  barberId    String
+  barber      Barber            @relation("BarberAppointments", fields: [barberId], references: [id])
+  date        DateTime
+  time        String
+  status      AppointmentStatus @default(PENDING)
+  createdAt   DateTime          @default(now())
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+// --- MAP & REAL-TIME ---
+
+model MapMarker {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  latitude    Float
+  longitude   Float
+  type        MarkerType @default(SALON)
+}
+
+enum MarkerType {
+  SALON
+  ARENA
+  EVENT
+}
+
+// --- SOCIAL FEED ---
+
+model Post {
+  id          String    @id @default(uuid())
+  barberId    String
+  barber      Barber    @relation(fields: [barberId], references: [id])
+  content     String?
+  imageUrl    String
+  videoUrl    String?
+  likesCount  Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  likes       Like[]
+  comments    Comment[]
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+}
+
+// --- LEAGUE ENGINE ---
+
+model Championship {
+  id              String             @id @default(uuid())
+  name            String
+  creatorId       String?
+  ligaId          Int
+  modality        String             @default("x1")
+  theme           String?
+  prize           String?
+  votingTime      Int                @default(24)
+  maxParticipants Int                @default(16)
+  startDate       DateTime?
+  startTime       String?
+  status          ChampionshipStatus @default(OPEN)
+  createdAt       DateTime           @default(now())
+
+  // Relations
+  participants    Barber[]           @relation("BarberParticipants")
+  matches         Match[]
+}
+
+enum ChampionshipStatus {
+  OPEN
+  WAITING
+  ONGOING
+  FINISHED
+}
+
+model Match {
+  id             String   @id @default(uuid())
+  championshipId String
+  championship   Championship @relation(fields: [championshipId], references: [id])
+  round          Int      @default(1)
+  player1Id      String?
+  player2Id      String?
+  score1         Float    @default(0)
+  score2         Float    @default(0)
+  winnerId       String?
+  status         MatchStatus @default(PENDING)
+  createdAt      DateTime @default(now())
+
+  // Relations
+  votes          Vote[]
+  refereeLogs    RefereeLog[]
+}
+
+enum MatchStatus {
+  PENDING
+  LIVE
+  FINISHED
+}
+
+model Vote {
+  id        String   @id @default(uuid())
+  matchId   String
+  match     Match    @relation(fields: [matchId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  choiceId  String   // ID of the barber being voted for
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@unique([matchId, userId])
+}
+
+model RefereeLog {
+  id          String   @id @default(uuid())
+  matchId     String
+  match       Match    @relation(fields: [matchId], references: [id])
+  refereeId   String
+  criteria    String   // e.g., "Symmetry", "Fade Quality", "Finish"
+  score       Float
+  notes       String?
+  createdAt   DateTime @default(now())
+}

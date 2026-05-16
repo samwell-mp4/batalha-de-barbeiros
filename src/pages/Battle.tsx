@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { MOCK_BARBERS, MOCK_TOURNAMENTS, TOURNAMENT_TYPES, MOCK_BATTLES } from '@/constants/mockData';
 import { Swords, Trophy, Zap, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { api } from '../services/api';
 
 export default function Arena() {
   const context = useOutletContext<{ isBarberView: boolean }>() || { isBarberView: true };
@@ -10,8 +11,34 @@ export default function Arena() {
   const [activeTab, setActiveTab] = useState(TOURNAMENT_TYPES.X1.id);
   const [currentBattleIndex, setCurrentBattleIndex] = useState(0);
   const [voted, setVoted] = useState(false);
+  const [dbPosts, setDbPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const battle = MOCK_BATTLES[currentBattleIndex];
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      const data = await api.getPosts();
+      setDbPosts(data);
+    } catch (error) {
+      console.error('Failed to fetch posts', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const battles = dbPosts.length > 0 ? dbPosts.map(p => ({
+    id: p.id,
+    category: 'BATALHA LIVE',
+    imageLeft: p.imageUrl,
+    imageRight: 'https://images.unsplash.com/photo-1599351431247-f132f826d98d?q=80&w=1974&auto=format&fit=crop', // Fallback VS image
+    barberLeft: { name: p.barber.user.name, avatar: p.barber.user.avatar, xp: 1200 },
+    barberRight: { name: 'Desafiante', avatar: 'https://i.pravatar.cc/150?u=opp', xp: 800 }
+  })) : MOCK_BATTLES;
+
+  const battle = battles[currentBattleIndex];
 
   const handleVote = (_side: 'left' | 'right') => {
     setVoted(true);

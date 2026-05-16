@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MOCK_BARBERS } from '@/constants/mockData';
 import { 
-  Share2, Settings, Trophy, Play, ChevronDown, CheckCircle2, Zap, Flame, Clock, Heart, Medal, Award,
-  Star, MapPin, Calendar, ChevronRight, X, Shield,
-  Navigation, UserPlus, Bookmark, Target
+  Settings, Trophy, Play, ChevronDown, CheckCircle2, Zap, Flame, Clock, Heart, Medal, Award,
+  Star, MapPin, Calendar, ChevronRight, X, Shield, Share2,
+  Navigation, UserPlus, Bookmark, Target, Plus, Camera, Image, Send, Filter, Video, Scissors
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { calculateLevel } from '@/constants/xpSystem';
+import { api } from '../services/api';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -16,13 +17,27 @@ export default function Profile() {
   
   const barber = MOCK_BARBERS.find(b => b.id.toString() === id) || MOCK_BARBERS[0];
   
-  const [isFollowing, setIsFollowing] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [likedItems, setLikedItems] = useState<Set<number>>(new Set());
   const [selectedHighlight, setSelectedHighlight] = useState<any>(null);
   const [storyIndex, setStoryIndex] = useState(0);
   const [showRouteOptions, setShowRouteOptions] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showNewPost, setShowNewPost] = useState(false);
+  const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
+  const [newPostData, setNewPostData] = useState({ imageUrl: '', description: '', category: 'Fade' });
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOwnProfile) {
+      const justRegistered = localStorage.getItem('justRegistered');
+      if (justRegistered) {
+        setShowWelcomeGuide(true);
+        localStorage.removeItem('justRegistered');
+      }
+    }
+  }, [isOwnProfile]);
 
   // Méritos Estilizados
   const merits = [
@@ -76,13 +91,18 @@ export default function Profile() {
            </div>
         </div>
         <div className="flex items-center space-x-3">
+           {isOwnProfile && (
+             <button onClick={() => setShowNewPost(true)} className="p-2 bg-blue-600 rounded-2xl text-white shadow-lg active:scale-90 flex items-center space-x-1 px-3">
+               <Plus size={18} />
+               <span className="text-[10px] font-black uppercase italic">Postar</span>
+             </button>
+           )}
            <button onClick={() => setIsFavorited(!isFavorited)} className={`p-2 rounded-2xl transition-all ${isFavorited ? 'bg-red-50 text-red-500 shadow-sm' : 'bg-gray-50 text-blue-950'}`}>
               <Heart size={20} className={isFavorited ? 'fill-red-500' : ''} />
            </button>
            <button onClick={() => setShowSettings(true)} className="p-2 bg-gray-50 rounded-2xl text-blue-950 transition-transform active:rotate-90">
               <Settings size={20} />
            </button>
-           <button className="p-2 bg-gray-50 rounded-2xl text-blue-950"><Share2 size={20} /></button>
         </div>
       </div>
 
@@ -410,6 +430,86 @@ export default function Profile() {
 
                      <button className="w-full py-5 bg-red-50 text-red-500 rounded-[28px] font-black text-xs uppercase tracking-[0.2em] shadow-sm">Sair da Conta</button>
                   </div>
+               </motion.div>
+            </motion.div>
+         )}
+      </AnimatePresence>
+
+      {/* MODAL NOVA POSTAGEM */}
+      <AnimatePresence>
+         {showNewPost && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[8000] bg-blue-950/40 backdrop-blur-md flex items-end justify-center">
+               <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full bg-white rounded-t-[45px] p-8 pb-12 shadow-2xl flex flex-col">
+                  <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-8" />
+                  <div className="flex items-center justify-between mb-8">
+                     <h3 className="text-2xl font-black text-blue-950 uppercase italic tracking-tighter">Nova Publicação</h3>
+                     <button onClick={() => setShowNewPost(false)} className="p-2 bg-gray-50 rounded-xl text-gray-400"><X size={20} /></button>
+                  </div>
+
+                  <div className="space-y-6">
+                     <div className="aspect-video bg-gray-50 rounded-[30px] border-2 border-dashed border-blue-100 flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:bg-blue-50 transition-colors overflow-hidden relative">
+                        {newPostData.imageUrl ? (
+                          <img src={newPostData.imageUrl} className="w-full h-full object-cover" />
+                        ) : (
+                          <>
+                            <Camera size={32} className="mb-2" />
+                            <span className="text-[10px] font-black uppercase">Subir Foto ou Vídeo</span>
+                          </>
+                        )}
+                        <input type="text" placeholder="URL da Imagem (Ex: Unsplash)" value={newPostData.imageUrl} onChange={e => setNewPostData({...newPostData, imageUrl: e.target.value})} className="absolute bottom-4 left-4 right-4 bg-white/90 p-3 rounded-xl text-[10px] border-none outline-none font-bold" />
+                     </div>
+
+                     <textarea 
+                       placeholder="Escreva uma descrição..."
+                       value={newPostData.description}
+                       onChange={e => setNewPostData({...newPostData, description: e.target.value})}
+                       className="w-full bg-gray-50 border-none rounded-[25px] py-4 px-6 font-bold text-sm outline-none focus:ring-4 focus:ring-blue-100 transition-all min-h-[100px] resize-none"
+                     />
+
+                     <div className="flex space-x-2 overflow-x-auto no-scrollbar pb-2">
+                        {['Fade', 'Navalhado', 'Freestyle', 'Barba', 'Social'].map(cat => (
+                           <button key={cat} onClick={() => setNewPostData({...newPostData, category: cat})} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${newPostData.category === cat ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-gray-50 text-gray-400'}`}>{cat}</button>
+                        ))}
+                     </div>
+
+                     <button 
+                       onClick={async () => {
+                         setIsLoading(true);
+                         await api.createPost({ ...newPostData, barberId: barber.id });
+                         setIsLoading(false);
+                         setShowNewPost(false);
+                         alert('Postagem realizada com sucesso na Arena!');
+                       }}
+                       disabled={isLoading || !newPostData.imageUrl}
+                       className="w-full py-5 bg-blue-600 text-white rounded-[25px] font-black uppercase italic tracking-widest shadow-xl flex items-center justify-center space-x-3 active:scale-95 transition-all disabled:opacity-50"
+                     >
+                        {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Send size={18} /> <span>Publicar na Arena</span></>}
+                     </button>
+                  </div>
+               </motion.div>
+            </motion.div>
+         )}
+      </AnimatePresence>
+
+      {/* GUIA DE BOAS-VINDAS */}
+      <AnimatePresence>
+         {showWelcomeGuide && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[9000] bg-blue-600/90 backdrop-blur-xl flex flex-col items-center justify-center p-10 text-center text-white">
+               <motion.div initial={{ scale: 0.8, y: 20 }} animate={{ scale: 1, y: 0 }} className="space-y-8">
+                  <div className="w-24 h-24 bg-white rounded-[35px] flex items-center justify-center mx-auto text-blue-600 shadow-2xl">
+                     <Target size={48} strokeWidth={3} />
+                  </div>
+                  <div>
+                     <h2 className="text-4xl font-black font-orbitron italic uppercase tracking-tighter">BEM-VINDO AO TOPO!</h2>
+                     <p className="text-[12px] font-bold text-blue-100 uppercase tracking-widest mt-4 leading-relaxed">Você agora é um Atleta de Elite. Comece postando seu melhor trabalho para subir no ranking e ser descoberto!</p>
+                  </div>
+                  <div className="bg-white/10 p-6 rounded-[40px] border border-white/20">
+                     <div className="flex items-center space-x-4 text-left">
+                        <div className="p-3 bg-white text-blue-600 rounded-2xl"><Plus size={24} /></div>
+                        <p className="text-[10px] font-black uppercase italic">Toque no botão "+" ali em cima para fazer seu primeiro post.</p>
+                     </div>
+                  </div>
+                  <button onClick={() => setShowWelcomeGuide(false)} className="w-full py-5 bg-white text-blue-600 rounded-[30px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all">COMEÇAR AGORA</button>
                </motion.div>
             </motion.div>
          )}
