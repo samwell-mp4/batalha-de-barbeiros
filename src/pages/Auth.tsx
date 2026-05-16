@@ -223,15 +223,27 @@ export default function Auth() {
   };
 
   const handleLogin = async () => {
-    if (!form.email) return alert('Digite seu e-mail');
+    if (!form.email) return alert('Por favor, digite seu e-mail de acesso.');
     setLoading(true);
     try {
+      // Limpa qualquer lixo anterior antes de tentar logar
+      localStorage.removeItem('user');
+      
       const response = await api.login(form.email);
-      localStorage.setItem('user', JSON.stringify(response));
-      navigate('/');
-      window.location.reload();
+      
+      if (response && response.id) {
+        localStorage.setItem('user', JSON.stringify(response));
+        // Pequeno delay para garantir que o storage foi gravado antes do refresh
+        setTimeout(() => {
+          navigate('/');
+          window.location.reload();
+        }, 100);
+      } else {
+        throw new Error('Resposta do servidor inválida');
+      }
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Usuário não encontrado');
+      console.error('Erro no login:', error);
+      alert(error.response?.data?.error || 'E-mail não encontrado ou erro no servidor. Verifique os dados ou crie uma nova conta.');
     } finally {
       setLoading(false);
     }

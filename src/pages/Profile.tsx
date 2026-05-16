@@ -17,13 +17,21 @@ export default function Profile() {
   // Pega o usuário logado
   const loggedUser = useMemo(() => {
     const saved = localStorage.getItem('user');
-    if (!saved || saved === 'undefined') return null;
+    if (!saved || saved === 'undefined' || saved === 'null') return null;
     try {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      return parsed?.id ? parsed : null;
     } catch (e) {
       return null;
     }
   }, []);
+
+  useEffect(() => {
+    // Se estiver no perfil principal sem ID na URL e não tiver usuário logado, expulsa
+    if (!id && !loggedUser) {
+      navigate('/auth');
+    }
+  }, [id, loggedUser, navigate]);
 
   const isOwnProfile = !id || (loggedUser && loggedUser.id.toString() === id);
   
@@ -32,8 +40,8 @@ export default function Profile() {
     if (isOwnProfile && loggedUser) {
       return {
         id: loggedUser.id,
-        name: loggedUser.name || 'Usuário',
-        username: (loggedUser.name || 'user').toLowerCase().replace(/\s/g, ''),
+        name: loggedUser.name || 'Usuário da Arena',
+        username: (loggedUser.name || 'arena_user').toLowerCase().replace(/\s/g, '_'),
         avatar: loggedUser.avatar || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&h=400&fit=crop',
         xp: loggedUser.xp || 0,
         status: { id: 's1', icon: '⚡', color: '#22c55e' },

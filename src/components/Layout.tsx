@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { Swords, MapPin, Trophy, User, Calendar } from 'lucide-react';
 
@@ -6,22 +6,31 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [user] = useState<any>(() => {
+  // Sistema de Sessão Blindado
+  const user = useMemo(() => {
     const saved = localStorage.getItem('user');
-    if (!saved || saved === 'undefined') return null;
-    try {
-      return JSON.parse(saved);
-    } catch (e) {
+    if (!saved || saved === 'undefined' || saved === 'null') {
       return null;
     }
-  });
+    try {
+      const parsed = JSON.parse(saved);
+      if (!parsed || !parsed.id) return null;
+      return parsed;
+    } catch (e) {
+      console.error('Sessão corrompida, limpando...');
+      localStorage.removeItem('user');
+      return null;
+    }
+  }, [location.pathname]); // Re-valida a cada troca de página
 
   useEffect(() => {
+    // Redirecionamento forçado se não estiver logado
     if (!user && location.pathname !== '/auth') {
       navigate('/auth');
     }
   }, [user, location.pathname, navigate]);
-  const [isBarberView] = useState(user?.role === 'BARBER');
+
+  const isBarberView = user?.role === 'BARBER';
 
   // ESTADO GLOBAL DO MATCH (SIMULAÇÃO REALTIME)
   const [matchSession, setMatchSession] = useState<{
