@@ -302,7 +302,7 @@ export default function MapPage() {
       <AnimatePresence>
         {/* STORY VIEWER FULLSCREEN */}
         {viewingStory && selectedBarber && (
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="fixed inset-0 z-[6000] bg-black flex flex-col p-4 overflow-hidden">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[6000] bg-black flex flex-col p-4 overflow-hidden">
             <div className="flex items-center justify-between mt-8 mb-4">
               <div className="flex items-center space-x-3">
                 <img src={selectedBarber.avatar} className="w-10 h-10 rounded-full border-2 border-blue-500" />
@@ -325,9 +325,10 @@ export default function MapPage() {
         {selectedBarber && matchSession.status === 'idle' && (
           <motion.div 
             initial={{ y: "100%" }} 
-            animate={{ y: isDrawerMinimized ? "calc(100% - 120px)" : 0 }} 
+            animate={{ y: isDrawerMinimized ? "calc(100% - 130px)" : 0 }} 
             exit={{ y: "100%" }} 
-            className="absolute bottom-0 left-0 right-0 z-[2005] bg-white rounded-t-[50px] px-0 pb-12 shadow-[0_-20px_80px_rgba(0,0,0,0.3)] border-t border-gray-100 max-h-[90vh] overflow-y-auto no-scrollbar transition-all duration-500"
+            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+            className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2005] bg-white rounded-t-[50px] px-0 pb-28 shadow-[0_-20px_80px_rgba(0,0,0,0.3)] border-t border-gray-100 max-h-[90vh] overflow-y-auto no-scrollbar"
           >
             <div className="sticky top-0 bg-white/90 backdrop-blur-md z-10 pt-4 pb-2 px-8 flex flex-col">
               <button 
@@ -679,9 +680,17 @@ export default function MapPage() {
         {matchSession?.status === 'idle' && !isRequesting && !isRadarOpen && !selectedBarber && (
           <motion.div 
             initial={{ y: "100%" }} 
-            animate={{ y: isDrawerMinimized ? "calc(100% - 60px)" : 0 }} 
+            animate={{ y: isDrawerMinimized ? "calc(100% - 220px)" : 0 }} 
             exit={{ y: "100%" }} 
-            className="absolute bottom-0 left-0 right-0 z-[1001] bg-white rounded-t-[40px] px-8 pb-12 shadow-[0_-20px_60px_rgba(0,0,0,0.1)] border-t border-gray-100 transition-all duration-500"
+            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(e, info) => {
+              if (info.offset.y > 50) setIsDrawerMinimized(true);
+              else if (info.offset.y < -50) setIsDrawerMinimized(false);
+            }}
+            className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[1001] bg-white rounded-t-[40px] px-8 pb-28 shadow-[0_-20px_60px_rgba(0,0,0,0.1)] border-t border-gray-100"
           >
             <button 
               onClick={() => setIsDrawerMinimized(!isDrawerMinimized)}
@@ -836,7 +845,7 @@ export default function MapPage() {
 
         {/* PRO ATENDIMENTO DRAWER */}
         {(matchSession?.status === 'searching' || matchSession?.status === 'proposal_sent' || matchSession?.status === 'accepted' || matchSession?.status === 'arrived' || matchSession?.status === 'in_service') && matchSession?.activeMatch && (
-          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="absolute bottom-0 left-0 right-0 z-[2000] bg-white rounded-t-[40px] px-8 pb-12 shadow-2xl border-t-4 border-blue-600">
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2000] bg-white rounded-t-[40px] px-8 pb-28 shadow-2xl border-t-4 border-blue-600">
             <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto my-4" />
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center space-x-5">
@@ -867,7 +876,7 @@ export default function MapPage() {
 
         {/* MÃ“DULO DE PAGAMENTO */}
         {matchSession?.status === 'payment' && (
-          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="absolute bottom-0 left-0 right-0 z-[2000] bg-[#0f172a] rounded-t-[40px] px-8 pb-12 shadow-2xl border-t-4 border-green-500">
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2000] bg-[#0f172a] rounded-t-[40px] px-8 pb-28 shadow-2xl border-t-4 border-green-500">
             <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto my-4" />
             {!isBarberView ? (
               <div className="text-center">
@@ -884,7 +893,7 @@ export default function MapPage() {
 
         {/* MODAL DE AVALIAÃ‡ÃƒO */}
         {matchSession?.status === 'finished' && (
-          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="absolute bottom-0 left-0 right-0 z-[3000] bg-white rounded-t-[40px] px-8 pb-12 shadow-2xl flex flex-col items-center">
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[3000] bg-white rounded-t-[40px] px-8 pb-28 shadow-2xl flex flex-col items-center">
             <div className="w-12 h-1.5 bg-gray-200 rounded-full my-4" /><h3 className="text-sm font-bold text-gray-800 mb-2">Como foi o atendimento?</h3><h2 className="text-2xl font-black text-blue-950 mb-6">{isBarberView ? matchSession.activeMatch?.client.name : 'Junior Vila'}</h2><div className="flex space-x-3 mb-8">{[1, 2, 3, 4, 5].map(s => (<Star key={s} size={42} onClick={() => setStars(s)} className={stars >= s ? 'text-yellow-400 fill-yellow-400 scale-110' : 'text-gray-200'} />))}</div>
             <div className="flex flex-col w-full space-y-3"><button onClick={() => setMatchSession((prev: any) => ({ ...prev, status: 'receipt' }))} className="w-full bg-black text-white py-6 rounded-2xl font-black text-sm uppercase shadow-xl">Avaliar profissional</button><button onClick={() => setMatchSession((prev: any) => ({ ...prev, status: 'receipt' }))} className="w-full py-4 text-gray-400 font-black text-[10px] uppercase">Não Avaliar agora</button></div>
           </motion.div>
@@ -892,7 +901,7 @@ export default function MapPage() {
 
         {/* TELA DE RECIBO */}
         {matchSession?.status === 'receipt' && (
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="absolute inset-0 z-[4000] bg-blue-950 flex flex-col items-center p-8 text-center overflow-y-auto no-scrollbar">
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[4000] bg-blue-950 flex flex-col items-center p-8 text-center overflow-y-auto no-scrollbar">
             <div className="mt-12 bg-white w-full rounded-[48px] p-8 shadow-2xl relative overflow-hidden"><h2 className="text-3xl font-black text-blue-950 uppercase italic mb-2 tracking-tighter">Atendimento Finalizado</h2><div className="border-t-2 border-dashed border-gray-100 py-6 flex justify-between text-sm font-black text-blue-950 uppercase"><span>Total Pago</span><span>R$ {matchSession.activeMatch.price + tipAmount},00</span></div><div className="bg-blue-600 rounded-[32px] p-6 text-white mb-8"><span className="text-xl font-black italic">+500 Pontos</span></div><div className="grid grid-cols-2 gap-3"><button className="bg-gray-900 text-white py-5 rounded-[24px] font-black text-[10px] uppercase">Compartilhar</button><button className="bg-gray-50 text-gray-400 py-5 rounded-[24px] font-black text-[10px] uppercase">Baixar Recibo</button></div></div>
             <button onClick={() => { setMatchSession((prev: any) => ({ ...prev, status: 'idle', activeMatch: null })); setIsRequesting(false); setIsRadarOpen(false); setSelectedServices([]); setStars(0); setTipAmount(0); setPaymentMethod(null); }} className="mt-12 w-full bg-white/10 text-white py-6 rounded-[30px] font-black text-sm uppercase">Voltar ao Mapa</button>
           </motion.div>
@@ -900,7 +909,7 @@ export default function MapPage() {
 
         {/* SELECTION DRAWER */}
         {isRequesting && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[2000] flex items-end justify-center bg-blue-950/40 backdrop-blur-sm">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2000] flex items-end justify-center bg-blue-950/40 backdrop-blur-sm">
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[50px] pt-2 pb-12 shadow-2xl flex flex-col max-h-[85vh]">
               <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto my-4" />
               <div className="px-8 flex justify-between items-center mb-8">
@@ -938,9 +947,17 @@ export default function MapPage() {
         {isRadarOpen && isBarberView && (
           <motion.div 
             initial={{ y: "100%" }} 
-            animate={{ y: isDrawerMinimized ? "calc(100% - 60px)" : 0 }} 
+            animate={{ y: isDrawerMinimized ? "calc(100% - 220px)" : 0 }} 
             exit={{ y: "100%" }} 
-            className="absolute bottom-0 left-0 right-0 z-[2000] bg-white rounded-t-[40px] px-6 pb-12 shadow-2xl border-t border-gray-100 transition-all duration-500"
+            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(e, info) => {
+              if (info.offset.y > 50) setIsDrawerMinimized(true);
+              else if (info.offset.y < -50) setIsDrawerMinimized(false);
+            }}
+            className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2000] bg-white rounded-t-[40px] px-6 pb-28 shadow-2xl border-t border-gray-100"
           >
             <button 
               onClick={() => setIsDrawerMinimized(!isDrawerMinimized)}
@@ -973,12 +990,12 @@ export default function MapPage() {
 
         {/* CONFIRMAÇÃO DE CANCELAMENTO */}
         {showCancelConfirm && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[5000] bg-black/60 backdrop-blur-md flex items-center justify-center p-8"><motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white rounded-[40px] p-8 w-full max-w-sm text-center shadow-2xl"><div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={32} className="text-red-500" /></div><h3 className="text-2xl font-black text-blue-950 uppercase italic mb-4">Atenção!</h3><p className="text-sm text-gray-400 font-medium mb-8">Deseja cancelar este atendimento?</p><div className="flex flex-col space-y-3"><button onClick={handleFinalCancel} className="w-full py-5 bg-red-500 text-white rounded-2xl font-black text-xs uppercase">Sim, cancelar</button><button onClick={() => setShowCancelConfirm(false)} className="w-full py-5 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase">Não, manter</button></div></motion.div></motion.div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[5000] bg-black/60 backdrop-blur-md flex items-center justify-center p-8"><motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white rounded-[40px] p-8 w-full max-w-sm text-center shadow-2xl"><div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={32} className="text-red-500" /></div><h3 className="text-2xl font-black text-blue-950 uppercase italic mb-4">Atenção!</h3><p className="text-sm text-gray-400 font-medium mb-8">Deseja cancelar este atendimento?</p><div className="flex flex-col space-y-3"><button onClick={handleFinalCancel} className="w-full py-5 bg-red-500 text-white rounded-2xl font-black text-xs uppercase">Sim, cancelar</button><button onClick={() => setShowCancelConfirm(false)} className="w-full py-5 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase">Não, manter</button></div></motion.div></motion.div>
         )}
 
         {/* TOAST CANCELADO */}
         {showCancelledToast && (
-          <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 100, opacity: 1 }} exit={{ y: -50, opacity: 0 }} className="absolute top-0 left-0 right-0 z-[6000] flex justify-center px-8"><div className="bg-gray-900 text-white px-8 py-4 rounded-full shadow-2xl flex items-center space-x-3 border-2 border-white/10"><AlertTriangle size={18} className="text-yellow-400" /><span className="font-black uppercase italic tracking-widest text-[10px]">Atendimento Cancelado</span></div></motion.div>
+          <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 100, opacity: 1 }} exit={{ y: -50, opacity: 0 }} className="fixed top-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[6000] flex justify-center px-8 pt-4"><div className="bg-gray-900 text-white px-8 py-4 rounded-full shadow-2xl flex items-center space-x-3 border-2 border-white/10"><AlertTriangle size={18} className="text-yellow-400" /><span className="font-black uppercase italic tracking-widest text-[10px]">Atendimento Cancelado</span></div></motion.div>
         )}
       </AnimatePresence>
     </div>

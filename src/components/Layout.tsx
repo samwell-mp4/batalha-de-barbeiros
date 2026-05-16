@@ -59,7 +59,7 @@ export default function Layout() {
         </main>
 
         {/* Bottom Navigation (Clean Floating HUD) */}
-        <div className="absolute bottom-6 left-6 right-6 z-50">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-md z-[5000] px-6">
           <nav className="h-16 bg-white/80 backdrop-blur-xl rounded-[28px] flex justify-around items-center px-4 shadow-[0_15px_40px_rgba(37,99,235,0.15)] border border-blue-50">
             <NavLink
               to="/"
