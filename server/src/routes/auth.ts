@@ -83,7 +83,7 @@ router.get('/me/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const user = await prisma.user.findUnique({
-      where: { id: parseInt(id) },
+      where: { id },
       include: { barberProfile: true }
     });
 
