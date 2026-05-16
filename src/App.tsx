@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Battle from './pages/Battle';
 import MapPage from './pages/Map';
-import Ranking from './pages/Ranking';
+import League from './pages/League';
 import Agenda from './pages/Agenda';
 import Profile from './pages/Profile';
 
@@ -13,7 +13,7 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Battle />} />
           <Route path="map" element={<MapPage />} />
-          <Route path="ranking" element={<Ranking />} />
+          <Route path="league" element={<League />} />
           <Route path="agenda" element={<Agenda />} />
           <Route path="profile" element={<Profile />} />
           <Route path="profile/:id" element={<Profile />} />

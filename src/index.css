@@ -43,6 +43,7 @@
     color: white;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
+    overscroll-behavior-y: none;
   }
   h1, h2, h3, .font-gamer {
     font-family: var(--font-orbitron);

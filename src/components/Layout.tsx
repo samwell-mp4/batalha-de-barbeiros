@@ -90,7 +90,7 @@ export default function Layout() {
             </NavLink>
 
             <NavLink
-              to="/ranking"
+              to="/league"
               className={({ isActive }) => 
                 `flex flex-col items-center justify-center w-full h-full space-y-1 transition-all duration-300 ${isActive ? 'text-blue-600 scale-110' : 'text-gray-400 hover:text-blue-400'}`
               }
