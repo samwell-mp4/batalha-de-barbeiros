@@ -80,6 +80,18 @@ export default function Profile() {
     loadProfile();
   }, [id, loggedUser?.id]);
 
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [likedItems, setLikedItems] = useState<Set<number>>(new Set());
+  const [selectedHighlight, setSelectedHighlight] = useState<any>(null);
+  const [storyIndex, setStoryIndex] = useState(0);
+  const [showRouteOptions, setShowRouteOptions] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showNewPost, setShowNewPost] = useState(false);
+  const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
+  const [newPostData, setNewPostData] = useState({ imageUrl: '', description: '', category: 'Fade' });
+  const [isLoading, setIsLoading] = useState(false);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-blue-950 flex items-center justify-center">
@@ -97,17 +109,7 @@ export default function Profile() {
     );
   }
 
-  const [isFavorited, setIsFavorited] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [likedItems, setLikedItems] = useState<Set<number>>(new Set());
-  const [selectedHighlight, setSelectedHighlight] = useState<any>(null);
-  const [storyIndex, setStoryIndex] = useState(0);
-  const [showRouteOptions, setShowRouteOptions] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showNewPost, setShowNewPost] = useState(false);
-  const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
-  const [newPostData, setNewPostData] = useState({ imageUrl: '', description: '', category: 'Fade' });
-  const [isLoading, setIsLoading] = useState(false);
+
 
   useEffect(() => {
     if (isOwnProfile) {

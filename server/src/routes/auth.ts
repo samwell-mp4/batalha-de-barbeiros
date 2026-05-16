@@ -11,6 +11,13 @@ router.post('/register', async (req, res) => {
       instagram, whatsapp, barberShop, latitude, longitude, 
       specialties, schedule, workingHours, bio 
     } = req.body;
+    
+    console.log('[API] Tentativa de Registro:', { name, email, role });
+    
+    if (!process.env.DATABASE_URL) {
+      console.error('[CRITICAL] DATABASE_URL não configurada no servidor!');
+      return res.status(500).json({ error: 'Erro de configuração do servidor (Banco de Dados)' });
+    }
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({ where: { email } });

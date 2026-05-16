@@ -250,10 +250,15 @@ export default function Auth() {
   };
 
   const handleRegister = async () => {
+    if (!form.email || !form.password) {
+      alert("Por favor, preencha pelo menos e-mail e senha.");
+      return;
+    }
     setLoading(true);
     try {
       const response = await api.register({
         ...form,
+        whatsapp: form.phone, // Mapeia phone para whatsapp para o banco
         schedule: JSON.stringify(form.schedule) 
       });
       
