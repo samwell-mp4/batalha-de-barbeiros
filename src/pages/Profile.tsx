@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { MOCK_BARBERS } from '@/constants/mockData';
+
 import { 
   Settings, Play, ChevronDown, CheckCircle2, Zap, Flame, Clock, Heart,
   Star, MapPin, Calendar, ChevronRight, X, Shield,
