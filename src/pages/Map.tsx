@@ -32,7 +32,31 @@ function RecenterButton({ coords }: { coords: [number, number] }) {
 export default function MapPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const initialPosition: [number, number] = [-23.525, -46.522];
+  
+  const [user] = useState<any>(() => {
+    const saved = localStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [mapCenter, setMapCenter] = useState<[number, number]>(() => {
+    if (user?.latitude && user?.longitude) {
+      return [user.latitude, user.longitude];
+    }
+    return [-23.525, -46.522]; // São Paulo fallback
+  });
+
+  useEffect(() => {
+    // Tenta capturar localização atual via GPS se não tiver no perfil ou para precisão
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        setMapCenter([position.coords.latitude, position.coords.longitude]);
+      }, (error) => {
+        console.warn("Erro ao obter GPS:", error);
+      });
+    }
+  }, []);
+
+  const initialPosition: [number, number] = mapCenter;
 
   const context = useOutletContext<{
     isBarberView: boolean,
@@ -338,12 +362,18 @@ export default function MapPage() {
       </div>
 
       <div className="flex-1 relative z-0 w-full bg-[#f8fafc]" style={{ minHeight: '400px' }}>
-        <MapContainer center={initialPosition} zoom={15} style={{ height: '100%', width: '100%', background: '#f8fafc' }} zoomControl={false}>
+        <MapContainer 
+          key={`${mapCenter[0]}-${mapCenter[1]}`}
+          center={mapCenter} 
+          zoom={15} 
+          style={{ height: '100%', width: '100%', background: '#f8fafc' }} 
+          zoomControl={false}
+        >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
-          {showRadius && <Circle center={initialPosition} radius={1000} pathOptions={{ fillColor: '#3b82f6', fillOpacity: 0.05, color: '#3b82f6', weight: 2, dashArray: '5, 10' }} />}
-          <Marker position={initialPosition} icon={userIcon} />
+          {showRadius && <Circle center={mapCenter} radius={1000} pathOptions={{ fillColor: '#3b82f6', fillOpacity: 0.05, color: '#3b82f6', weight: 2, dashArray: '5, 10' }} />}
+          <Marker position={mapCenter} icon={userIcon} />
           {!isBarberView && matchSession.status === 'searching' && (
-            <Marker position={initialPosition} icon={L.divIcon({ className: 'radar-pulse', html: '<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-blue-500/20 rounded-full border-2 border-blue-500/40 animate-ping"></div>', iconSize: [0, 0] })} />
+            <Marker position={mapCenter} icon={L.divIcon({ className: 'radar-pulse', html: '<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-blue-500/20 rounded-full border-2 border-blue-500/40 animate-ping"></div>', iconSize: [0, 0] })} />
           )}
           {filteredBarbers.map((barber) => (
             <Marker key={barber.id} position={[barber.coordinates.latitude, barber.coordinates.longitude]} icon={createBarberIcon(barber)} eventHandlers={{ click: () => { if (matchSession.status === 'idle') { setSelectedBarber(barber); setIsBookingAgenda(false); setIsDrawerMinimized(false); } } }} />

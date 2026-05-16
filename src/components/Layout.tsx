@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink } from 'react-router-dom';
 import { Swords, MapPin, Trophy, User, Calendar } from 'lucide-react';
 
 export default function Layout() {
-  const navigate = useNavigate();
-  const [isBarberView, setIsBarberView] = useState(true);
+  const [user] = useState<any>(() => {
+    const saved = localStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [isBarberView] = useState(user?.role === 'BARBER');
 
   // ESTADO GLOBAL DO MATCH (SIMULAÇÃO REALTIME)
   const [matchSession, setMatchSession] = useState<{
@@ -27,31 +30,8 @@ export default function Layout() {
     evaluations: { clientRated: false, barberRated: false }
   });
 
-  const toggleVision = () => {
-    const newView = !isBarberView;
-    setIsBarberView(newView);
-    if (newView) {
-      navigate('/'); // Barbeiro vai para Arena
-    } else {
-      navigate('/map'); // Cliente vai para Mapa
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#030303] flex flex-col items-center justify-center p-0 md:p-4 font-inter">
-      {/* Banner de visão (Sticky Top) */}
-      <div className="w-full max-w-md bg-blue-600 p-2 flex justify-between items-center z-[5000] sticky top-0 shadow-xl">
-        <span className="text-[10px] font-black text-white uppercase tracking-widest ml-4">
-          Modo: {isBarberView ? 'Atleta (Barbeiro)' : 'Torcedor (Cliente)'}
-        </span>
-        <button 
-          onClick={toggleVision}
-          className="bg-white text-blue-600 px-4 py-1 rounded-full text-[10px] font-black uppercase mr-4 active:scale-95 transition-transform"
-        >
-          Trocar Visão
-        </button>
-      </div>
-
       <div className="w-full max-w-md bg-white flex-1 flex flex-col relative shadow-[0_0_60px_rgba(0,0,0,0.05)] overflow-hidden">
 
         <main className="flex-1 overflow-y-auto pb-24 no-scrollbar relative">
@@ -118,7 +98,7 @@ export default function Layout() {
             </NavLink>
 
             <NavLink
-              to="/profile"
+              to={user ? "/profile" : "/auth"}
               className={({ isActive }) => 
                 `flex flex-col items-center justify-center w-full h-full space-y-1 transition-all duration-300 ${isActive ? 'text-blue-600 scale-110' : 'text-gray-400 hover:text-blue-400'}`
               }
@@ -126,7 +106,7 @@ export default function Layout() {
               {({ isActive }) => (
                 <>
                   <User size={20} strokeWidth={isActive ? 2.5 : 2} />
-                  <span className="text-[9px] font-black uppercase tracking-widest font-orbitron">Perfil</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest font-orbitron">{user ? 'Perfil' : 'Entrar'}</span>
                 </>
               )}
             </NavLink>
