@@ -2,16 +2,20 @@ import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import dotenv from 'dotenv';
+
+// Load environment variables immediately
+dotenv.config();
+dotenv.config({ path: path.join(process.cwd(), '.env') });
+dotenv.config({ path: path.join(process.cwd(), 'server', '.env') });
+
 import { PrismaClient } from '@prisma/client';
 import championshipRoutes from './routes/championships';
 import barberRoutes from './routes/barbers';
 import postRoutes from './routes/posts';
 import authRoutes from './routes/auth';
 
-dotenv.config();
-
 const app = express();
-const prisma = new PrismaClient();
+import { prisma } from './lib/prisma';
 const port = process.env.PORT || 3000;
 
 app.use(cors());
