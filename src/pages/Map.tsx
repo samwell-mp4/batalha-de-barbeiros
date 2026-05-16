@@ -246,7 +246,7 @@ export default function MapPage() {
                   <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{showOpportunityAlert}</p>
                 </div>
               </div>
-              <button onClick={() => { setSelectedBarber(MOCK_BARBERS.find(b => b.name.includes("Gustavo"))); setShowOpportunityAlert(null); }} className="bg-blue-600 text-white px-4 py-2.5 rounded-xl text-[9px] font-black uppercase italic shadow-lg shadow-blue-100">Agendar</button>
+              <button onClick={() => { setSelectedBarber(MOCK_BARBERS.find(b => b.name.includes("Gustavo"))); setIsDrawerMinimized(false); setShowOpportunityAlert(null); }} className="bg-blue-600 text-white px-4 py-2.5 rounded-xl text-[9px] font-black uppercase italic shadow-lg shadow-blue-100">Agendar</button>
             </div>
           </motion.div>
         )}
@@ -292,7 +292,7 @@ export default function MapPage() {
             <Marker position={initialPosition} icon={L.divIcon({ className: 'radar-pulse', html: '<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-blue-500/20 rounded-full border-2 border-blue-500/40 animate-ping"></div>', iconSize: [0, 0] })} />
           )}
           {filteredBarbers.map((barber) => (
-            <Marker key={barber.id} position={[barber.coordinates.latitude, barber.coordinates.longitude]} icon={createBarberIcon(barber)} eventHandlers={{ click: () => { if (matchSession.status === 'idle') { setSelectedBarber(barber); setIsBookingAgenda(false); } } }} />
+            <Marker key={barber.id} position={[barber.coordinates.latitude, barber.coordinates.longitude]} icon={createBarberIcon(barber)} eventHandlers={{ click: () => { if (matchSession.status === 'idle') { setSelectedBarber(barber); setIsBookingAgenda(false); setIsDrawerMinimized(false); } } }} />
           ))}
           {activeBarberCoords && <Polyline positions={[initialPosition, activeBarberCoords]} pathOptions={{ color: '#2563eb', weight: 6, opacity: 0.5, dashArray: '10, 10' }} />}
           <RecenterButton coords={initialPosition} />
@@ -328,7 +328,7 @@ export default function MapPage() {
             animate={{ y: isDrawerMinimized ? "calc(100% - 130px)" : 0 }} 
             exit={{ y: "100%" }} 
             transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-            className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2005] bg-white rounded-t-[50px] px-0 pb-28 shadow-[0_-20px_80px_rgba(0,0,0,0.3)] border-t border-gray-100 max-h-[90vh] overflow-y-auto no-scrollbar"
+            className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2005] bg-white rounded-t-[50px] px-0 pb-28 shadow-[0_-20px_80px_rgba(0,0,0,0.3)] border-t border-gray-100 max-h-[85vh] overflow-y-auto no-scrollbar"
           >
             <div className="sticky top-0 bg-white/90 backdrop-blur-md z-10 pt-4 pb-2 px-8 flex flex-col">
               <button 
@@ -690,7 +690,7 @@ export default function MapPage() {
               if (info.offset.y > 50) setIsDrawerMinimized(true);
               else if (info.offset.y < -50) setIsDrawerMinimized(false);
             }}
-            className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[1001] bg-white rounded-t-[40px] px-8 pb-28 shadow-[0_-20px_60px_rgba(0,0,0,0.1)] border-t border-gray-100"
+            className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[1001] bg-white rounded-t-[40px] px-8 pb-28 shadow-[0_-20px_60px_rgba(0,0,0,0.1)] border-t border-gray-100 max-h-[85vh] overflow-y-auto no-scrollbar"
           >
             <button 
               onClick={() => setIsDrawerMinimized(!isDrawerMinimized)}
@@ -957,7 +957,7 @@ export default function MapPage() {
               if (info.offset.y > 50) setIsDrawerMinimized(true);
               else if (info.offset.y < -50) setIsDrawerMinimized(false);
             }}
-            className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2000] bg-white rounded-t-[40px] px-6 pb-28 shadow-2xl border-t border-gray-100"
+            className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2000] bg-white rounded-t-[40px] px-6 pb-28 shadow-2xl border-t border-gray-100 max-h-[85vh] overflow-y-auto no-scrollbar"
           >
             <button 
               onClick={() => setIsDrawerMinimized(!isDrawerMinimized)}
