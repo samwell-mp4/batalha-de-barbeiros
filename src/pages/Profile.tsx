@@ -92,6 +92,16 @@ export default function Profile() {
   const [newPostData, setNewPostData] = useState({ imageUrl: '', description: '', category: 'Fade' });
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    if (isOwnProfile) {
+      const justRegistered = localStorage.getItem('justRegistered');
+      if (justRegistered) {
+        setShowWelcomeGuide(true);
+        localStorage.removeItem('justRegistered');
+      }
+    }
+  }, [isOwnProfile]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-blue-950 flex items-center justify-center">
@@ -111,15 +121,7 @@ export default function Profile() {
 
 
 
-  useEffect(() => {
-    if (isOwnProfile) {
-      const justRegistered = localStorage.getItem('justRegistered');
-      if (justRegistered) {
-        setShowWelcomeGuide(true);
-        localStorage.removeItem('justRegistered');
-      }
-    }
-  }, [isOwnProfile]);
+
 
   // Méritos Dinâmicos (Vazio para novos)
   const merits = barber.merits || [];

@@ -271,7 +271,8 @@ export default function Auth() {
       window.location.reload(); // Garante que o estado global seja limpo
     } catch (error: any) {
       console.error('Erro ao cadastrar:', error);
-      alert(error.response?.data?.error || 'Erro ao criar conta. Tente novamente.');
+      const msg = error.response?.data?.error || error.message || 'Erro ao criar conta. Tente novamente.';
+      alert(`ERRO NO CADASTRO: ${msg}`);
     } finally {
       setLoading(false);
     }
