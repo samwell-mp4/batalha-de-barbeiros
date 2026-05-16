@@ -35,7 +35,12 @@ export default function MapPage() {
   
   const [user] = useState<any>(() => {
     const saved = localStorage.getItem('user');
-    return saved ? JSON.parse(saved) : null;
+    if (!saved || saved === 'undefined') return null;
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      return null;
+    }
   });
 
   const [mapCenter, setMapCenter] = useState<[number, number]>(() => {

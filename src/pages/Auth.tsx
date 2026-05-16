@@ -231,7 +231,7 @@ export default function Auth() {
       });
       
       // Salva dados básicos para o guia de boas-vindas
-      localStorage.setItem('user', JSON.stringify(response.user));
+      localStorage.setItem('user', JSON.stringify(response));
       localStorage.setItem('justRegistered', 'true');
       
       setStep('success');
