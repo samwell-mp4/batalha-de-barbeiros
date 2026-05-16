@@ -6,10 +6,14 @@ import path from 'path';
 dotenv.config();
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
-export const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL
-    }
-  }
-});
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  console.warn('[PRISMA WARNING] DATABASE_URL is not defined in environment variables.');
+}
+
+export const prisma = new PrismaClient(
+  databaseUrl 
+    ? { datasources: { db: { url: databaseUrl } } }
+    : undefined
+);
