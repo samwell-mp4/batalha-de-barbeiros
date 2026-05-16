@@ -249,16 +249,18 @@ export default function MapPage() {
   }, [matchSession.globalAgenda]);
 
   const filteredBarbers = useMemo(() => {
-    // Combine mock and db barbers for testing, but prioritize DB
-    const allBarbers = [...dbBarbers.map(b => ({
+    // Somente barbeiros reais do banco de dados para experiência real
+    const allBarbers = dbBarbers.map(b => ({
       id: b.id,
       name: b.user.name,
-      avatar: b.user.avatar,
+      avatar: b.user.avatar || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=100&h=100&fit=crop',
       coordinates: { latitude: b.latitude, longitude: b.longitude },
       status: b.isOnline ? STATUS.LIVRE : STATUS.FECHADO,
-      waitTime: 0
-    })), ...MOCK_BARBERS.filter(mb => !dbBarbers.find(db => db.user.name === mb.name))];
+      waitTime: 0,
+      rating: 4.9
+    }));
 
+    // Se o banco estiver vazio, não mostra nada (ou apenas o usuário atual)
     return allBarbers.filter(b => {
       if (!b.coordinates?.latitude || !b.coordinates?.longitude) return false;
       

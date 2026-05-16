@@ -234,7 +234,9 @@ export default function Auth() {
       localStorage.setItem('user', JSON.stringify(response));
       localStorage.setItem('justRegistered', 'true');
       
-      setStep('success');
+      // Vai direto para o mapa/home após o sucesso
+      navigate('/');
+      window.location.reload(); // Garante que o estado global seja limpo
     } catch (error: any) {
       console.error('Erro ao cadastrar:', error);
       alert(error.response?.data?.error || 'Erro ao criar conta. Tente novamente.');

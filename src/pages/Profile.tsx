@@ -35,7 +35,7 @@ export default function Profile() {
         name: loggedUser.name || 'Usuário',
         username: (loggedUser.name || 'user').toLowerCase().replace(/\s/g, ''),
         avatar: loggedUser.avatar || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&h=400&fit=crop',
-        xp: loggedUser.xp || 4500,
+        xp: loggedUser.xp || 0,
         status: { id: 's1', icon: '⚡', color: '#22c55e' },
         waitTime: 0,
         ...loggedUser.barberProfile
@@ -67,25 +67,14 @@ export default function Profile() {
     }
   }, [isOwnProfile]);
 
-  // Méritos Estilizados
-  const merits = [
-    { id: 1, title: 'Master', event: 'Regional', icon: <Trophy size={16}/>, color: 'text-yellow-500', bg: 'bg-yellow-50' },
-    { id: 2, title: 'Top 10', event: 'Arena', icon: <Medal size={16}/>, color: 'text-blue-500', bg: 'bg-blue-50' },
-    { id: 3, title: 'Visagista', event: 'Pro', icon: <Award size={16}/>, color: 'text-green-500', bg: 'bg-green-50' },
-    { id: 4, title: 'Elite', event: 'Batalha', icon: <Zap size={16}/>, color: 'text-purple-500', bg: 'bg-purple-50' },
-    { id: 5, title: 'Lenda', event: 'Nacional', icon: <Flame size={16}/>, color: 'text-orange-500', bg: 'bg-orange-50' },
-  ];
+  // Méritos Dinâmicos (Vazio para novos)
+  const merits = barber.merits || [];
 
-  const highlights = [
-    { id: 1, label: 'Trabalhos', img: 'https://picsum.photos/400/400?random=10', content: ['https://picsum.photos/800/1600?random=101', 'https://picsum.photos/800/1600?random=111'] },
-    { id: 2, label: 'O Estúdio', img: 'https://picsum.photos/400/400?random=11', content: ['https://picsum.photos/800/1600?random=103'] },
-    { id: 3, label: 'Disponibilidade', img: 'https://picsum.photos/400/400?random=12', content: ['https://picsum.photos/800/1600?random=104'] }
-  ];
+  // Highlights Dinâmicos (Vazio para novos)
+  const highlights = barber.highlights || [];
 
-  const feedImages = Array.from({ length: 9 }).map((_, i) => ({
-    id: i,
-    url: `https://picsum.photos/600/600?random=${i + 80}`
-  }));
+  // Feed Dinâmico (Vazio para novos)
+  const feedImages = barber.posts || [];
 
   const toggleLike = (itemId: number) => {
     const newLiked = new Set(likedItems);
