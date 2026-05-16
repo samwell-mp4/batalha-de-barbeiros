@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 
 // Load environment variables immediately
 dotenv.config();
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 dotenv.config({ path: path.join(process.cwd(), 'server', '.env') });
 
