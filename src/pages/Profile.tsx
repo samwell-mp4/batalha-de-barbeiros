@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MOCK_BARBERS } from '@/constants/mockData';
 import { 
@@ -13,12 +13,34 @@ import { api } from '../services/api';
 export default function Profile() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const isOwnProfile = !id; // Se não tem ID na URL, é o perfil do usuário logado
   
-  const barber = MOCK_BARBERS.find(b => b.id.toString() === id) || MOCK_BARBERS[0];
+  // Pega o usuário logado
+  const loggedUser = useMemo(() => {
+    const saved = localStorage.getItem('user');
+    if (!saved || saved === 'undefined') return null;
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      return null;
+    }
+  }, []);
+
+  const isOwnProfile = !id || (loggedUser && loggedUser.id.toString() === id);
   
-  const [isFavorited, setIsFavorited] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
+  // Dados do Barbeiro (do banco/URL ou do usuário logado)
+  const [barber, setBarber] = useState<any>(() => {
+    if (isOwnProfile && loggedUser) {
+      return {
+        ...loggedUser.barberProfile,
+        name: loggedUser.name,
+        username: loggedUser.name.toLowerCase().replace(/\s/g, ''),
+        avatar: loggedUser.avatar || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&h=400&fit=crop',
+        xp: 4500, // Mock XP inicial
+        status: { id: 's1', icon: '⚡', color: '#22c55e' }
+      };
+    }
+    return MOCK_BARBERS.find(b => b.id.toString() === id) || MOCK_BARBERS[0];
+  });
   const [likedItems, setLikedItems] = useState<Set<number>>(new Set());
   const [selectedHighlight, setSelectedHighlight] = useState<any>(null);
   const [storyIndex, setStoryIndex] = useState(0);
@@ -428,7 +450,16 @@ export default function Profile() {
                         </div>
                      </div>
 
-                     <button className="w-full py-5 bg-red-50 text-red-500 rounded-[28px] font-black text-xs uppercase tracking-[0.2em] shadow-sm">Sair da Conta</button>
+                     <button 
+                       onClick={() => {
+                         localStorage.removeItem('user');
+                         localStorage.removeItem('token');
+                         window.location.href = '/auth';
+                       }}
+                       className="w-full py-5 bg-red-50 text-red-500 rounded-[28px] font-black text-xs uppercase tracking-[0.2em] shadow-sm active:scale-95 transition-all"
+                     >
+                       Sair da Conta
+                     </button>
                   </div>
                </motion.div>
             </motion.div>

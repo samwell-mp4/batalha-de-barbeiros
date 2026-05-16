@@ -40,11 +40,16 @@ export default function League() {
   }, []);
 
   const fetchChampionships = async () => {
+    setLoading(true);
     try {
       const data = await api.getChampionships();
-      setDbChampionships(data);
+      if (data && Array.isArray(data)) {
+        setDbChampionships(data);
+      }
     } catch (error) {
       console.error('Failed to fetch championships', error);
+    } finally {
+      setLoading(false);
     }
   };
 
