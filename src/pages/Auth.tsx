@@ -12,6 +12,7 @@ type AuthStep = 'role' | 'basic' | 'location' | 'social' | 'professional' | 'suc
 export default function Auth() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [step, setStep] = useState<AuthStep>('role');
   const [form, setForm] = useState({
     role: 'CLIENT',
@@ -221,12 +222,26 @@ export default function Auth() {
     else if (step === 'professional') setStep('social');
   };
 
+  const handleLogin = async () => {
+    if (!form.email) return alert('Digite seu e-mail');
+    setLoading(true);
+    try {
+      const response = await api.login(form.email);
+      localStorage.setItem('user', JSON.stringify(response));
+      navigate('/');
+      window.location.reload();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Usuário não encontrado');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRegister = async () => {
     setLoading(true);
     try {
       const response = await api.register({
         ...form,
-        // Convertemos a agenda para string para facilitar o armazenamento ou enviamos como objeto se o banco aceitar
         schedule: JSON.stringify(form.schedule) 
       });
       
@@ -620,55 +635,107 @@ export default function Auth() {
       <div className="absolute -top-20 -right-20 w-80 h-80 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="bg-white rounded-[60px] p-10 shadow-[0_40px_100px_rgba(0,0,0,0.08)] relative z-10 border border-gray-100">
+      {/* MODO TOGGLE */}
+      <div className="flex bg-gray-100 p-1 rounded-2xl mb-8 relative z-10 w-full max-w-[300px]">
+        <button 
+          onClick={() => setMode('login')}
+          className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'login' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400'}`}
+        >
+          Entrar
+        </button>
+        <button 
+          onClick={() => setMode('register')}
+          className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'register' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400'}`}
+        >
+          Criar Conta
+        </button>
+      </div>
+
+      <div className="bg-white rounded-[60px] p-10 shadow-[0_40px_100px_rgba(0,0,0,0.08)] relative z-10 border border-gray-100 w-full max-w-md">
         {loading && <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-50 rounded-[60px] flex items-center justify-center"><div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" /></div>}
         
-        {step !== 'success' && (
-          <div className="flex items-center justify-between mb-12">
-            <button
-              onClick={handleBack}
-              disabled={step === 'role'}
-              className={`p-4 rounded-2xl bg-gray-50 text-blue-950 transition-all ${step === 'role' ? 'opacity-0' : 'opacity-100 active:scale-95'}`}
-            >
-              <ChevronLeft size={24} />
-            </button>
-            <div className="flex space-x-2">
-              {['role', 'basic', 'location', form.role === 'BARBER' ? 'social' : null, form.role === 'BARBER' ? 'professional' : null].filter(Boolean).map((s, i) => (
-                <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${step === s ? 'w-8 bg-blue-600 shadow-lg shadow-blue-100' : 'w-2 bg-gray-100'}`} />
-              ))}
+        {mode === 'login' ? (
+          <div className="space-y-8">
+            <div className="text-center">
+              <h2 className="text-3xl font-black text-blue-950 font-orbitron uppercase tracking-tighter">Bem-vindo de Volta</h2>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Acesse sua conta na Arena</p>
             </div>
-            <div className="w-12" />
-          </div>
-        )}
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-black text-blue-950 uppercase tracking-widest ml-1 mb-2 block text-center">Digite seu E-mail</label>
+                <div className="relative">
+                  <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-600" size={20} />
+                  <input 
+                    type="email" 
+                    placeholder="EXEMPLO@EMAIL.COM"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="w-full bg-gray-50 border-2 border-gray-100 rounded-[30px] py-6 pl-16 pr-6 font-black uppercase text-[12px] focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 placeholder-gray-400"
+                  />
+                </div>
+              </div>
+            </div>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ x: 20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -20, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            {step === 'role' && renderStepRole()}
-            {step === 'basic' && renderStepBasic()}
-            {step === 'location' && renderStepLocation()}
-            {step === 'social' && renderStepSocial()}
-            {step === 'professional' && renderStepProfessional()}
-            {step === 'success' && renderSuccess()}
-          </motion.div>
-        </AnimatePresence>
-
-        {step !== 'success' && (
-          <div className="mt-12">
-            <button
-              onClick={handleNext}
+            <button 
+              onClick={handleLogin}
+              disabled={loading}
               className="w-full py-6 bg-blue-600 text-white rounded-[30px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center space-x-3"
             >
-              <span>{step === 'professional' || (step === 'location' && form.role === 'CLIENT') ? 'Finalizar Cadastro' : 'Próximo Passo'}</span>
-              <ChevronRight size={20} />
+              <span>Acessar Arena</span>
+              <Rocket size={20} />
             </button>
-            <p className="text-center mt-6 text-[10px] font-bold text-gray-300 uppercase tracking-widest">Passo {step === 'role' ? 1 : step === 'basic' ? 2 : step === 'location' ? 3 : step === 'social' ? 4 : 5} de {form.role === 'BARBER' ? 5 : 3}</p>
           </div>
+        ) : (
+          <>
+            {step !== 'success' && (
+              <div className="flex items-center justify-between mb-12">
+                <button
+                  onClick={handleBack}
+                  disabled={step === 'role'}
+                  className={`p-4 rounded-2xl bg-gray-50 text-blue-950 transition-all ${step === 'role' ? 'opacity-0' : 'opacity-100 active:scale-95'}`}
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                <div className="flex space-x-2">
+                  {['role', 'basic', 'location', form.role === 'BARBER' ? 'social' : null, form.role === 'BARBER' ? 'professional' : null].filter(Boolean).map((s, i) => (
+                    <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${step === s ? 'w-8 bg-blue-600 shadow-lg shadow-blue-100' : 'w-2 bg-gray-100'}`} />
+                  ))}
+                </div>
+                <div className="w-12" />
+              </div>
+            )}
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={step}
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -20, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                {step === 'role' && renderStepRole()}
+                {step === 'basic' && renderStepBasic()}
+                {step === 'location' && renderStepLocation()}
+                {step === 'social' && renderStepSocial()}
+                {step === 'professional' && renderStepProfessional()}
+                {step === 'success' && renderSuccess()}
+              </motion.div>
+            </AnimatePresence>
+
+            {step !== 'success' && (
+              <div className="mt-12">
+                <button
+                  onClick={handleNext}
+                  className="w-full py-6 bg-blue-600 text-white rounded-[30px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center space-x-3"
+                >
+                  <span>{step === 'professional' || (step === 'location' && form.role === 'CLIENT') ? 'Finalizar Cadastro' : 'Próximo Passo'}</span>
+                  <ChevronRight size={20} />
+                </button>
+                <p className="text-center mt-6 text-[10px] font-bold text-gray-300 uppercase tracking-widest">Passo {step === 'role' ? 1 : step === 'basic' ? 2 : step === 'location' ? 3 : step === 'social' ? 4 : 5} de {form.role === 'BARBER' ? 5 : 3}</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 

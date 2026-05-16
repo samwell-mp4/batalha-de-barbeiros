@@ -1,8 +1,11 @@
-import { useState } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { Swords, MapPin, Trophy, User, Calendar } from 'lucide-react';
 
 export default function Layout() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [user] = useState<any>(() => {
     const saved = localStorage.getItem('user');
     if (!saved || saved === 'undefined') return null;
@@ -12,6 +15,12 @@ export default function Layout() {
       return null;
     }
   });
+
+  useEffect(() => {
+    if (!user && location.pathname !== '/auth') {
+      navigate('/auth');
+    }
+  }, [user, location.pathname, navigate]);
   const [isBarberView] = useState(user?.role === 'BARBER');
 
   // ESTADO GLOBAL DO MATCH (SIMULAÇÃO REALTIME)
@@ -24,11 +33,7 @@ export default function Layout() {
     evaluations: { clientRated: boolean; barberRated: boolean };
   }>({
     status: 'idle',
-    incomingRequests: [
-      { id: 'req1', client: { name: 'Joãozinho Silva', avatar: 'https://i.pravatar.cc/150?u=1', rating: 4.9, isNew: true }, services: ['Degradê Pro'], price: 45, observations: 'Quero bem baixinho', distance: '1.2km' },
-      { id: 'req2', client: { name: 'Marcos Oliveira', avatar: 'https://i.pravatar.cc/150?u=2', rating: 4.7, isNew: false }, services: ['Barba & Toalha'], price: 30, observations: 'Desenhar cavanhaque', distance: '0.8km' },
-      { id: 'req3', client: { name: 'Felipe Souza', avatar: 'https://i.pravatar.cc/150?u=3', rating: 5.0, isNew: true }, services: ['Corte + Barba'], price: 70, observations: 'Primeira vez na arena', distance: '2.5km' },
-    ],
+    incomingRequests: [],
     activeMatch: null,
     bufferTime: 30,
     toleranceTimer: 1800,
