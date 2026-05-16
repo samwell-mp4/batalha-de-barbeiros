@@ -1,0 +1,17 @@
+{
+  "name": "Battle Barber",
+  "short_name": "BattleBarber",
+  "description": "A arena das batalhas de barbeiros",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030303",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
