@@ -41,11 +41,11 @@ export const api = {
     });
     return res.json();
   },
-  login: async (email: string) => {
+  login: async (email: string, password?: string) => {
     const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, password }),
     });
     return res.json();
   },

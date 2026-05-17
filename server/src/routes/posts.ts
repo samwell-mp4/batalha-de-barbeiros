@@ -57,4 +57,27 @@ router.post('/:id/comment', async (req, res) => {
   }
 });
 
+// Create a new post
+router.post('/', async (req, res) => {
+  try {
+    const { imageUrl, description, barberId } = req.body;
+    
+    if (!imageUrl || !barberId) {
+      return res.status(400).json({ error: 'Image URL and Barber ID are required' });
+    }
+
+    const post = await prisma.post.create({
+      data: {
+        imageUrl,
+        content: description || '',
+        barberId
+      }
+    });
+    res.json(post);
+  } catch (error: any) {
+    console.error('[API ERROR] Failed to create post:', error.message);
+    res.status(500).json({ error: `Failed to create post: ${error.message}` });
+  }
+});
+
 export default router;

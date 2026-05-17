@@ -229,7 +229,7 @@ export default function Auth() {
       // Limpa qualquer lixo anterior antes de tentar logar
       localStorage.removeItem('user');
       
-      const response = await api.login(form.email);
+      const response = await api.login(form.email, form.password);
       
       if (response && response.id) {
         localStorage.setItem('user', JSON.stringify(response));

@@ -12,6 +12,7 @@ async function main() {
   ];
 
   for (const b of barbers) {
+    const [city, state] = b.location.split(',').map(s => s.trim());
     const user = await prisma.user.upsert({
       where: { email: b.email },
       update: {},
@@ -19,9 +20,11 @@ async function main() {
         name: b.name,
         email: b.email,
         role: 'BARBER',
-        location: b.location,
+        city,
+        state,
         barberProfile: {
           create: {
+            barberShop: 'Elite Barber Shop',
             rating: 4.9,
             specialties: ['Fade', 'Pigmentação', 'Navalhado'],
             isOnline: true,

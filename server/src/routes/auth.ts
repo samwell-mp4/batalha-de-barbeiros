@@ -7,7 +7,7 @@ const router = Router();
 router.post('/register', async (req, res) => {
   try {
     const { 
-      name, email, role, city, state, neighborhood, address, number,
+      name, email, password, role, city, state, neighborhood, address, number,
       instagram, whatsapp, barberShop, latitude, longitude, 
       specialties, schedule, workingHours, bio 
     } = req.body;
@@ -30,6 +30,7 @@ router.post('/register', async (req, res) => {
       data: {
         name,
         email,
+        password,
         role: role === 'BARBER' ? 'BARBER' : 'CLIENT',
         city,
         state,
@@ -46,7 +47,8 @@ router.post('/register', async (req, res) => {
             specialties: specialties || [],
             schedule,
             workingHours,
-            bio: bio || ''
+            bio: bio || '',
+            isOnline: true // Já começa online para aparecer no mapa
           }
         } : undefined
       },
@@ -62,10 +64,10 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Simple Login (Simulation for now)
+// Simple Login with Password
 router.post('/login', async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, password } = req.body;
     console.log(`[API] Tentativa de login para: ${email}`);
     
     const user = await prisma.user.findUnique({
@@ -74,8 +76,12 @@ router.post('/login', async (req, res) => {
     });
 
     if (!user) {
-      console.log(`[API] Usuário não encontrado: ${email}`);
       return res.status(404).json({ error: 'E-mail não encontrado' });
+    }
+
+    // Por enquanto conferência direta de texto (depois podemos usar bcrypt)
+    if (user.password && user.password !== password) {
+      return res.status(401).json({ error: 'Senha incorreta' });
     }
 
     res.json(user);
