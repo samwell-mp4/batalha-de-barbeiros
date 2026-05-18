@@ -62,6 +62,7 @@ model Barber {
   statsWins     Int       @default(0)
   statsLosses   Int       @default(0)
   followersCount Int     @default(0)
+  servicesConfig String?   @db.Text
   
   // Relations
   appointments  Appointment[] @relation("BarberAppointments")
@@ -73,8 +74,8 @@ model Appointment {
   id            String            @id @default(uuid())
   clientId      String
   client        User              @relation("ClientAppointments", fields: [clientId], references: [id])
-  barberId      String
-  barber        Barber            @relation("BarberAppointments", fields: [barberId], references: [id])
+  barberId      String?
+  barber        Barber?           @relation("BarberAppointments", fields: [barberId], references: [id])
   date          DateTime
   time          String
   status        AppointmentStatus @default(PENDING)
@@ -90,9 +91,13 @@ model Appointment {
 
 enum AppointmentStatus {
   PENDING
+  PROPOSAL_SENT
   CONFIRMED
-  CANCELLED
+  ARRIVED
+  IN_SERVICE
+  PAYMENT
   COMPLETED
+  CANCELLED
 }
 
 // --- MAP & REAL-TIME ---

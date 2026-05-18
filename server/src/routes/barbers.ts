@@ -79,4 +79,43 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { specialties, workingHours, bio, servicesConfig, barberShop } = req.body;
+
+    const existingBarber = await prisma.barber.findFirst({
+      where: {
+        OR: [
+          { id: id },
+          { userId: id }
+        ]
+      }
+    });
+
+    if (!existingBarber) {
+      return res.status(404).json({ error: 'Barber not found' });
+    }
+
+    const updated = await prisma.barber.update({
+      where: { id: existingBarber.id },
+      data: {
+        specialties: specialties !== undefined ? specialties : undefined,
+        workingHours: workingHours !== undefined ? workingHours : undefined,
+        bio: bio !== undefined ? bio : undefined,
+        servicesConfig: servicesConfig !== undefined ? servicesConfig : undefined,
+        barberShop: barberShop !== undefined ? barberShop : undefined
+      },
+      include: {
+        user: true
+      }
+    });
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error('[API ERROR] Failed to update barber profile:', error.message);
+    res.status(500).json({ error: 'Failed to update barber profile' });
+  }
+});
+
 export default router;

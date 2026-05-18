@@ -60,7 +60,8 @@ export default function Agenda() {
   const updateGlobalAgenda = (date: number, time: string, data: any) => {
     setMatchSession((prev: any) => {
       const currentAgenda = prev.globalAgenda || {};
-      const dateData = currentAgenda[date] || {};
+      const key = `${user?.id || 'default'}_${date}`;
+      const dateData = currentAgenda[key] || {};
       const dateSlots = dateData.slots || [];
       const updatedSlots = [...dateSlots.filter((s: any) => s.time !== time), { time, ...data }];
       
@@ -71,7 +72,7 @@ export default function Agenda() {
       return { 
         ...prev, 
         notifications: updatedNotifs,
-        globalAgenda: { ...currentAgenda, [date]: { ...dateData, slots: updatedSlots } } 
+        globalAgenda: { ...currentAgenda, [key]: { ...dateData, slots: updatedSlots } } 
       };
     });
     setSelectedSlot(null);
@@ -80,13 +81,15 @@ export default function Agenda() {
   const handleGlobalAction = (action: 'block_all' | 'radar_all') => {
     const hours = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
     const newSlots = hours.map(h => ({ time: h, status: action === 'block_all' ? 'blocked' : 'radar', client_name: action === 'block_all' ? 'Bloqueado' : 'Radar Ativo' }));
-    setMatchSession((prev: any) => ({ ...prev, globalAgenda: { ...(prev.globalAgenda || {}), [selectedDate]: { ...(prev.globalAgenda?.[selectedDate] || {}), slots: newSlots } } }));
+    const key = `${user?.id || 'default'}_${selectedDate}`;
+    setMatchSession((prev: any) => ({ ...prev, globalAgenda: { ...(prev.globalAgenda || {}), [key]: { ...(prev.globalAgenda?.[key] || {}), slots: newSlots } } }));
   };
 
   const hours24 = useMemo(() => Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`), []);
 
   const currentTimeSlots = useMemo(() => {
-    const dayData = globalAgenda[selectedDate] || {};
+    const key = `${user?.id || 'default'}_${selectedDate}`;
+    const dayData = globalAgenda[key] || {};
     const slotsFromGlobal = dayData.slots || [];
     const workingHours = dayData.workingHours || { start: '08:00', end: '20:00' };
     const startIdx = parseInt(workingHours.start.split(':')[0]);
@@ -117,7 +120,7 @@ export default function Agenda() {
       const existing = slotsFromGlobal.find((s: any) => s.time === time);
       return existing || { time, status: 'empty', client_name: 'Livre' };
     }).filter(Boolean);
-  }, [selectedDate, globalAgenda, hours24, today, currentHour, barberAppointments]);
+  }, [selectedDate, globalAgenda, hours24, today, currentHour, barberAppointments, user?.id]);
 
   const handleAcceptRequest = (notif: any) => {
     updateGlobalAgenda(notif.date, notif.time, { status: 'occupied', client_name: notif.client, services: notif.services, price: notif.price, isMyBooking: true });
@@ -126,9 +129,10 @@ export default function Agenda() {
   };
 
   const setWorkingHours = (date: number, start: string, end: string) => {
+    const key = `${user?.id || 'default'}_${date}`;
     setMatchSession((prev: any) => ({
       ...prev,
-      globalAgenda: { ...(prev.globalAgenda || {}), [date]: { ...(prev.globalAgenda?.[date] || {}), workingHours: { start, end } } }
+      globalAgenda: { ...(prev.globalAgenda || {}), [key]: { ...(prev.globalAgenda?.[key] || {}), workingHours: { start, end } } }
     }));
     setShowHoursConfig(false);
   };

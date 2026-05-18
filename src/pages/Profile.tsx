@@ -110,6 +110,54 @@ export default function Profile() {
    const [newPostData, setNewPostData] = useState({ imageUrl: '', description: '', category: 'Fade' });
    const [isLoading, setIsLoading] = useState(false);
 
+   const [showServicesConfig, setShowServicesConfig] = useState(false);
+   const [editableServices, setEditableServices] = useState<any[]>([]);
+
+   const currentServices = useMemo(() => {
+      if (!barber?.servicesConfig) {
+         return [
+            { id: 'fade', name: 'Corte Fade', price: 45, time: '30-40 min' },
+            { id: 'navalhado', name: 'Corte Navalhado', price: 50, time: '45-50 min' },
+            { id: 'degrade', name: 'Degradê Pro', price: 40, time: '30 min' },
+            { id: 'barba', name: 'Barba & Toalha', price: 30, time: '20 min' },
+            { id: 'freestyle', name: 'Freestyle Art', price: 70, time: '60 min' },
+            { id: 'pigmentacao', name: 'Pigmentação', price: 25, time: '15 min' }
+         ];
+      }
+      try {
+         const parsed = JSON.parse(barber.servicesConfig);
+         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {
+         console.error('Error parsing servicesConfig:', e);
+      }
+      return [];
+   }, [barber?.servicesConfig]);
+
+   const openServicesModal = () => {
+      setEditableServices(JSON.parse(JSON.stringify(currentServices)));
+      setShowServicesConfig(true);
+   };
+
+   const handleSaveServices = async () => {
+      try {
+         setIsLoading(true);
+         await api.updateBarberProfile(barber.id, {
+            servicesConfig: JSON.stringify(editableServices)
+         });
+         setBarber((prev: any) => ({
+            ...prev,
+            servicesConfig: JSON.stringify(editableServices)
+         }));
+         setShowServicesConfig(false);
+         alert('Grade de serviços salva com sucesso!');
+      } catch (e: any) {
+         console.error('Failed to save services config:', e);
+         alert('Erro ao salvar serviços: ' + e.message);
+      } finally {
+         setIsLoading(false);
+      }
+   };
+
    useEffect(() => {
       if (isOwnProfile) {
          const justRegistered = localStorage.getItem('justRegistered');
@@ -344,6 +392,38 @@ export default function Profile() {
                ))}
             </div>
          </div>
+
+         {/* GRADE DE SERVIÇOS & VALORES */}
+         {!barber.isClientOnly && (
+            <div className="px-6 mb-10 text-left">
+               <div className="flex items-center justify-between mb-4 px-1">
+                  <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em]">Tabela de Serviços & Preços</h3>
+                  {isOwnProfile && (
+                     <button
+                        onClick={openServicesModal}
+                        className="text-[9px] font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 flex items-center space-x-1"
+                     >
+                        <Settings size={12} />
+                        <span>Configurar</span>
+                     </button>
+                  )}
+               </div>
+
+               <div className="bg-white p-5 rounded-[35px] border border-gray-50 shadow-sm divide-y divide-gray-50">
+                  {currentServices.map((srv: any) => (
+                     <div key={srv.id} className="py-4 first:pt-0 last:pb-0 flex items-center justify-between">
+                        <div>
+                           <p className="text-sm font-black text-blue-950">{srv.name}</p>
+                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{srv.time || '30-40 min'}</p>
+                        </div>
+                        <div className="text-right">
+                           <p className="text-base font-black text-blue-600">R$ {srv.price},00</p>
+                        </div>
+                     </div>
+                  ))}
+               </div>
+            </div>
+         )}
 
          {/* LOCALIZAÇÃO E ROTA */}
          <div className="px-6 mb-10">
@@ -619,6 +699,64 @@ export default function Profile() {
                         </div>
                      </div>
                      <button onClick={() => setShowWelcomeGuide(false)} className="w-full py-5 bg-white text-blue-600 rounded-[30px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all">COMEÇAR AGORA</button>
+                  </motion.div>
+               </motion.div>
+            )}
+         </AnimatePresence>
+
+         {/* MODAL CONFIGURAR SERVIÇOS */}
+         <AnimatePresence>
+            {showServicesConfig && (
+               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] flex items-center justify-center bg-blue-950/40 backdrop-blur-sm p-4">
+                  <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white w-full max-w-md rounded-[40px] p-6 shadow-2xl flex flex-col max-h-[85vh]">
+                     <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-xl font-black text-blue-950 uppercase italic">Grade de Serviços</h3>
+                        <button onClick={() => setShowServicesConfig(false)} className="p-2 bg-gray-50 rounded-xl text-gray-400"><X size={20} /></button>
+                     </div>
+
+                     <div className="flex-1 overflow-y-auto space-y-4 pr-1 no-scrollbar mb-6">
+                        {editableServices.map((srv, idx) => (
+                           <div key={srv.id} className="bg-gray-50/50 p-4 rounded-3xl border border-gray-100 flex flex-col space-y-3">
+                              <p className="text-xs font-black text-blue-950 uppercase tracking-wide text-left">{srv.name}</p>
+                              <div className="grid grid-cols-2 gap-3 text-left">
+                                 <div>
+                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Preço (R$)</label>
+                                    <input
+                                       type="number"
+                                       value={srv.price}
+                                       onChange={(e) => {
+                                          const updated = [...editableServices];
+                                          updated[idx].price = parseFloat(e.target.value) || 0;
+                                          setEditableServices(updated);
+                                       }}
+                                       className="w-full bg-white border border-gray-100 px-4 py-3 rounded-2xl text-xs font-bold text-blue-950 focus:outline-none focus:border-blue-600"
+                                    />
+                                 </div>
+                                 <div>
+                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Duração</label>
+                                    <input
+                                       type="text"
+                                       value={srv.time}
+                                       onChange={(e) => {
+                                          const updated = [...editableServices];
+                                          updated[idx].time = e.target.value;
+                                          setEditableServices(updated);
+                                       }}
+                                       placeholder="Ex: 30 min"
+                                       className="w-full bg-white border border-gray-100 px-4 py-3 rounded-2xl text-xs font-bold text-blue-950 focus:outline-none focus:border-blue-600"
+                                    />
+                                 </div>
+                              </div>
+                           </div>
+                        ))}
+                     </div>
+
+                     <button
+                        onClick={handleSaveServices}
+                        className="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center space-x-2"
+                     >
+                        <span>Salvar Tabela</span>
+                     </button>
                   </motion.div>
                </motion.div>
             )}

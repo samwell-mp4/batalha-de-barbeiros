@@ -37,8 +37,11 @@ router.post('/', async (req, res) => {
 
     console.log('[API] Creating Appointment:', { clientId, barberId, isExpress, isQueue });
 
-    if (!clientId || !barberId) {
-      return res.status(400).json({ error: 'Missing clientId or barberId' });
+    if (!clientId) {
+      return res.status(400).json({ error: 'Missing clientId' });
+    }
+    if (!isExpress && !isQueue && !barberId) {
+      return res.status(400).json({ error: 'Missing barberId for standard appointments' });
     }
 
     // Parse date correctly: if it's a number (like 16), represent it as May 16, 2026
@@ -52,7 +55,7 @@ router.post('/', async (req, res) => {
     const appointment = await prisma.appointment.create({
       data: {
         clientId,
-        barberId,
+        barberId: barberId || null,
         date: parsedDate,
         time: time || 'EXPRESS',
         services: services || [],
@@ -204,16 +207,45 @@ router.get('/barber/:barberId', async (req, res) => {
   }
 });
 
+// Get single appointment details
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        client: true,
+        barber: {
+          include: {
+            user: true,
+          },
+        },
+      },
+    });
+    if (!appointment) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+    res.json(appointment);
+  } catch (error: any) {
+    console.error('[API ERROR] Failed to fetch appointment:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Update appointment status and assign barber (for open requests)
 router.patch('/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, barberId } = req.body;
+    const { status, barberId, price } = req.body;
 
-    console.log('[API] Updating appointment status:', { id, status, barberId });
+    console.log('[API] Updating appointment status:', { id, status, barberId, price });
 
     // Build update data
     const updateData: any = { status };
+
+    if (price !== undefined) {
+      updateData.price = parseFloat(price as string);
+    }
 
     if (barberId) {
       // Find the barber's actual ID if the user ID was provided

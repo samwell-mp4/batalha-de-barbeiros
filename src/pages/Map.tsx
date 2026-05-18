@@ -104,6 +104,52 @@ export default function MapPage() {
   const [activeRequests, setActiveRequests] = useState<any[]>([]);
   const [currentAppointmentId, setCurrentAppointmentId] = useState<string | null>(null);
 
+  const [barberProfile, setBarberProfile] = useState<any>(null);
+
+  useEffect(() => {
+    if (isBarberView && user?.id) {
+      fetch(`${import.meta.env.VITE_API_URL || '/api'}/barbers/${user.id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && !data.error) {
+            setBarberProfile(data);
+          }
+        })
+        .catch(err => console.error('Error fetching barber profile in Map:', err));
+    }
+  }, [isBarberView, user?.id]);
+
+  const calculatePriceForServices = (servicesList: string[], configStr: string | null) => {
+    let total = 0;
+    let config: any[] = [];
+    try {
+      if (configStr) config = JSON.parse(configStr);
+    } catch (e) {
+      console.error('Error parsing servicesConfig:', e);
+    }
+
+    const standardCategories = [
+      { id: 'fade', label: 'Corte Fade', price: 45 },
+      { id: 'navalhado', label: 'Corte Navalhado', price: 50 },
+      { id: 'degrade', label: 'Degradê Pro', price: 40 },
+      { id: 'barba', label: 'Barba & Toalha', price: 30 },
+      { id: 'freestyle', label: 'Freestyle Art', price: 70 },
+      { id: 'pigmentacao', label: 'Pigmentação', price: 25 },
+    ];
+
+    servicesList.forEach(srvName => {
+      const custom = config.find((c: any) => c.name?.toLowerCase() === srvName.toLowerCase() || c.label?.toLowerCase() === srvName.toLowerCase());
+      if (custom && custom.price) {
+        total += parseFloat(custom.price);
+      } else {
+        const fallback = standardCategories.find(s => s.label.toLowerCase() === srvName.toLowerCase());
+        total += fallback ? fallback.price : 40;
+      }
+    });
+
+    return total;
+  };
+
   useEffect(() => {
     fetchBarberLocations();
   }, []);
@@ -113,7 +159,7 @@ export default function MapPage() {
     let interval: any;
 
     const poll = async () => {
-      // BARBER POLLING: Fetch active Express & Queue requests within 5km of mapCenter
+      // 1. BARBER RADAR POLLING: Fetch active Express & Queue requests within 5km of mapCenter
       if (isBarberView && (isRadarOpen || clientMode === 'radares')) {
         try {
           const reqs = await api.getActiveRequests(mapCenter[0], mapCenter[1]);
@@ -123,38 +169,115 @@ export default function MapPage() {
         }
       }
 
-      // CLIENT POLLING: Fetch the status of their active express/queue booking
-      if (!isBarberView && matchSession?.status === 'searching' && currentAppointmentId) {
+      // 2. ACTIVE APPOINTMENT POLLING (For both Client and Barber):
+      if (currentAppointmentId) {
         try {
-          const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/appointments/client/${user?.id}`);
-          if (res.ok) {
-            const clientAppointments = await res.json();
-            const currentApp = clientAppointments.find((a: any) => a.id === currentAppointmentId);
-            if (currentApp) {
-              if (currentApp.status === 'CONFIRMED') {
-                // Barber accepted! Update client view
+          const app = await api.getAppointmentDetails(currentAppointmentId);
+          if (app) {
+            if (app.status === 'CANCELLED') {
+              setMatchSession((prev: any) => ({ ...prev, status: 'idle', activeMatch: null }));
+              setCurrentAppointmentId(null);
+              alert('O agendamento foi cancelado.');
+            } else if (app.status === 'PENDING') {
+              if (!isBarberView) {
                 setMatchSession((prev: any) => ({
                   ...prev,
-                  status: 'accepted',
+                  status: 'searching',
                   activeMatch: {
-                    id: currentApp.id,
-                    price: currentApp.price,
-                    services: currentApp.services,
-                    client: { name: user?.name || 'Luis', avatar: user?.avatar || 'https://i.pravatar.cc/150?u=luis', rating: 4.8 },
-                    barber: currentApp.barber.user,
-                    barberId: currentApp.barber.id
+                    id: app.id,
+                    price: app.price,
+                    services: app.services,
+                    client: app.client,
+                    barber: app.barber?.user || app.barber || {},
+                    barberId: app.barberId
                   }
                 }));
-              } else if (currentApp.status === 'CANCELLED') {
-                // Request cancelled
-                setMatchSession((prev: any) => ({ ...prev, status: 'idle', activeMatch: null }));
-                setCurrentAppointmentId(null);
-                alert('Sua solicitação de agendamento foi cancelada.');
               }
+            } else if (app.status === 'PROPOSAL_SENT') {
+              setMatchSession((prev: any) => ({
+                ...prev,
+                status: 'proposal_sent',
+                activeMatch: {
+                  id: app.id,
+                  price: app.price,
+                  services: app.services,
+                  client: app.client,
+                  barber: app.barber?.user || app.barber || {},
+                  barberId: app.barberId
+                }
+              }));
+            } else if (app.status === 'CONFIRMED') {
+              setMatchSession((prev: any) => ({
+                ...prev,
+                status: 'accepted',
+                activeMatch: {
+                  id: app.id,
+                  price: app.price,
+                  services: app.services,
+                  client: app.client,
+                  barber: app.barber?.user || app.barber || {},
+                  barberId: app.barberId
+                }
+              }));
+            } else if (app.status === 'ARRIVED') {
+              setMatchSession((prev: any) => ({
+                ...prev,
+                status: 'arrived',
+                activeMatch: {
+                  id: app.id,
+                  price: app.price,
+                  services: app.services,
+                  client: app.client,
+                  barber: app.barber?.user || app.barber || {},
+                  barberId: app.barberId
+                }
+              }));
+            } else if (app.status === 'IN_SERVICE') {
+              setMatchSession((prev: any) => ({
+                ...prev,
+                status: 'in_service',
+                activeMatch: {
+                  id: app.id,
+                  price: app.price,
+                  services: app.services,
+                  client: app.client,
+                  barber: app.barber?.user || app.barber || {},
+                  barberId: app.barberId
+                }
+              }));
+            } else if (app.status === 'PAYMENT') {
+              setMatchSession((prev: any) => ({
+                ...prev,
+                status: 'payment',
+                activeMatch: {
+                  id: app.id,
+                  price: app.price,
+                  services: app.services,
+                  client: app.client,
+                  barber: app.barber?.user || app.barber || {},
+                  barberId: app.barberId
+                }
+              }));
+            } else if (app.status === 'COMPLETED') {
+              setMatchSession((prev: any) => ({
+                ...prev,
+                status: 'finished',
+                activeMatch: {
+                  id: app.id,
+                  price: app.price,
+                  services: app.services,
+                  client: app.client,
+                  barber: app.barber?.user || app.barber || {},
+                  barberId: app.barberId
+                }
+              }));
             }
+          } else {
+            setMatchSession((prev: any) => ({ ...prev, status: 'idle', activeMatch: null }));
+            setCurrentAppointmentId(null);
           }
         } catch (e) {
-          console.error('Error polling appointment status:', e);
+          console.error('Error polling active appointment:', e);
         }
       }
     };
@@ -197,21 +320,47 @@ export default function MapPage() {
     setPrevSlotCount(currentAvailable);
   }, [matchSession.globalAgenda]);
 
-  const SERVICE_CATEGORIES = [
-    { id: 'fade', label: 'Corte Fade', icon: '✂️', price: 45, time: '30-40 min' },
-    { id: 'navalhado', label: 'Corte Navalhado', icon: '🪒', price: 50, time: '45-50 min' },
-    { id: 'degrade', label: 'Degradê Pro', icon: '📏', price: 40, time: '30 min' },
-    { id: 'barba', label: 'Barba & Toalha', icon: '🧔', price: 30, time: '20 min' },
-    { id: 'freestyle', label: 'Freestyle Art', icon: '🎨', price: 70, time: '60 min' },
-    { id: 'pigmentacao', label: 'Pigmentação', icon: '🖋️', price: 25, time: '15 min' },
-  ];
+  const dynamicServiceCategories = useMemo(() => {
+    const standardCategories = [
+      { id: 'fade', label: 'Corte Fade', icon: '✂️', price: 45, time: '30-40 min' },
+      { id: 'navalhado', label: 'Corte Navalhado', icon: '🪒', price: 50, time: '45-50 min' },
+      { id: 'degrade', label: 'Degradê Pro', icon: '📏', price: 40, time: '30 min' },
+      { id: 'barba', label: 'Barba & Toalha', icon: '🧔', price: 30, time: '20 min' },
+      { id: 'freestyle', label: 'Freestyle Art', icon: '🎨', price: 70, time: '60 min' },
+      { id: 'pigmentacao', label: 'Pigmentação', icon: '🖋️', price: 25, time: '15 min' },
+    ];
+
+    if (!selectedBarber || !selectedBarber.servicesConfig) {
+      return standardCategories;
+    }
+
+    try {
+      const config = JSON.parse(selectedBarber.servicesConfig);
+      if (Array.isArray(config) && config.length > 0) {
+        return config.map((c: any) => {
+          const matchedStandard = standardCategories.find(s => s.id === c.id || s.label?.toLowerCase() === c.name?.toLowerCase() || s.id === c.name?.toLowerCase().replace(/\s+/g, '_'));
+          return {
+            id: c.id || c.name?.toLowerCase().replace(/\s+/g, '_') || 'custom',
+            label: c.name || c.label || 'Serviço',
+            icon: matchedStandard ? matchedStandard.icon : '✂️',
+            price: parseFloat(c.price || 40),
+            time: c.time || matchedStandard?.time || '30 min'
+          };
+        });
+      }
+    } catch (e) {
+      console.error('Error parsing selectedBarber servicesConfig:', e);
+    }
+
+    return standardCategories;
+  }, [selectedBarber]);
 
   const currentTotal = useMemo(() => {
-    return selectedServices.reduce((sum, serviceId) => {
-      const service = SERVICE_CATEGORIES.find(s => s.id === serviceId);
+    return selectedServices.reduce((sum, serviceLabel) => {
+      const service = dynamicServiceCategories.find(s => s.label === serviceLabel || s.id === serviceLabel);
       return sum + (service?.price || 0);
     }, 0);
-  }, [selectedServices]);
+  }, [selectedServices, dynamicServiceCategories]);
 
   useEffect(() => { setProposalPrice(currentTotal); }, [currentTotal]);
 
@@ -394,12 +543,13 @@ export default function MapPage() {
 
 
 
-  // PEGA SLOTS DO GUSTAVO EM TEMPO REAL (SINCRONIZADO COM AGENDA.TSX)
+  // PEGA SLOTS DO BARBEIRO SELECIONADO EM TEMPO REAL
   const barberSlots = useMemo(() => {
     const today = 16;
     const currentHour = new Date().getHours();
     const globalAgenda = matchSession.globalAgenda || {};
-    const dayData = globalAgenda[selectedBookingDate] || {};
+    const key = `${selectedBarber?.id || 'default'}_${selectedBookingDate}`;
+    const dayData = globalAgenda[key] || {};
     const slotsFromGlobal = dayData.slots || [];
     const workingHours = dayData.workingHours || { start: '08:00', end: '20:00' };
 
@@ -418,7 +568,7 @@ export default function MapPage() {
         const existing = slotsFromGlobal.find((s: any) => s.time === time);
         return existing || { time, status: 'empty', client_name: 'Livre' };
       });
-  }, [selectedBookingDate, matchSession.globalAgenda]);
+  }, [selectedBookingDate, matchSession.globalAgenda, selectedBarber]);
 
   return (
     <div className="flex flex-col w-full h-full bg-[#f8fafc] font-inter overflow-hidden relative" style={{ height: 'calc(100vh - 6rem)' }}>
@@ -788,7 +938,7 @@ export default function MapPage() {
                           </div>
 
                           <div className="space-y-3 mb-10">
-                            {SERVICE_CATEGORIES.map(service => (
+                            {dynamicServiceCategories.map((service: any) => (
                               <button
                                 key={service.id}
                                 onClick={() => {
@@ -827,7 +977,7 @@ export default function MapPage() {
                     }
 
                     if (bookingStep === 'payment') {
-                      const totalPrice = SERVICE_CATEGORIES.filter(s => selectedServices.includes(s.label)).reduce((acc, curr) => acc + curr.price, 0);
+                      const totalPrice = dynamicServiceCategories.filter(s => selectedServices.includes(s.label)).reduce((acc: number, curr: any) => acc + curr.price, 0);
                       return (
                         <div className="flex flex-col">
                           <div className="flex items-center justify-between mb-8">
@@ -1105,27 +1255,156 @@ export default function MapPage() {
         {(matchSession?.status === 'searching' || matchSession?.status === 'proposal_sent' || matchSession?.status === 'accepted' || matchSession?.status === 'arrived' || matchSession?.status === 'in_service') && matchSession?.activeMatch && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2000] bg-white rounded-t-[40px] px-8 pb-28 shadow-2xl border-t-4 border-blue-600">
             <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto my-4" />
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center space-x-5">
-                <img src={isBarberView ? matchSession.activeMatch.client.avatar : MOCK_BARBERS[0].avatar} className="w-20 h-20 rounded-[30px] object-cover border-4 border-blue-600 shadow-xl" />
-                <div><h4 className="text-2xl font-black text-blue-950 uppercase italic">{isBarberView ? matchSession.activeMatch.client.name : `@${MOCK_BARBERS[0].username}`}</h4><p className="text-[10px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-full inline-block mt-1">{getStatusLabel()}</p></div>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-5 text-left">
+                <img src={isBarberView ? (matchSession.activeMatch.client?.avatar || 'https://i.pravatar.cc/150') : (matchSession.activeMatch.barber?.avatar || matchSession.activeMatch.barber?.user?.avatar || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=100&h=100&fit=crop')} className="w-20 h-20 rounded-[30px] object-cover border-4 border-blue-600 shadow-xl" />
+                <div>
+                  <h4 className="text-2xl font-black text-blue-950 uppercase italic leading-none">{isBarberView ? (matchSession.activeMatch.client?.name || 'Cliente') : (matchSession.activeMatch.barber?.name || matchSession.activeMatch.barber?.user?.name || 'Barbeiro')}</h4>
+                  <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-full inline-block mt-1">{getStatusLabel()}</p>
+                </div>
               </div>
               <div className="text-right">
                 {!isBarberView && matchSession.status === 'searching' ? (<><p className="text-[10px] font-black text-gray-400 uppercase mb-1">Espera</p><h3 className="text-2xl font-black text-blue-950 italic">~15m</h3></>) : (<><p className="text-[10px] font-black text-gray-400 uppercase mb-1">Total</p><h3 className="text-2xl font-black text-blue-950 italic">R$ {matchSession.activeMatch.price},00</h3></>)}
               </div>
             </div>
+
+            {/* SECTIONS FOR SELECTED SERVICES */}
+            <div className="bg-blue-50/50 p-4 rounded-2xl mb-6 border border-blue-100/50 text-left">
+              <p className="text-[8px] font-black uppercase text-blue-400 tracking-widest mb-1.5">Serviços Selecionados</p>
+              <div className="flex flex-wrap gap-1">
+                {(matchSession.activeMatch.services || []).map((srv: string, idx: number) => (
+                  <span key={idx} className="px-2.5 py-1 bg-white text-blue-950 rounded-lg text-[9px] font-black uppercase border border-gray-100 flex items-center space-x-1 shadow-sm">
+                    <Scissors size={10} className="text-blue-500" />
+                    <span>{srv}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+
             <div className="flex space-x-3">
-              <button onClick={() => setShowCancelConfirm(true)} className="flex-1 py-6 bg-gray-50 rounded-[30px] font-black text-xs uppercase text-gray-400">Cancelar</button>
-              {isBarberView && matchSession.status === 'searching' && (<button onClick={() => setMatchSession((prev: any) => ({ ...prev, status: 'proposal_sent' }))} className="flex-[2] py-6 bg-blue-600 text-white rounded-[30px] font-black text-sm uppercase shadow-2xl">Enviar Proposta</button>)}
-              {!isBarberView && matchSession.status === 'proposal_sent' && (<button onClick={() => setMatchSession((prev: any) => ({ ...prev, status: 'accepted', barberId: 'b1' }))} className="flex-[2] py-6 bg-green-500 text-white rounded-[30px] font-black text-sm uppercase shadow-2xl">Aceitar</button>)}
-              {!isBarberView && matchSession.status === 'accepted' && (<button onClick={() => setMatchSession((prev: any) => ({ ...prev, status: 'arrived' }))} className="flex-[2] py-6 bg-yellow-400 text-black rounded-[30px] font-black text-sm uppercase shadow-2xl">Cheguei</button>)}
-              {isBarberView && (matchSession.status === 'arrived' || matchSession.status === 'accepted') && (<button onClick={() => setMatchSession((prev: any) => ({ ...prev, status: 'in_service' }))} className="flex-[2] py-6 bg-blue-600 text-white rounded-[30px] font-black text-sm uppercase shadow-2xl">Iniciar Atendimento</button>)}
+              {/* Only show cancel button if not in service */}
+              {matchSession.status !== 'in_service' && (
+                <button onClick={() => setShowCancelConfirm(true)} className="flex-1 py-6 bg-gray-50 rounded-[30px] font-black text-xs uppercase text-gray-400">Cancelar</button>
+              )}
+              
+              {/* 1. BARBER SEES PENDING: Click to propose customized price */}
+              {isBarberView && matchSession.status === 'searching' && (
+                <button
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      const proposalPrice = calculatePriceForServices(matchSession.activeMatch.services, barberProfile?.servicesConfig);
+                      await api.updateAppointmentStatus(matchSession.activeMatch.id, 'PROPOSAL_SENT', user.id, proposalPrice);
+                      setCurrentAppointmentId(matchSession.activeMatch.id);
+                    } catch (e: any) {
+                      alert('Erro ao enviar proposta: ' + e.message);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="flex-[2] py-6 bg-blue-600 text-white rounded-[30px] font-black text-sm uppercase shadow-2xl"
+                >
+                  Enviar Proposta
+                </button>
+              )}
+
+              {/* 2. CLIENT SEES PROPOSAL: Click to confirm match */}
+              {!isBarberView && matchSession.status === 'proposal_sent' && (
+                <button
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      await api.updateAppointmentStatus(matchSession.activeMatch.id, 'CONFIRMED');
+                    } catch (e: any) {
+                      alert('Erro ao aceitar proposta: ' + e.message);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="flex-[2] py-6 bg-green-500 text-white rounded-[30px] font-black text-sm uppercase shadow-2xl active:scale-95 transition-transform"
+                >
+                  Aceitar Batalha
+                </button>
+              )}
+
+              {/* 3. BARBER IS ON THE WAY: Click Cheguei */}
+              {isBarberView && matchSession.status === 'accepted' && (
+                <button
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      await api.updateAppointmentStatus(matchSession.activeMatch.id, 'ARRIVED');
+                    } catch (e: any) {
+                      alert('Erro ao confirmar chegada: ' + e.message);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="flex-[2] py-6 bg-yellow-400 text-black rounded-[30px] font-black text-sm uppercase shadow-2xl active:scale-95 transition-transform"
+                >
+                  Cheguei
+                </button>
+              )}
+
+              {/* 4. BARBER ARRIVED: Click Iniciar Atendimento */}
+              {isBarberView && matchSession.status === 'arrived' && (
+                <button
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      await api.updateAppointmentStatus(matchSession.activeMatch.id, 'IN_SERVICE');
+                    } catch (e: any) {
+                      alert('Erro ao iniciar atendimento: ' + e.message);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="flex-[2] py-6 bg-blue-600 text-white rounded-[30px] font-black text-sm uppercase shadow-2xl active:scale-95 transition-transform"
+                >
+                  Iniciar Atendimento
+                </button>
+              )}
+
+              {/* 5. CLIENT SEES STATUSES: Just informative waiting text */}
+              {!isBarberView && matchSession.status === 'accepted' && (
+                <div className="flex-[2] py-6 bg-blue-50 text-blue-600 rounded-[30px] font-black text-[10px] uppercase text-center flex items-center justify-center animate-pulse">
+                  Barbeiro a caminho
+                </div>
+              )}
+              {!isBarberView && matchSession.status === 'arrived' && (
+                <div className="flex-[2] py-6 bg-yellow-50 text-yellow-600 rounded-[30px] font-black text-[10px] uppercase text-center flex items-center justify-center animate-pulse">
+                  Barbeiro no local
+                </div>
+              )}
+
+              {/* 6. BARBER IN SERVICE: Click Finalizar */}
               {isBarberView && matchSession.status === 'in_service' && (
                 <div className="flex-[2] flex flex-col space-y-2">
-                  <button onClick={() => setMatchSession((prev: any) => ({ ...prev, status: 'payment' }))} className="w-full py-6 bg-green-500 text-white rounded-[30px] font-black text-sm uppercase shadow-xl">Finalizar</button>
-                  <button onClick={() => { alert('Notificação enviada ao próximo cliente: "O barbeiro solicitou mais 10 minutos para finalizar o trabalho atual." '); }} className="w-full py-3 bg-yellow-400 text-black rounded-[20px] font-black text-[10px] uppercase shadow-sm border-2 border-white flex items-center justify-center space-x-2">
-                    <Clock size={14} /> <span>Aumentar +10m (Avisar Próximo)</span>
+                  <button
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        await api.updateAppointmentStatus(matchSession.activeMatch.id, 'PAYMENT');
+                      } catch (e: any) {
+                        alert('Erro ao finalizar atendimento: ' + e.message);
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    className="w-full py-6 bg-green-500 text-white rounded-[30px] font-black text-sm uppercase shadow-xl active:scale-95 transition-transform"
+                  >
+                    Finalizar
                   </button>
+                  <button onClick={() => { alert('Notificação enviada ao próximo cliente: "O barbeiro solicitou mais 10 minutos para finalizar o trabalho atual." '); }} className="w-full py-3 bg-yellow-400 text-black rounded-[20px] font-black text-[10px] uppercase shadow-sm border-2 border-white flex items-center justify-center space-x-2">
+                    <Clock size={14} /> <span>Aumentar +10m</span>
+                  </button>
+                </div>
+              )}
+
+              {/* 7. CLIENT IN SERVICE: Informative text */}
+              {!isBarberView && matchSession.status === 'in_service' && (
+                <div className="flex-[2] py-6 bg-green-50 text-green-600 rounded-[30px] font-black text-[10px] uppercase text-center flex items-center justify-center animate-pulse">
+                  Em atendimento...
                 </div>
               )}
             </div>
@@ -1175,7 +1454,7 @@ export default function MapPage() {
                 <X size={24} className="text-gray-400" onClick={() => setIsRequesting(false)} />
               </div>
               <div className="flex-1 overflow-y-auto px-8 space-y-4 no-scrollbar pb-8">
-                {SERVICE_CATEGORIES.map((cat) => (
+                {dynamicServiceCategories.map((cat) => (
                   <button
                     key={cat.id}
                     onClick={() => setSelectedServices(prev => prev.includes(cat.label) ? prev.filter(s => s !== cat.label) : [...prev, cat.label])}
@@ -1184,7 +1463,8 @@ export default function MapPage() {
                     <div className="flex items-center space-x-4 text-left">
                       <span className="text-2xl">{cat.icon}</span>
                       <div>
-                        <p className="font-black text-blue-950 text-sm">{cat.label}</p>
+                        <p className="font-black text-blue-950 text-sm leading-none">{cat.label}</p>
+                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1">R$ {cat.price},00 • {cat.time}</p>
                       </div>
                     </div>
                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedServices.includes(cat.label) ? 'bg-blue-600 border-blue-600' : 'border-gray-200'}`}>

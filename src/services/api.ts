@@ -77,12 +77,17 @@ export const api = {
     if (!res.ok) return [];
     return res.json();
   },
-  updateAppointmentStatus: async (id: string, status: string, barberId?: string) => {
+  updateAppointmentStatus: async (id: string, status: string, barberId?: string, price?: number) => {
     const res = await fetch(`${API_URL}/appointments/${id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, barberId }),
+      body: JSON.stringify({ status, barberId, price }),
     });
+    return res.json();
+  },
+  getAppointmentDetails: async (id: string) => {
+    const res = await fetch(`${API_URL}/appointments/${id}`);
+    if (!res.ok) return null;
     return res.json();
   },
   getActiveRequests: async (latitude?: number, longitude?: number) => {
@@ -92,6 +97,14 @@ export const api = {
     }
     const res = await fetch(url);
     if (!res.ok) return [];
+    return res.json();
+  },
+  updateBarberProfile: async (id: string, data: any) => {
+    const res = await fetch(`${API_URL}/barbers/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
     return res.json();
   },
 };
