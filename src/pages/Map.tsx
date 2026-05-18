@@ -537,12 +537,14 @@ export default function MapPage() {
       avatar: b.user.avatar,
       coordinates: { latitude: b.latitude, longitude: b.longitude },
       status: b.isOnline ? STATUS.LIVRE : STATUS.FECHADO,
-      waitTime: 0
+      waitTime: 0,
+      servicesConfig: b.servicesConfig
     })), ...MOCK_BARBERS.filter(mb => !dbBarbers.find(db => db.user.name === mb.name))];
 
     // Varre os barbeiros e encontra quem tem slot 'radar' futuro hoje
     return allBarbers.map(barber => {
-      const dayData = globalAgenda[barber.id] || (barber.name.includes("Gustavo") ? globalAgenda[16] : null) || {};
+      const key = `${barber.id}_16`;
+      const dayData = globalAgenda[key] || (barber.name.includes("Gustavo") ? globalAgenda[16] : null) || {};
       const slots = dayData.slots || [];
       const activeRadars = slots.filter((s: any) => parseInt(s.time) >= hour && s.status === 'radar');
 
@@ -551,7 +553,7 @@ export default function MapPage() {
       }
       return null;
     }).filter(Boolean);
-  }, [matchSession.globalAgenda]);
+  }, [matchSession.globalAgenda, dbBarbers]);
 
   const filteredBarbers = useMemo(() => {
     // Somente barbeiros reais do banco de dados para experiência real
@@ -1226,7 +1228,13 @@ export default function MapPage() {
                                 {barber?.openRadars?.map((slot: any, idx: number) => (
                                   <button
                                     key={idx}
-                                    onClick={() => { setSelectedBarber(barber); setSelectedBookingDate(16); setIsBookingAgenda(true); }}
+                                    onClick={() => {
+                                      setSelectedBarber(barber);
+                                      setSelectedBookingDate(16);
+                                      setBookingData({ time: slot.time, date: 16 });
+                                      setBookingStep('services');
+                                      setIsBookingAgenda(true);
+                                    }}
                                     className="py-3 bg-blue-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-blue-100 flex items-center justify-center space-x-2 active:scale-95 transition-transform"
                                   >
                                     <Zap size={12} fill="white" /> <span>Reservar {slot.time}</span>

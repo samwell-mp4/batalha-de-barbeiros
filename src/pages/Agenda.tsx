@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, ChevronRight, ChevronLeft, Plus, X, Zap, Bell, ShieldOff, Check, Scissors as ScissorsIcon, Star, Settings, Calendar, Clock, Navigation } from 'lucide-react';
 import { api } from '../services/api';
@@ -7,6 +7,7 @@ import { api } from '../services/api';
 export default function Agenda() {
   const context = useOutletContext<{ isBarberView: boolean, matchSession: any, setMatchSession: (s: any) => void }>() || { isBarberView: true, matchSession: {}, setMatchSession: () => {} };
   const { isBarberView, matchSession, setMatchSession } = context;
+  const navigate = useNavigate();
 
   const today = 16;
   const currentHour = new Date().getHours();
@@ -590,7 +591,15 @@ export default function Agenda() {
                               </div>
                               <div className="grid grid-cols-2 gap-3">
                                  <button onClick={() => handleAcceptRequest(req)} className="py-4 bg-blue-600 text-white rounded-[20px] font-black text-[9px] uppercase italic tracking-widest shadow-lg flex items-center justify-center space-x-2"><Check size={14}/> <span>Aceitar</span></button>
-                                 <button onClick={() => {
+                                 <button onClick={async () => {
+                                    if (req.appointment?.id) {
+                                       try {
+                                          await api.updateAppointmentStatus(req.appointment.id, 'CANCELLED');
+                                          loadBarberAppointments();
+                                       } catch (err) {
+                                          console.error('Failed to cancel appointment:', err);
+                                       }
+                                    }
                                     setMatchSession((prev: any) => ({ ...prev, notifications: prev.notifications.filter((n: any) => n.id !== req.id) }));
                                     setSelectedSlot(null);
                                  }} className="py-4 bg-white border border-red-50 text-red-500 rounded-[20px] font-black text-[9px] uppercase flex items-center justify-center space-x-2"><X size={14}/> <span>Recusar</span></button>
@@ -598,6 +607,93 @@ export default function Agenda() {
                            </div>
                         ))}
                      </div>
+                  </div>
+                ) : selectedSlot.status === 'occupied' ? (
+                  <div className="flex flex-col space-y-4 text-left">
+                     <h3 className="text-xl font-black text-blue-950 uppercase italic text-center mb-2 tracking-widest">Atendimento Reservado</h3>
+                     <p className="text-[10px] text-gray-400 font-black uppercase text-center mb-6 tracking-widest">Dia {selectedDate} às {selectedSlot.time}</p>
+                     
+                     <div className="bg-gray-50 p-6 rounded-[35px] border border-gray-100 mb-4 text-left">
+                        <div className="flex items-center space-x-3 mb-4">
+                           <img src={selectedSlot.appointment?.client?.avatar || 'https://i.pravatar.cc/150'} className="w-12 h-12 rounded-2xl border-2 border-white shadow-md object-cover" />
+                           <div>
+                              <p className="text-xs font-black text-blue-950 uppercase italic leading-none">{selectedSlot.client_name}</p>
+                              <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest mt-1 block">Arena Battle Barber</span>
+                           </div>
+                        </div>
+                        
+                        <div className="bg-white p-4 rounded-2xl mb-4 border border-gray-100">
+                           <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Serviços Selecionados</p>
+                           <div className="flex flex-wrap gap-1">
+                              {(selectedSlot.services || []).map((srv: string, idx: number) => (
+                                 <span key={idx} className="px-2.5 py-1 bg-gray-50 text-blue-950 rounded-lg text-[9px] font-black uppercase border border-gray-100 flex items-center space-x-1">
+                                    <ScissorsIcon size={10} className="text-blue-500" />
+                                    <span>{srv}</span>
+                                 </span>
+                              ))}
+                           </div>
+                        </div>
+
+                        <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                           <span className="text-[9px] font-black text-gray-400 uppercase">Valor Total</span>
+                           <span className="text-lg font-black text-blue-600">R$ {selectedSlot.price},00</span>
+                        </div>
+                     </div>
+
+                     <button
+                        onClick={async () => {
+                          if (selectedSlot.appointment?.id) {
+                            try {
+                              if (selectedSlot.appointment.status === 'CONFIRMED') {
+                                await api.updateAppointmentStatus(selectedSlot.appointment.id, 'IN_SERVICE');
+                              }
+                              setMatchSession((prev: any) => ({
+                                ...prev,
+                                status: 'in_service',
+                                activeMatch: {
+                                  id: selectedSlot.appointment.id,
+                                  client: selectedSlot.appointment.client,
+                                  services: selectedSlot.services,
+                                  price: selectedSlot.price,
+                                  barberId: user.id
+                                }
+                              }));
+                              setSelectedSlot(null);
+                              navigate('/map');
+                            } catch (err: any) {
+                              alert('Erro ao iniciar atendimento: ' + err.message);
+                            }
+                          } else {
+                            setSelectedSlot(null);
+                            navigate('/map');
+                          }
+                        }}
+                        className="w-full py-6 bg-green-500 hover:bg-green-600 text-white rounded-[30px] font-black text-sm uppercase italic shadow-xl flex items-center justify-center space-x-3 transition-all active:scale-95"
+                     >
+                        <Zap size={20} fill="white" /> <span>Iniciar Atendimento</span>
+                     </button>
+
+                     <button
+                        onClick={async () => {
+                           if (confirm('Tem certeza de que deseja cancelar este agendamento?')) {
+                              try {
+                                 if (selectedSlot.appointment?.id) {
+                                    await api.updateAppointmentStatus(selectedSlot.appointment.id, 'CANCELLED');
+                                 } else {
+                                    updateGlobalAgenda(selectedDate, selectedSlot.time, { status: 'empty', client_name: 'Livre' });
+                                 }
+                                 alert('Agendamento cancelado com sucesso!');
+                                 loadBarberAppointments();
+                                 setSelectedSlot(null);
+                              } catch (e: any) {
+                                 alert('Erro ao cancelar: ' + e.message);
+                              }
+                           }
+                        }}
+                        className="w-full py-5 bg-red-50 hover:bg-red-100 text-red-500 border border-red-100 rounded-[30px] font-black text-xs uppercase flex items-center justify-center space-x-3 transition-all active:scale-95"
+                     >
+                        Cancelar Atendimento
+                     </button>
                   </div>
                 ) : (
                   <div className="flex flex-col space-y-3">
