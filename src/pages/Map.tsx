@@ -879,10 +879,19 @@ export default function MapPage() {
                     </div>
                   </div>
 
-                  {/* BOTÃ•ES DE AÃ‡ÃƒO */}
+                  {/* BOTÕES DE AÇÃO */}
                   <div className="flex flex-col space-y-3">
-                    <button onClick={() => setIsBookingAgenda(true)} className="w-full py-6 bg-gray-900 text-white rounded-[32px] font-black text-sm uppercase italic tracking-widest shadow-2xl flex items-center justify-center space-x-3 transition-transform active:scale-95">
-                      <Calendar size={20} className="text-cyan-400" /> <span>Agendar HorÃ¡rio</span>
+                    <button
+                      onClick={() => {
+                        if (user?.id === selectedBarber?.id) {
+                          alert('Você não pode agendar uma batalha consigo mesmo! Escolha outro barbeiro na arena.');
+                          return;
+                        }
+                        setIsBookingAgenda(true);
+                      }}
+                      className="w-full py-6 bg-gray-900 text-white rounded-[32px] font-black text-sm uppercase italic tracking-widest shadow-2xl flex items-center justify-center space-x-3 transition-transform active:scale-95"
+                    >
+                      <Calendar size={20} className="text-cyan-400" /> <span>Agendar Horário</span>
                     </button>
                     <button onClick={() => navigate(`/profile/${selectedBarber.id}`)} className="w-full py-6 bg-white text-blue-950 border-2 border-gray-100 rounded-[32px] font-black text-sm uppercase italic tracking-widest flex items-center justify-center space-x-3 transition-transform active:scale-95">
                       <User size={20} className="text-blue-600" /> <span>Ver Perfil Completo</span>
@@ -1067,10 +1076,16 @@ export default function MapPage() {
                                 alert('Você precisa estar logado para agendar.');
                                 return;
                               }
+                              const isPublicFila = selectedBarber?.name === 'Arena Aberta';
+                              const targetBarberId = isPublicFila ? (dbBarbers[0]?.id || 'b1') : (selectedBarber?.id || 'b1');
+
+                              if (user.id === targetBarberId) {
+                                alert('Você não pode agendar uma batalha consigo mesmo! Escolha outro barbeiro na arena.');
+                                return;
+                              }
+
                               setLoading(true);
                               try {
-                                const isPublicFila = selectedBarber?.name === 'Arena Aberta';
-                                const targetBarberId = isPublicFila ? (dbBarbers[0]?.id || 'b1') : (selectedBarber?.id || 'b1');
                                 
                                 await api.createAppointment({
                                   clientId: user.id,
@@ -1403,8 +1418,29 @@ export default function MapPage() {
                         </button>
                       </>
                     ) : (
-                      <div className="w-full py-5 bg-blue-50 text-blue-600 rounded-[30px] font-black text-[10px] uppercase text-center flex items-center justify-center animate-pulse">
-                        Aguardando decisão do cliente...
+                      <div className="w-full flex space-x-3">
+                        <button
+                          onClick={async () => {
+                            if (confirm('Tem certeza de que deseja cancelar esta batalha?')) {
+                              setLoading(true);
+                              try {
+                                await api.updateAppointmentStatus(matchSession.activeMatch.id, 'CANCELLED');
+                                setMatchSession((prev: any) => ({ ...prev, status: 'idle', activeMatch: null }));
+                                setCurrentAppointmentId(null);
+                              } catch (e: any) {
+                                alert('Erro ao cancelar batalha: ' + e.message);
+                              } finally {
+                                setLoading(false);
+                              }
+                            }
+                          }}
+                          className="flex-1 py-5 bg-red-50 text-red-500 rounded-[30px] font-black text-xs uppercase border border-red-100 hover:bg-red-100 transition-all active:scale-95"
+                        >
+                          Cancelar
+                        </button>
+                        <div className="flex-[2] py-5 bg-blue-50 text-blue-600 rounded-[30px] font-black text-[10px] uppercase text-center flex items-center justify-center animate-pulse">
+                          Aguardando cliente...
+                        </div>
                       </div>
                     )}
                   </>
