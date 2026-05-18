@@ -873,7 +873,7 @@ export default function MapPage() {
                                 const isPublicFila = selectedBarber?.name === 'Arena Aberta';
                                 const targetBarberId = isPublicFila ? (dbBarbers[0]?.id || 'b1') : (selectedBarber?.id || 'b1');
                                 
-                                const appointment = await api.createAppointment({
+                                await api.createAppointment({
                                   clientId: user.id,
                                   barberId: targetBarberId,
                                   date: bookingData.date,
