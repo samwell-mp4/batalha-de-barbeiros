@@ -182,6 +182,117 @@ export default function MapPage() {
         setSelectedBarberAppointments([]);
       }
     }
+
+    loadSelectedBarberData();
+
+    let interval: any;
+    if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta') {
+      interval = setInterval(loadSelectedBarberData, 5000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [selectedBarber?.id]);
+
+  useEffect(() => {
+    async function loadSelectedBarberData() {
+      if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta') {
+        try {
+          const barberData = await api.getBarber(selectedBarber.id);
+          if (barberData && barberData.schedule) {
+            const parsedSchedule = JSON.parse(barberData.schedule);
+            setMatchSession((prev: any) => ({
+              ...prev,
+              globalAgenda: {
+                ...(prev.globalAgenda || {}),
+                ...parsedSchedule
+              }
+            }));
+          }
+          const appointmentsData = await api.getBarberAppointments(selectedBarber.id);
+          setSelectedBarberAppointments(appointmentsData);
+        } catch (e) {
+          console.error('Failed to load selected barber data:', e);
+        }
+      } else {
+        setSelectedBarberAppointments([]);
+      }
+    }
+
+    loadSelectedBarberData();
+
+    let interval: any;
+    if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta') {
+      interval = setInterval(loadSelectedBarberData, 5000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [selectedBarber?.id]);
+
+  useEffect(() => {
+    async function loadSelectedBarberData() {
+      if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta') {
+        try {
+          const barberData = await api.getBarber(selectedBarber.id);
+          if (barberData && barberData.schedule) {
+            const parsedSchedule = JSON.parse(barberData.schedule);
+            setMatchSession((prev: any) => ({
+              ...prev,
+              globalAgenda: {
+                ...(prev.globalAgenda || {}),
+                ...parsedSchedule
+              }
+            }));
+          }
+          const appointmentsData = await api.getBarberAppointments(selectedBarber.id);
+          setSelectedBarberAppointments(appointmentsData);
+        } catch (e) {
+          console.error('Failed to load selected barber data:', e);
+        }
+      } else {
+        setSelectedBarberAppointments([]);
+      }
+    }
+
+    loadSelectedBarberData();
+
+    let interval: any;
+    if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta') {
+      interval = setInterval(loadSelectedBarberData, 5000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [selectedBarber?.id]);
+
+  useEffect(() => {
+    async function loadSelectedBarberData() {
+      if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta') {
+        try {
+          const barberData = await api.getBarber(selectedBarber.id);
+          if (barberData && barberData.schedule) {
+            const parsedSchedule = JSON.parse(barberData.schedule);
+            setMatchSession((prev: any) => ({
+              ...prev,
+              globalAgenda: {
+                ...(prev.globalAgenda || {}),
+                ...parsedSchedule
+              }
+            }));
+          }
+          const appointmentsData = await api.getBarberAppointments(selectedBarber.id);
+          setSelectedBarberAppointments(appointmentsData);
+        } catch (e) {
+          console.error('Failed to load selected barber data:', e);
+        }
+      } else {
+        setSelectedBarberAppointments([]);
+      }
+    }
     loadSelectedBarberData();
   }, [selectedBarber?.id]);
 
@@ -646,7 +757,7 @@ export default function MapPage() {
       .map(time => {
         const dbApp = selectedBarberAppointments.find((a: any) => {
           const appDate = new Date(a.date);
-          return appDate.getDate() === selectedBookingDate && a.time === time && ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'].includes(a.status);
+          return appDate.getUTCDate() === selectedBookingDate && a.time === time && ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'].includes(a.status);
         });
 
         if (dbApp) {

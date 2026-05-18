@@ -44,12 +44,15 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Missing barberId for standard appointments' });
     }
 
-    // Parse date correctly: if it's a number (like 16), represent it as May 16, 2026
+    // Parse date correctly: if it's a number (like 16), represent it as May 16, 2026 in UTC
     let parsedDate = new Date();
     if (typeof date === 'number') {
-      parsedDate = new Date(2026, 4, date); // May 2026
+      parsedDate = new Date(Date.UTC(2026, 4, date)); // May 2026 UTC
     } else if (date) {
-      parsedDate = new Date(date);
+      const d = new Date(date);
+      if (!isNaN(d.getTime())) {
+        parsedDate = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+      }
     }
 
     const appointment = await prisma.appointment.create({

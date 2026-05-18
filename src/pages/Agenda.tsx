@@ -30,6 +30,7 @@ export default function Agenda() {
   const [barberRatings, setBarberRatings] = useState<Record<string, number>>({});
 
   const globalAgenda = matchSession.globalAgenda || {};
+  const barberKeyPrefix = user?.barberProfile?.id || user?.id || 'default';
   const notifications = matchSession.notifications || [];
 
   const futureDates = useMemo(() => [16, 17, 18, 19, 20, 21, 22].filter(d => d >= today), [today]);
@@ -59,6 +60,13 @@ export default function Agenda() {
   useEffect(() => {
     loadClientAppointments();
     loadBarberAppointments();
+
+    const interval = setInterval(() => {
+      loadClientAppointments();
+      loadBarberAppointments();
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, [user?.id, isBarberView]);
 
   useEffect(() => {
@@ -87,7 +95,7 @@ export default function Agenda() {
   const updateGlobalAgenda = (date: number, time: string, data: any) => {
     setMatchSession((prev: any) => {
       const currentAgenda = prev.globalAgenda || {};
-      const key = `${user?.id || 'default'}_${date}`;
+      const key = `${barberKeyPrefix}_${date}`;
       const dateData = currentAgenda[key] || {};
       const dateSlots = dateData.slots || [];
       const updatedSlots = [...dateSlots.filter((s: any) => s.time !== time), { time, ...data }];
@@ -116,7 +124,7 @@ export default function Agenda() {
   const handleGlobalAction = (action: 'block_all' | 'radar_all') => {
     const hours = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
     const newSlots = hours.map(h => ({ time: h, status: action === 'block_all' ? 'blocked' : 'radar', client_name: action === 'block_all' ? 'Bloqueado' : 'Radar Ativo' }));
-    const key = `${user?.id || 'default'}_${selectedDate}`;
+    const key = `${barberKeyPrefix}_${selectedDate}`;
     
     setMatchSession((prev: any) => {
       const currentAgenda = prev.globalAgenda || {};
@@ -135,7 +143,7 @@ export default function Agenda() {
   const hours24 = useMemo(() => Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`), []);
 
   const currentTimeSlots = useMemo(() => {
-    const key = `${user?.id || 'default'}_${selectedDate}`;
+    const key = `${barberKeyPrefix}_${selectedDate}`;
     const dayData = globalAgenda[key] || {};
     const slotsFromGlobal = dayData.slots || [];
     const workingHours = dayData.workingHours || { start: '08:00', end: '20:00' };
@@ -149,7 +157,7 @@ export default function Agenda() {
       // Find DB Appointment matching this specific day & hour slot
       const dbApp = barberAppointments.find((a: any) => {
         const appDate = new Date(a.date);
-        return appDate.getDate() === selectedDate && a.time === time && ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'].includes(a.status);
+        return appDate.getUTCDate() === selectedDate && a.time === time && ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'].includes(a.status);
       });
 
       if (dbApp) {
@@ -177,7 +185,7 @@ export default function Agenda() {
   };
 
   const setWorkingHours = (date: number, start: string, end: string) => {
-    const key = `${user?.id || 'default'}_${date}`;
+    const key = `${barberKeyPrefix}_${date}`;
     setMatchSession((prev: any) => {
       const currentAgenda = prev.globalAgenda || {};
       const newAgenda = { ...currentAgenda, [key]: { ...(currentAgenda[key] || {}), workingHours: { start, end } } };
@@ -356,7 +364,7 @@ export default function Agenda() {
                             <div>
                               <h4 className="text-xs font-black text-blue-950 uppercase italic leading-none">{displayUser?.name || 'Luis'}</h4>
                               <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1 block">
-                                Dia {appDate.getDate() || 16} às {app.time}
+                                Dia {appDate.getUTCDate() || 16} às {app.time}
                               </span>
                             </div>
                           </div>
@@ -457,7 +465,7 @@ export default function Agenda() {
                               </div>
 
                               <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider text-blue-300 mb-6 bg-blue-950/40 px-4 py-3 rounded-xl">
-                                <div className="flex items-center space-x-1.5"><Calendar size={12} className="text-cyan-400" /><span>Dia {new Date(app.date).getDate() || 16}</span></div>
+                                <div className="flex items-center space-x-1.5"><Calendar size={12} className="text-cyan-400" /><span>Dia {new Date(app.date).getUTCDate() || 16}</span></div>
                                 <div className="flex items-center space-x-1.5"><Clock size={12} className="text-cyan-400" /><span>Às {app.time}</span></div>
                               </div>
 
@@ -960,10 +968,10 @@ export default function Agenda() {
                                onClick={async () => {
                                  try {
                                    const appDateObj = new Date(app.date);
-                                   const todayNum = new Date().getDate();
+                                   const todayNum = today; // Use static mock today date
 
-                                   if (appDateObj.getDate() !== todayNum) {
-                                     if (confirm(`Este atendimento está agendado para o Dia ${appDateObj.getDate()} às ${app.time}. Tem certeza de que deseja iniciar o atendimento agora? Isso irá realocar o horário na sua agenda para hoje.`)) {
+                                   if (appDateObj.getUTCDate() !== todayNum) {
+                                     if (confirm(`Este atendimento está agendado para o Dia ${appDateObj.getUTCDate()} às ${app.time}. Tem certeza de que deseja iniciar o atendimento agora? Isso irá realocar o horário na sua agenda para hoje.`)) {
                                        const todayIso = new Date().toISOString();
                                        const currentHourStr = `${new Date().getHours().toString().padStart(2, '0')}:00`;
                                        await api.updateAppointmentStatus(app.id, 'IN_SERVICE', undefined, undefined, todayIso, currentHourStr);
