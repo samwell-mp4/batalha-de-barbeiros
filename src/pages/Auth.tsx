@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  User, Scissors, Mail, Lock, MapPin, ChevronRight, 
+  User, Scissors, Mail, Lock, MapPin, ChevronRight,
   ChevronLeft, Check, Target, Rocket, ChevronDown, Clock
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -93,10 +93,10 @@ export default function Auth() {
             if (data.address) {
               const detectedState = data.address.state || '';
               const detectedCity = data.address.city || data.address.town || data.address.village || '';
-              
+
               // Tenta encontrar a sigla do estado pelo nome
-              const stateObj = states.find(s => 
-                s.nome.toLowerCase() === detectedState.toLowerCase() || 
+              const stateObj = states.find(s =>
+                s.nome.toLowerCase() === detectedState.toLowerCase() ||
                 s.sigla.toLowerCase() === detectedState.toLowerCase()
               );
 
@@ -168,7 +168,7 @@ export default function Auth() {
         alert("Por favor, preencha sua cidade e estado.");
         return;
       }
-      
+
       if (form.role === 'BARBER') {
         if (form.neighborhood.length < 2) {
           alert("O bairro é obrigatório.");
@@ -228,9 +228,9 @@ export default function Auth() {
     try {
       // Limpa qualquer lixo anterior antes de tentar logar
       localStorage.removeItem('user');
-      
+
       const response = await api.login(form.email, form.password);
-      
+
       if (response && response.id) {
         localStorage.setItem('user', JSON.stringify(response));
         // Pequeno delay para garantir que o storage foi gravado antes do refresh
@@ -259,13 +259,13 @@ export default function Auth() {
       const response = await api.register({
         ...form,
         whatsapp: form.phone, // Mapeia phone para whatsapp para o banco
-        schedule: JSON.stringify(form.schedule) 
+        schedule: JSON.stringify(form.schedule)
       });
-      
+
       // Salva dados básicos para o guia de boas-vindas
       localStorage.setItem('user', JSON.stringify(response));
       localStorage.setItem('justRegistered', 'true');
-      
+
       // Vai direto para o mapa/home após o sucesso
       navigate('/');
       window.location.reload(); // Garante que o estado global seja limpo
@@ -406,7 +406,7 @@ export default function Auth() {
             </div>
           </div>
         </div>
-        
+
         <div className="relative">
           <input
             type="text"
@@ -655,13 +655,13 @@ export default function Auth() {
 
       {/* MODO TOGGLE */}
       <div className="flex bg-gray-100 p-1 rounded-2xl mb-8 relative z-10 w-full max-w-[300px]">
-        <button 
+        <button
           onClick={() => setMode('login')}
           className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'login' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400'}`}
         >
           Entrar
         </button>
-        <button 
+        <button
           onClick={() => setMode('register')}
           className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'register' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400'}`}
         >
@@ -671,21 +671,21 @@ export default function Auth() {
 
       <div className="bg-white rounded-[60px] p-10 shadow-[0_40px_100px_rgba(0,0,0,0.08)] relative z-10 border border-gray-100 w-full max-w-md">
         {loading && <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-50 rounded-[60px] flex items-center justify-center"><div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" /></div>}
-        
+
         {mode === 'login' ? (
           <div className="space-y-8">
             <div className="text-center">
               <h2 className="text-3xl font-black text-blue-950 font-orbitron uppercase tracking-tighter">Bem-vindo de Volta</h2>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Acesse sua conta na Arena</p>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="text-[10px] font-black text-blue-950 uppercase tracking-widest ml-1 mb-2 block text-center">Digite seu E-mail</label>
                 <div className="relative">
                   <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-600" size={20} />
-                  <input 
-                    type="email" 
+                  <input
+                    type="email"
                     placeholder="EXEMPLO@EMAIL.COM"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -695,7 +695,7 @@ export default function Auth() {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={handleLogin}
               disabled={loading}
               className="w-full py-6 bg-blue-600 text-white rounded-[30px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center space-x-3"

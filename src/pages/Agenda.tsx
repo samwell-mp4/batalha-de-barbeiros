@@ -5,18 +5,20 @@ import { User, ChevronRight, ChevronLeft, Plus, X, Zap, Bell, ShieldOff, Check, 
 import { api } from '../services/api';
 
 export default function Agenda() {
-  const context = useOutletContext<{ isBarberView: boolean, matchSession: any, setMatchSession: (s: any) => void }>() || { isBarberView: true, matchSession: {}, setMatchSession: () => {} };
+  const context = useOutletContext<{ isBarberView: boolean, matchSession: any, setMatchSession: (s: any) => void }>() || { isBarberView: true, matchSession: {}, setMatchSession: () => { } };
   const { isBarberView, matchSession, setMatchSession } = context;
   const navigate = useNavigate(); console.log(navigate);
 
   const today = 16;
   const currentHour = new Date().getHours();
-  
+
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showHoursConfig, setShowHoursConfig] = useState(false);
-  const [activeTab, setActiveTab] = useState<'agenda' | 'financeiro'>('agenda');
+  const [activeTab, setActiveTab] = useState<'agenda' | 'financeiro' | 'notificacoes'>('agenda');
+  const [hoursConfigStart, setHoursConfigStart] = useState('08:00');
+  const [hoursConfigEnd, setHoursConfigEnd] = useState('20:00');
 
   const [user] = useState<any>(() => {
     const saved = localStorage.getItem('user');
@@ -32,6 +34,107 @@ export default function Agenda() {
   const globalAgenda = matchSession.globalAgenda || {};
   const barberKeyPrefix = user?.barberProfile?.id || user?.id || 'default';
   const notifications = matchSession.notifications || [];
+
+  // Sincronizar dinamicamente os inputs da jornada de trabalho ao trocar de data
+  useEffect(() => {
+    const key = `${barberKeyPrefix}_${selectedDate}`;
+    const dayData = globalAgenda[key] || {};
+    const workingHours = dayData.workingHours || { start: '08:00', end: '20:00' };
+    setHoursConfigStart(workingHours.start || '08:00');
+    setHoursConfigEnd(workingHours.end || '20:00');
+  }, [selectedDate, globalAgenda, barberKeyPrefix]);
+
+  // Log derivado em tempo real de todas as notificações de status para ambos (Cliente e Barbeiro)
+  const notificationsList = useMemo(() => {
+    const list: any[] = [];
+    const sourceApps = isBarberView ? barberAppointments : appointments;
+
+    sourceApps.forEach((app: any) => {
+      const appDate = new Date(app.date);
+      const dayStr = appDate.getUTCDate() || 16;
+      const timeStr = app.time;
+      const targetName = isBarberView ? (app.client?.name || 'Cliente') : (app.barber?.user?.name || 'Arena Barber');
+
+      if (app.status === 'PENDING') {
+        list.push({
+          id: `${app.id}_pending`,
+          title: isBarberView ? 'Nova Solicitação' : 'Solicitado',
+          message: isBarberView 
+            ? `Você recebeu um novo pedido de agendamento de ${targetName} para o Dia ${dayStr} às ${timeStr}.`
+            : `Seu agendamento para o Dia ${dayStr} às ${timeStr} foi enviado e aguarda o aceite de ${targetName}.`,
+          type: 'pending',
+          date: app.updatedAt || app.createdAt || new Date().toISOString(),
+          appointment: app
+        });
+      } else if (app.status === 'PROPOSAL_SENT') {
+        list.push({
+          id: `${app.id}_proposal`,
+          title: 'Proposta de Valor',
+          message: isBarberView
+            ? `Proposta enviada para ${targetName} para o Dia ${dayStr} às ${timeStr} no valor de R$ ${app.price},00.`
+            : `Você recebeu uma proposta de R$ ${app.price},00 de ${targetName} para o Dia ${dayStr} às ${timeStr}.`,
+          type: 'proposal',
+          date: app.updatedAt || new Date().toISOString(),
+          appointment: app
+        });
+      } else if (app.status === 'CONFIRMED') {
+        list.push({
+          id: `${app.id}_confirmed`,
+          title: 'Agendamento Confirmado',
+          message: isBarberView
+            ? `O agendamento com ${targetName} para o Dia ${dayStr} às ${timeStr} está CONFIRMADO!`
+            : `Seu agendamento com ${targetName} para o Dia ${dayStr} às ${timeStr} foi CONFIRMADO!`,
+          type: 'confirmed',
+          date: app.updatedAt || new Date().toISOString(),
+          appointment: app
+        });
+      } else if (app.status === 'IN_SERVICE') {
+        list.push({
+          id: `${app.id}_inservice`,
+          title: 'Serviço Iniciado',
+          message: isBarberView
+            ? `Você iniciou o atendimento de ${targetName} às ${timeStr}.`
+            : `Seu atendimento com ${targetName} para o Dia ${dayStr} às ${timeStr} foi INICIADO.`,
+          type: 'inservice',
+          date: app.updatedAt || new Date().toISOString(),
+          appointment: app
+        });
+      } else if (app.status === 'PAYMENT') {
+        list.push({
+          id: `${app.id}_payment`,
+          title: 'Aguardando Pagamento',
+          message: isBarberView
+            ? `Serviço com ${targetName} finalizado. Aguardando comprovação de pagamento de R$ ${app.price},00.`
+            : `Serviço finalizado! Por favor, realize o pagamento de R$ ${app.price},00 via Pix para ${targetName}.`,
+          type: 'payment',
+          date: app.updatedAt || new Date().toISOString(),
+          appointment: app
+        });
+      } else if (app.status === 'COMPLETED') {
+        list.push({
+          id: `${app.id}_completed`,
+          title: 'Serviço Concluído',
+          message: isBarberView
+            ? `Atendimento de ${targetName} concluído com sucesso! R$ ${app.price},00 adicionados ao seu painel.`
+            : `Seu atendimento com ${targetName} foi CONCLUÍDO! Avalie o barbeiro na sua aba de agendamentos.`,
+          type: 'completed',
+          date: app.updatedAt || new Date().toISOString(),
+          appointment: app
+        });
+      } else if (app.status === 'CANCELLED') {
+        list.push({
+          id: `${app.id}_cancelled`,
+          title: 'Agendamento Cancelado',
+          message: `O agendamento com ${targetName} para o Dia ${dayStr} às ${timeStr} foi CANCELADO.`,
+          type: 'cancelled',
+          date: app.updatedAt || new Date().toISOString(),
+          appointment: app
+        });
+      }
+    });
+
+    return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [barberAppointments, appointments, isBarberView]);
 
   const futureDates = useMemo(() => [16, 17, 18, 19, 20, 21, 22].filter(d => d >= today), [today]);
 
@@ -99,23 +202,23 @@ export default function Agenda() {
       const dateData = currentAgenda[key] || {};
       const dateSlots = dateData.slots || [];
       const updatedSlots = [...dateSlots.filter((s: any) => s.time !== time), { time, ...data }];
-      
-      const updatedNotifs = data.status === 'occupied' 
+
+      const updatedNotifs = data.status === 'occupied'
         ? (prev.notifications || []).filter((n: any) => !(n.time === time && n.date === date))
         : (prev.notifications || []);
 
       const newAgenda = { ...currentAgenda, [key]: { ...dateData, slots: updatedSlots } };
-      
+
       // Save schedule to database
       if (user?.id) {
         api.updateBarberProfile(user.id, { schedule: JSON.stringify(newAgenda) })
           .catch(err => console.error('Error persisting agenda update to DB:', err));
       }
 
-      return { 
-        ...prev, 
+      return {
+        ...prev,
         notifications: updatedNotifs,
-        globalAgenda: newAgenda 
+        globalAgenda: newAgenda
       };
     });
     setSelectedSlot(null);
@@ -125,11 +228,11 @@ export default function Agenda() {
     const hours = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
     const newSlots = hours.map(h => ({ time: h, status: action === 'block_all' ? 'blocked' : 'radar', client_name: action === 'block_all' ? 'Bloqueado' : 'Radar Ativo' }));
     const key = `${barberKeyPrefix}_${selectedDate}`;
-    
+
     setMatchSession((prev: any) => {
       const currentAgenda = prev.globalAgenda || {};
       const newAgenda = { ...currentAgenda, [key]: { ...(currentAgenda[key] || {}), slots: newSlots } };
-      
+
       // Save schedule to database
       if (user?.id) {
         api.updateBarberProfile(user.id, { schedule: JSON.stringify(newAgenda) })
@@ -189,7 +292,7 @@ export default function Agenda() {
     setMatchSession((prev: any) => {
       const currentAgenda = prev.globalAgenda || {};
       const newAgenda = { ...currentAgenda, [key]: { ...(currentAgenda[key] || {}), workingHours: { start, end } } };
-      
+
       // Save working hours to database schedule
       if (user?.id) {
         api.updateBarberProfile(user.id, { schedule: JSON.stringify(newAgenda) })
@@ -223,7 +326,7 @@ export default function Agenda() {
   return (
     <div className="flex flex-col bg-white min-h-full font-inter text-blue-950 pb-44 overflow-y-auto no-scrollbar items-center relative">
       <div className="w-full max-w-md flex flex-col min-h-full bg-white relative">
-        
+
         {/* HEADER SECTION */}
         <div className="px-6 py-6 bg-white border-b border-gray-100 sticky top-0 z-50 backdrop-blur-md">
           <div className="flex items-center justify-between mb-8">
@@ -235,28 +338,28 @@ export default function Agenda() {
                 </span>
               </div>
               <h1 className="text-2xl font-black text-blue-950 uppercase italic tracking-tighter">
-                {isBarberView ? 'Agenda Estratégica' : 'Meus Desafios'}
+                {isBarberView ? 'Agenda Estratégica' : 'Meus Serviço'}
               </h1>
             </div>
             <div className="flex space-x-2">
-               {isBarberView && (
-                 <button onClick={() => setShowNotifications(true)} className="p-3 bg-gray-50 rounded-2xl text-blue-950 relative border border-gray-100">
-                    <Bell size={20}/>
-                    {notifications.length > 0 && <span className="absolute top-2.5 right-2.5 w-4 h-4 bg-red-500 rounded-full border-2 border-white flex items-center justify-center text-[8px] text-white font-bold animate-pulse">{notifications.length}</span>}
-                 </button>
-               )}
-               {isBarberView && (
-                 <button onClick={() => setShowHoursConfig(true)} className="p-3 bg-gray-900 text-white rounded-2xl shadow-xl">
-                   <Settings size={20}/>
-                 </button>
-               )}
+              {isBarberView && (
+                <button onClick={() => setShowNotifications(true)} className="p-3 bg-gray-50 rounded-2xl text-blue-950 relative border border-gray-100">
+                  <Bell size={20} />
+                  {notifications.length > 0 && <span className="absolute top-2.5 right-2.5 w-4 h-4 bg-red-500 rounded-full border-2 border-white flex items-center justify-center text-[8px] text-white font-bold animate-pulse">{notifications.length}</span>}
+                </button>
+              )}
+              {isBarberView && (
+                <button onClick={() => setShowHoursConfig(true)} className="p-3 bg-gray-900 text-white rounded-2xl shadow-xl">
+                  <Settings size={20} />
+                </button>
+              )}
             </div>
           </div>
 
           {/* DATE PICKER SLIDER (BARBER VIEW ONLY) */}
           {isBarberView && (
             <div className="flex items-center justify-between bg-gray-50/50 p-2 rounded-[30px] border border-gray-100 mb-6">
-              <button className="p-2 text-gray-300"><ChevronLeft size={20}/></button>
+              <button className="p-2 text-gray-300"><ChevronLeft size={20} /></button>
               <div className="flex space-x-3 overflow-x-auto no-scrollbar py-1">
                 {futureDates.map(day => (
                   <button key={day} onClick={() => setSelectedDate(day)} className={`min-w-[50px] py-4 rounded-[22px] flex flex-col items-center transition-all relative ${selectedDate === day ? 'bg-blue-600 text-white shadow-xl scale-110' : 'text-gray-400'}`}>
@@ -266,15 +369,15 @@ export default function Agenda() {
                   </button>
                 ))}
               </div>
-              <button className="p-2 text-gray-300"><ChevronRight size={20}/></button>
+              <button className="p-2 text-gray-300"><ChevronRight size={20} /></button>
             </div>
           )}
 
           {isBarberView && (
-             <div className="flex space-x-2">
-                <button onClick={() => handleGlobalAction('block_all')} className="flex-1 py-3 bg-red-50 text-red-500 rounded-xl text-[8px] font-black uppercase border border-red-100 flex items-center justify-center space-x-2"><ShieldOff size={14}/> <span>Bloquear Tudo</span></button>
-                <button onClick={() => handleGlobalAction('radar_all')} className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-xl text-[8px] font-black uppercase border border-blue-100 flex items-center justify-center space-x-2"><Zap size={14}/> <span>Tudo no Radar</span></button>
-             </div>
+            <div className="flex space-x-2">
+              <button onClick={() => handleGlobalAction('block_all')} className="flex-1 py-3 bg-red-50 text-red-500 rounded-xl text-[8px] font-black uppercase border border-red-100 flex items-center justify-center space-x-2"><ShieldOff size={14} /> <span>Bloquear Tudo</span></button>
+              <button onClick={() => handleGlobalAction('radar_all')} className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-xl text-[8px] font-black uppercase border border-blue-100 flex items-center justify-center space-x-2"><Zap size={14} /> <span>Tudo no Radar</span></button>
+            </div>
           )}
         </div>
 
@@ -284,19 +387,26 @@ export default function Agenda() {
           <div className="flex space-x-2 bg-gray-50 p-1.5 rounded-[24px] border border-gray-100 mb-6 w-full">
             <button
               onClick={() => setActiveTab('agenda')}
-              className={`flex-1 py-3.5 rounded-[18px] text-[10px] font-black uppercase tracking-wider transition-all ${
-                activeTab === 'agenda' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-gray-400'
-              }`}
+              className={`flex-1 py-3.5 rounded-[18px] text-[9px] font-black uppercase tracking-wider transition-all ${activeTab === 'agenda' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400'}`}
             >
-              {isBarberView ? 'Agenda / Grade' : 'Meus Agendamentos'}
+              {isBarberView ? 'Agenda' : 'Agendamentos'}
             </button>
             <button
               onClick={() => setActiveTab('financeiro')}
-              className={`flex-1 py-3.5 rounded-[18px] text-[10px] font-black uppercase tracking-wider transition-all ${
-                activeTab === 'financeiro' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-gray-400'
-              }`}
+              className={`flex-1 py-3.5 rounded-[18px] text-[9px] font-black uppercase tracking-wider transition-all ${activeTab === 'financeiro' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400'}`}
             >
-              {isBarberView ? 'Painel Financeiro' : 'Histórico & Despesas'}
+              {isBarberView ? 'Financeiro' : 'Histórico'}
+            </button>
+            <button
+              onClick={() => setActiveTab('notificacoes')}
+              className={`flex-1 py-3.5 rounded-[18px] text-[9px] font-black uppercase tracking-wider transition-all relative ${activeTab === 'notificacoes' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400'}`}
+            >
+              <span>Alertas</span>
+              {isBarberView && notifications.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border border-white flex items-center justify-center text-[8px] text-white font-bold animate-pulse">
+                  {notifications.length}
+                </span>
+              )}
             </button>
           </div>
 
@@ -415,6 +525,89 @@ export default function Agenda() {
                 )}
               </div>
             </div>
+          ) : activeTab === 'notificacoes' ? (
+            /* NOTIFICAÇÕES TAB CONTENT */
+            <div className="flex flex-col w-full pb-28 space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-black uppercase text-blue-950/40 tracking-wider">Histórico de Alertas</h3>
+                <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">
+                  {notificationsList.length} total
+                </span>
+              </div>
+
+              {notificationsList.length > 0 ? (
+                <div className="space-y-4">
+                  {notificationsList.map((notif: any) => {
+                    let borderClass = 'border-gray-100 bg-gray-50/50';
+                    let iconBg = 'bg-gray-100 text-gray-400';
+                    if (notif.type === 'pending') {
+                      borderClass = 'border-yellow-100 bg-yellow-50/30';
+                      iconBg = 'bg-yellow-400 text-white animate-pulse';
+                    } else if (notif.type === 'confirmed') {
+                      borderClass = 'border-green-100 bg-green-50/30';
+                      iconBg = 'bg-green-500 text-white';
+                    } else if (notif.type === 'cancelled') {
+                      borderClass = 'border-red-100 bg-red-50/30';
+                      iconBg = 'bg-red-500 text-white';
+                    } else if (notif.type === 'inservice') {
+                      borderClass = 'border-cyan-100 bg-cyan-50/30';
+                      iconBg = 'bg-cyan-500 text-white';
+                    } else if (notif.type === 'payment') {
+                      borderClass = 'border-orange-100 bg-orange-50/30';
+                      iconBg = 'bg-orange-500 text-white';
+                    } else if (notif.type === 'completed') {
+                      borderClass = 'border-blue-100 bg-blue-50/30';
+                      iconBg = 'bg-blue-600 text-white';
+                    }
+
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        key={notif.id}
+                        className={`p-5 rounded-[28px] border flex items-start space-x-4 transition-all ${borderClass}`}
+                      >
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${iconBg}`}>
+                          {notif.type === 'pending' || notif.type === 'proposal' ? (
+                            <Zap size={16} fill={notif.type === 'pending' ? 'white' : 'transparent'} />
+                          ) : notif.type === 'confirmed' ? (
+                            <Check size={16} />
+                          ) : notif.type === 'cancelled' ? (
+                            <X size={16} />
+                          ) : notif.type === 'inservice' ? (
+                            <Clock size={16} />
+                          ) : notif.type === 'payment' ? (
+                            <ScissorsIcon size={16} />
+                          ) : (
+                            <Star size={16} fill="white" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start mb-1">
+                            <h4 className="text-xs font-black uppercase text-blue-950 leading-tight">
+                              {notif.title}
+                            </h4>
+                            <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest shrink-0 ml-2">
+                              {new Date(notif.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-gray-500 font-bold leading-normal">
+                            {notif.message}
+                          </p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-20 text-center opacity-30 flex flex-col items-center">
+                  <Bell size={48} className="text-gray-400 mb-4" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-950">
+                    Nenhum alerta recente
+                  </p>
+                </div>
+              )}
+            </div>
           ) : (
             /* AGENDA / TIMELINE TAB */
             <>
@@ -435,7 +628,7 @@ export default function Agenda() {
                           return (
                             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} key={app.id} className="bg-gradient-to-br from-blue-950 to-blue-900 text-white p-6 rounded-[35px] shadow-2xl relative overflow-hidden border border-blue-800">
                               <div className="absolute top-0 right-0 p-6 opacity-5"><Zap size={100} /></div>
-                              
+
                               {/* HEADER INFO */}
                               <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center space-x-4">
@@ -444,11 +637,11 @@ export default function Agenda() {
                                     <h3 className="text-sm font-black uppercase italic leading-none">{app.barber?.user?.name || 'Arena Barber'}</h3>
                                     <span className={`inline-block text-[8px] font-black uppercase px-2 py-0.5 rounded-full mt-2 tracking-widest ${app.status === 'CONFIRMED' || app.status === 'IN_SERVICE' ? 'bg-green-500 text-white animate-pulse' : 'bg-yellow-500 text-black'}`}>
                                       {app.status === 'PENDING' ? 'Aguardando Barbeiro' :
-                                       app.status === 'PROPOSAL_SENT' ? 'Proposta Recebida' :
-                                       app.status === 'CONFIRMED' ? 'Confirmado' :
-                                       app.status === 'IN_SERVICE' ? 'Serviço Iniciado' :
-                                       app.status === 'PAYMENT' ? 'Aguardando Pagamento' :
-                                       'Concluído'}
+                                        app.status === 'PROPOSAL_SENT' ? 'Proposta Recebida' :
+                                          app.status === 'CONFIRMED' ? 'Confirmado' :
+                                            app.status === 'IN_SERVICE' ? 'Serviço Iniciado' :
+                                              app.status === 'PAYMENT' ? 'Aguardando Pagamento' :
+                                                'Concluído'}
                                     </span>
                                   </div>
                                 </div>
@@ -505,7 +698,7 @@ export default function Agenda() {
                                     }}
                                     className="w-full py-4 bg-red-500/20 border border-red-500/30 text-red-400 rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-transform"
                                   >
-                                    Cancelar Desafio
+                                    Cancelar Serviço
                                   </button>
                                 </div>
                               )}
@@ -657,7 +850,7 @@ export default function Agenda() {
                               {app.status === 'COMPLETED' && (
                                 <div className="flex flex-col space-y-4 bg-blue-950/60 p-5 rounded-3xl border border-blue-800 text-center">
                                   <p className="text-[10px] text-green-300 font-bold uppercase tracking-wider">Atendimento Concluído com Sucesso!</p>
-                                  
+
                                   {barberRatings[app.id] ? (
                                     <div className="py-2">
                                       <p className="text-[9px] text-cyan-400 font-black uppercase">Avaliação enviada com sucesso!</p>
@@ -741,12 +934,12 @@ export default function Agenda() {
                   {currentTimeSlots.map((slot: any) => {
                     const pendingRequests = notifications.filter((n: any) => n.time === slot.time && n.date === selectedDate && n.status === 'pending' && n.barberName !== 'Arena Aberta');
                     const isMyBooking = slot.isMyBooking && !isBarberView;
-                    
+
                     return (
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={slot.time} className="flex items-start space-x-4 relative z-10">
                         <div className="flex flex-col items-center w-8 pt-5"><span className="text-[8px] font-black text-gray-200">{slot.time}</span></div>
                         <div className="flex-1">
-                          <button onClick={() => { 
+                          <button onClick={() => {
                             if (isBarberView && pendingRequests.length > 0) {
                               setSelectedSlot({ ...slot, requests: pendingRequests });
                             } else {
@@ -756,15 +949,36 @@ export default function Agenda() {
                             className={`w-full p-5 rounded-[28px] border flex items-center justify-between transition-all ${pendingRequests.length > 0 ? 'bg-yellow-50 border-yellow-200 shadow-lg shadow-yellow-100/50' : isMyBooking ? 'bg-blue-600 border-none text-white shadow-2xl shadow-blue-100' : slot.status === 'occupied' ? 'bg-white border-gray-100 shadow-sm' : slot.status === 'radar' ? 'bg-blue-50 border-blue-200 border-dashed' : slot.status === 'blocked' ? 'bg-gray-50 opacity-50 grayscale' : 'bg-gray-50/10 border-dashed border-gray-100'}`}>
                             <div className="flex items-center space-x-4 text-left">
                               <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${pendingRequests.length > 0 ? 'bg-yellow-400 text-white' : isMyBooking ? 'bg-white/20 text-white shadow-inner' : slot.status === 'occupied' ? 'bg-blue-50 text-blue-600' : slot.status === 'radar' ? 'bg-blue-600 text-white' : slot.status === 'blocked' ? 'bg-gray-50 text-gray-400' : 'bg-white text-gray-200'}`}>
-                                {pendingRequests.length > 0 ? <span className="font-black text-xs">{pendingRequests.length}</span> : isMyBooking ? <User size={20} /> : slot.status === 'occupied' ? <User size={18} /> : slot.status === 'radar' ? <Zap size={18} fill="white" /> : slot.status === 'blocked' ? <ShieldOff size={18}/> : <Plus size={18} />}
+                                {pendingRequests.length > 0 ? <span className="font-black text-xs">{pendingRequests.length}</span> : isMyBooking ? <User size={20} /> : slot.status === 'occupied' ? <User size={18} /> : slot.status === 'radar' ? <Zap size={18} fill="white" /> : slot.status === 'blocked' ? <ShieldOff size={18} /> : <Plus size={18} />}
                               </div>
                               <div>
                                 <h4 className={`text-[12px] font-black uppercase tracking-tight ${isMyBooking ? 'text-white' : (slot.status === 'empty' && pendingRequests.length === 0 ? 'text-gray-300' : 'text-blue-950')}`}>
                                   {pendingRequests.length > 1 ? `${pendingRequests.length} SOLICITAÇÕES` : (pendingRequests.length === 1 ? 'NOVA SOLICITAÇÃO' : (isMyBooking ? `Batalha c/ ${slot.client_name}` : slot.client_name))}
                                 </h4>
-                                <p className={`text-[9px] font-black uppercase tracking-widest mt-0.5 ${isMyBooking ? 'text-blue-100' : 'text-gray-400'}`}>
-                                  {pendingRequests.length > 0 ? 'Candidatos em espera' : (slot.services?.length ? `${slot.services.join(' + ')} • R$ ${slot.price},00` : slot.status)}
-                                </p>
+                                <div className="flex items-center space-x-2 mt-0.5 flex-wrap gap-y-1">
+                                  <p className={`text-[9px] font-black uppercase tracking-widest ${isMyBooking ? 'text-blue-100' : 'text-gray-400'}`}>
+                                    {pendingRequests.length > 0 ? 'Candidatos em espera' : (slot.services?.length ? `${slot.services.join(' + ')} • R$ ${slot.price},00` : slot.status)}
+                                  </p>
+                                  {isBarberView && slot.appointment && (
+                                    <span className={`px-2 py-0.5 rounded-full text-[6px] font-black uppercase tracking-wider ${
+                                      slot.appointment.status === 'PENDING' ? 'bg-yellow-100 text-yellow-600' :
+                                      slot.appointment.status === 'PROPOSAL_SENT' ? 'bg-blue-100 text-blue-600' :
+                                      slot.appointment.status === 'CONFIRMED' ? 'bg-green-100 text-green-600 animate-pulse' :
+                                      slot.appointment.status === 'IN_SERVICE' ? 'bg-cyan-500 text-white animate-pulse' :
+                                      slot.appointment.status === 'PAYMENT' ? 'bg-orange-500 text-white animate-pulse' :
+                                      slot.appointment.status === 'COMPLETED' ? 'bg-gray-100 text-gray-500' :
+                                      'bg-red-100 text-red-500'
+                                    }`}>
+                                      {slot.appointment.status === 'PENDING' ? 'Pendente' :
+                                       slot.appointment.status === 'PROPOSAL_SENT' ? 'Proposta' :
+                                       slot.appointment.status === 'CONFIRMED' ? 'Confirmado' :
+                                       slot.appointment.status === 'IN_SERVICE' ? 'Em Atendimento' :
+                                       slot.appointment.status === 'PAYMENT' ? 'Aguardando Pagamento' :
+                                       slot.appointment.status === 'COMPLETED' ? 'Concluído' :
+                                       'Cancelado'}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                             {pendingRequests.length > 0 && <ChevronRight size={18} className="text-yellow-600 animate-pulse" />}
@@ -784,392 +998,408 @@ export default function Agenda() {
         {/* MODAL GESTÃO BARBEIRO (MÚLTIPLOS PEDIDOS) */}
         {selectedSlot && isBarberView && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[5000] bg-blue-950/60 backdrop-blur-md flex items-end justify-center">
-             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[55px] p-10 shadow-2xl">
-                <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-10" />
-                
-                {selectedSlot.requests?.length > 0 ? (
-                  <div className="flex flex-col">
-                     <h3 className="text-xl font-black text-blue-950 uppercase italic text-center mb-2">{selectedSlot.requests.length} Desafios Pendentes</h3>
-                     <p className="text-[10px] text-gray-400 font-black uppercase text-center mb-8 tracking-widest">Escolha o seu próximo oponente</p>
-                     
-                     <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar mb-8">
-                        {selectedSlot.requests.map((req: any) => (
-                           <div key={req.id} className="bg-gray-50 p-5 rounded-[35px] border border-gray-100">
-                              <div className="flex items-center justify-between mb-4">
-                                 <div className="flex items-center space-x-3">
-                                    <img src={`https://i.pravatar.cc/150?u=${req.id}`} className="w-12 h-12 rounded-2xl border-2 border-white shadow-md" />
-                                    <div>
-                                       <p className="text-xs font-black text-blue-950 uppercase italic leading-none">{req.client}</p>
-                                       <div className="flex items-center text-yellow-500 font-black text-[8px] mt-1"><Star size={10} className="fill-yellow-500 mr-1" /> 4.9 • 1.2km</div>
-                                    </div>
-                                 </div>
-                                 <div className="text-right">
-                                    <p className="text-[10px] font-black text-green-600">R$ {req.price},00</p>
-                                    <p className="text-[7px] font-bold text-gray-400 uppercase">{req.paymentMethod || 'Pix'}</p>
-                                 </div>
-                              </div>
-                              <div className="bg-white p-3 rounded-2xl mb-4 flex items-center space-x-2 border border-gray-100">
-                                 <ScissorsIcon size={14} className="text-blue-500"/><span className="text-[9px] font-black text-blue-950 uppercase">{req.services.join(' + ')}</span>
-                              </div>
-                              <div className="grid grid-cols-2 gap-3">
-                                 <button onClick={() => handleAcceptRequest(req)} className="py-4 bg-blue-600 text-white rounded-[20px] font-black text-[9px] uppercase italic tracking-widest shadow-lg flex items-center justify-center space-x-2"><Check size={14}/> <span>Aceitar</span></button>
-                                 <button onClick={async () => {
-                                    if (req.appointment?.id) {
-                                       try {
-                                          await api.updateAppointmentStatus(req.appointment.id, 'CANCELLED');
-                                          loadBarberAppointments();
-                                       } catch (err: any) {
-                                          console.error('Failed to cancel appointment:', err);
-                                       }
-                                    }
-                                    setMatchSession((prev: any) => ({ ...prev, notifications: prev.notifications.filter((n: any) => n.id !== req.id) }));
-                                    setSelectedSlot(null);
-                                 }} className="py-4 bg-white border border-red-50 text-red-500 rounded-[20px] font-black text-[9px] uppercase flex items-center justify-center space-x-2"><X size={14}/> <span>Recusar</span></button>
-                              </div>
-                           </div>
-                        ))}
-                     </div>
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[55px] p-10 shadow-2xl">
+              <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-10" />
+
+              {selectedSlot.requests?.length > 0 ? (
+                <div className="flex flex-col">
+                  <h3 className="text-xl font-black text-blue-950 uppercase italic text-center mb-2">{selectedSlot.requests.length} Desafios Pendentes</h3>
+                  <p className="text-[10px] text-gray-400 font-black uppercase text-center mb-8 tracking-widest">Escolha o seu próximo oponente</p>
+
+                  <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar mb-8">
+                    {selectedSlot.requests.map((req: any) => (
+                      <div key={req.id} className="bg-gray-50 p-5 rounded-[35px] border border-gray-100">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <img src={`https://i.pravatar.cc/150?u=${req.id}`} className="w-12 h-12 rounded-2xl border-2 border-white shadow-md" />
+                            <div>
+                              <p className="text-xs font-black text-blue-950 uppercase italic leading-none">{req.client}</p>
+                              <div className="flex items-center text-yellow-500 font-black text-[8px] mt-1"><Star size={10} className="fill-yellow-500 mr-1" /> 4.9 • 1.2km</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-black text-green-600">R$ {req.price},00</p>
+                            <p className="text-[7px] font-bold text-gray-400 uppercase">{req.paymentMethod || 'Pix'}</p>
+                          </div>
+                        </div>
+                        <div className="bg-white p-3 rounded-2xl mb-4 flex items-center space-x-2 border border-gray-100">
+                          <ScissorsIcon size={14} className="text-blue-500" /><span className="text-[9px] font-black text-blue-950 uppercase">{req.services.join(' + ')}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <button onClick={() => handleAcceptRequest(req)} className="py-4 bg-blue-600 text-white rounded-[20px] font-black text-[9px] uppercase italic tracking-widest shadow-lg flex items-center justify-center space-x-2"><Check size={14} /> <span>Aceitar</span></button>
+                          <button onClick={async () => {
+                            if (req.appointment?.id) {
+                              try {
+                                await api.updateAppointmentStatus(req.appointment.id, 'CANCELLED');
+                                loadBarberAppointments();
+                              } catch (err: any) {
+                                console.error('Failed to cancel appointment:', err);
+                              }
+                            }
+                            setMatchSession((prev: any) => ({ ...prev, notifications: prev.notifications.filter((n: any) => n.id !== req.id) }));
+                            setSelectedSlot(null);
+                          }} className="py-4 bg-white border border-red-50 text-red-500 rounded-[20px] font-black text-[9px] uppercase flex items-center justify-center space-x-2"><X size={14} /> <span>Recusar</span></button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ) : selectedSlot.status === 'occupied' ? (() => {
-                  const app = selectedSlot.appointment || {
-                    id: 'manual',
-                    status: 'CONFIRMED',
-                    client: { name: selectedSlot.client_name || 'Cliente' },
-                    services: selectedSlot.services || ['Corte Manual'],
-                    price: selectedSlot.price || 50,
-                    date: new Date(2026, 4, selectedDate).toISOString(),
-                    time: selectedSlot.time
-                  };
+                </div>
+              ) : selectedSlot.status === 'occupied' ? (() => {
+                const app = selectedSlot.appointment || {
+                  id: 'manual',
+                  status: 'CONFIRMED',
+                  client: { name: selectedSlot.client_name || 'Cliente' },
+                  services: selectedSlot.services || ['Corte Manual'],
+                  price: selectedSlot.price || 50,
+                  date: new Date(2026, 4, selectedDate).toISOString(),
+                  time: selectedSlot.time
+                };
 
-                  const steps = ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'];
-                  const stepLabels = ['Solicitado', 'Proposta', 'Confirmado', 'Ativo', 'Pagamento', 'Avaliado'];
-                  const currentStepIdx = steps.indexOf(app.status);
+                const steps = ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'];
+                const stepLabels = ['Solicitado', 'Proposta', 'Confirmado', 'Ativo', 'Pagamento', 'Avaliado'];
+                const currentStepIdx = steps.indexOf(app.status);
 
-                  return (
-                    <div className="flex flex-col space-y-4 text-left">
-                       <h3 className="text-xl font-black text-blue-950 uppercase italic text-center mb-1 tracking-widest">Painel do Atendimento</h3>
-                       <p className="text-[9px] text-gray-400 font-black uppercase text-center mb-3 tracking-widest">Dia {selectedDate} às {selectedSlot.time}</p>
+                return (
+                  <div className="flex flex-col space-y-4 text-left">
+                    <h3 className="text-xl font-black text-blue-950 uppercase italic text-center mb-1 tracking-widest">Painel do Atendimento</h3>
+                    <p className="text-[9px] text-gray-400 font-black uppercase text-center mb-3 tracking-widest">Dia {selectedDate} às {selectedSlot.time}</p>
 
-                       {/* STEPPER */}
-                       <div className="flex items-center justify-between mt-2 mb-6 px-1 relative w-full">
-                         {steps.map((st, idx) => {
-                           const isCompleted = idx < currentStepIdx;
-                           const isActive = idx === currentStepIdx;
-                           return (
-                             <div key={st} className="flex flex-col items-center relative z-10">
-                               <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-black transition-all ${isCompleted ? 'bg-blue-600 text-white' : isActive ? 'bg-green-500 text-white ring-4 ring-green-500/20 scale-110 animate-pulse' : 'bg-gray-100 text-gray-400'}`}>
-                                 {idx + 1}
-                               </div>
-                               <span className={`text-[5px] font-black uppercase mt-1 tracking-tighter ${isActive ? 'text-green-600' : 'text-gray-400'}`}>{stepLabels[idx]}</span>
-                             </div>
-                           );
-                         })}
-                         <div className="absolute top-[9px] left-3 right-3 h-[1px] bg-gray-100 z-0" />
-                         <div className="absolute top-[9px] left-3 right-3 h-[1px] bg-blue-600 z-0 transition-all" style={{ width: `${(Math.max(0, currentStepIdx) / (steps.length - 1)) * 90}%` }} />
-                       </div>
-
-                       {/* CARD CLIENT DETAILS */}
-                       <div className="bg-gray-50 p-6 rounded-[35px] border border-gray-100 mb-2 text-left">
-                          <div className="flex items-center space-x-3 mb-4">
-                             <img src={app.client?.avatar || 'https://i.pravatar.cc/150'} className="w-12 h-12 rounded-2xl border-2 border-white shadow-md object-cover" />
-                             <div>
-                                <p className="text-xs font-black text-blue-950 uppercase italic leading-none">{app.client?.name || selectedSlot.client_name}</p>
-                                <span className={`text-[8px] font-black uppercase tracking-widest mt-1 block ${app.status === 'CONFIRMED' || app.status === 'IN_SERVICE' ? 'text-green-600' : 'text-gray-400'}`}>
-                                  {app.status === 'PENDING' ? 'Aguardando Aceite' :
-                                   app.status === 'PROPOSAL_SENT' ? 'Proposta Enviada' :
-                                   app.status === 'CONFIRMED' ? 'Confirmado' :
-                                   app.status === 'IN_SERVICE' ? 'Atendimento Ativo' :
-                                   app.status === 'PAYMENT' ? 'Faturamento / Pix' :
-                                   'Finalizado'}
-                                </span>
-                             </div>
+                    {/* STEPPER */}
+                    <div className="flex items-center justify-between mt-2 mb-6 px-1 relative w-full">
+                      {steps.map((st, idx) => {
+                        const isCompleted = idx < currentStepIdx;
+                        const isActive = idx === currentStepIdx;
+                        return (
+                          <div key={st} className="flex flex-col items-center relative z-10">
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-black transition-all ${isCompleted ? 'bg-blue-600 text-white' : isActive ? 'bg-green-500 text-white ring-4 ring-green-500/20 scale-110 animate-pulse' : 'bg-gray-100 text-gray-400'}`}>
+                              {idx + 1}
+                            </div>
+                            <span className={`text-[5px] font-black uppercase mt-1 tracking-tighter ${isActive ? 'text-green-600' : 'text-gray-400'}`}>{stepLabels[idx]}</span>
                           </div>
-                          
-                          <div className="bg-white p-4 rounded-2xl mb-4 border border-gray-100">
-                             <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Serviços Contratados</p>
-                             <div className="flex flex-wrap gap-1">
-                                {(app.services || []).map((srv: string, idx: number) => (
-                                   <span key={idx} className="px-2.5 py-1 bg-gray-50 text-blue-950 rounded-lg text-[9px] font-black uppercase border border-gray-100 flex items-center space-x-1">
-                                      <ScissorsIcon size={10} className="text-blue-500" />
-                                      <span>{srv}</span>
-                                   </span>
-                                ))}
-                             </div>
-                          </div>
-
-                          <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-                             <span className="text-[9px] font-black text-gray-400 uppercase">Preço Acordado</span>
-                             <span className="text-lg font-black text-blue-600">R$ {app.price},00</span>
-                          </div>
-                       </div>
-
-                       {/* ACTIONS BY STEP */}
-                       {app.status === 'PENDING' && (
-                         <div className="grid grid-cols-2 gap-3">
-                           <button
-                             onClick={async () => {
-                               try {
-                                 await api.updateAppointmentStatus(app.id, 'CONFIRMED');
-                                 alert('Agendamento confirmado!');
-                                 loadBarberAppointments();
-                                 setSelectedSlot(null);
-                               } catch (err: any) {
-                                 alert('Erro ao confirmar: ' + err.message);
-                               }
-                             }}
-                             className="py-4 bg-blue-600 text-white rounded-[24px] font-black text-xs uppercase italic flex items-center justify-center space-x-2 shadow-lg"
-                           >
-                             <Check size={14} /> <span>Confirmar</span>
-                           </button>
-                           <button
-                             onClick={async () => {
-                               try {
-                                 await api.updateAppointmentStatus(app.id, 'CANCELLED');
-                                 alert('Agendamento recusado.');
-                                 loadBarberAppointments();
-                                 setSelectedSlot(null);
-                               } catch (err: any) {
-                                 alert('Erro: ' + err.message);
-                               }
-                             }}
-                             className="py-4 bg-red-50 text-red-500 rounded-[24px] font-black text-xs uppercase flex items-center justify-center border border-red-100"
-                           >
-                             Recusar
-                           </button>
-                         </div>
-                       )}
-
-                       {app.status === 'PROPOSAL_SENT' && (
-                         <div className="flex flex-col space-y-2">
-                           <p className="text-[10px] text-blue-500 font-bold uppercase tracking-wider text-center bg-blue-50 py-3 rounded-2xl">Proposta de R$ {app.price},00 enviada ao cliente. Aguardando aceitação.</p>
-                           <button
-                             onClick={async () => {
-                               if (confirm('Tem certeza de que deseja cancelar este agendamento?')) {
-                                 try {
-                                   await api.updateAppointmentStatus(app.id, 'CANCELLED');
-                                   alert('Agendamento cancelado.');
-                                   loadBarberAppointments();
-                                   setSelectedSlot(null);
-                                 } catch (err: any) {
-                                   alert('Erro: ' + err.message);
-                                 }
-                               }
-                             }}
-                             className="w-full py-4 bg-red-50 text-red-500 rounded-[24px] font-black text-xs uppercase flex items-center justify-center border border-red-100"
-                           >
-                             Cancelar Proposta
-                           </button>
-                         </div>
-                       )}
-
-                       {app.status === 'CONFIRMED' && (
-                         <div className="flex flex-col space-y-3">
-                            <button
-                               onClick={async () => {
-                                 try {
-                                   const appDateObj = new Date(app.date);
-                                   const todayNum = today; // Use static mock today date
-
-                                   if (appDateObj.getUTCDate() !== todayNum) {
-                                     if (confirm(`Este atendimento está agendado para o Dia ${appDateObj.getUTCDate()} às ${app.time}. Tem certeza de que deseja iniciar o atendimento agora? Isso irá realocar o horário na sua agenda para hoje.`)) {
-                                       const todayIso = new Date().toISOString();
-                                       const currentHourStr = `${new Date().getHours().toString().padStart(2, '0')}:00`;
-                                       await api.updateAppointmentStatus(app.id, 'IN_SERVICE', undefined, undefined, todayIso, currentHourStr);
-                                       alert('Horário realocado e atendimento iniciado com sucesso!');
-                                       loadBarberAppointments();
-                                       setSelectedSlot(null);
-                                     }
-                                   } else {
-                                     await api.updateAppointmentStatus(app.id, 'IN_SERVICE');
-                                     alert('Atendimento iniciado com sucesso!');
-                                     loadBarberAppointments();
-                                     setSelectedSlot(null);
-                                   }
-                                 } catch (err: any) {
-                                   alert('Erro ao iniciar atendimento: ' + err.message);
-                                 }
-                               }}
-                               className="w-full py-6 bg-green-500 hover:bg-green-600 text-white rounded-[30px] font-black text-sm uppercase italic shadow-xl flex items-center justify-center space-x-3 transition-all active:scale-95"
-                            >
-                               <Zap size={20} fill="white" /> <span>Iniciar Atendimento</span>
-                            </button>
-
-                            <button
-                               onClick={async () => {
-                                  if (confirm('Tem certeza de que deseja cancelar este agendamento?')) {
-                                     try {
-                                        await api.updateAppointmentStatus(app.id, 'CANCELLED');
-                                        alert('Agendamento cancelado com sucesso!');
-                                        loadBarberAppointments();
-                                        setSelectedSlot(null);
-                                     } catch (e: any) {
-                                        alert('Erro ao cancelar: ' + e.message);
-                                     }
-                                  }
-                               }}
-                               className="w-full py-5 bg-red-50 hover:bg-red-100 text-red-500 border border-red-100 rounded-[30px] font-black text-xs uppercase flex items-center justify-center space-x-3 transition-all active:scale-95"
-                            >
-                               Cancelar Atendimento
-                            </button>
-                         </div>
-                       )}
-
-                       {app.status === 'IN_SERVICE' && (
-                         <div className="flex flex-col space-y-3">
-                            <button
-                               onClick={async () => {
-                                 try {
-                                   await api.updateAppointmentStatus(app.id, 'PAYMENT');
-                                   alert('Serviço finalizado! O cliente agora pode ver os dados de pagamento na agenda dele.');
-                                   loadBarberAppointments();
-                                   setSelectedSlot(null);
-                                 } catch (err: any) {
-                                   alert('Erro ao finalizar serviço: ' + err.message);
-                                 }
-                               }}
-                               className="w-full py-6 bg-blue-600 hover:bg-blue-700 text-white rounded-[30px] font-black text-sm uppercase italic shadow-xl flex items-center justify-center space-x-3 transition-all active:scale-95"
-                            >
-                               <Check size={20} /> <span>Finalizar Serviço (Cobrar)</span>
-                            </button>
-
-                            <button
-                               onClick={async () => {
-                                  if (confirm('Tem certeza de que deseja cancelar este atendimento em andamento?')) {
-                                     try {
-                                        await api.updateAppointmentStatus(app.id, 'CANCELLED');
-                                        alert('Atendimento cancelado.');
-                                        loadBarberAppointments();
-                                        setSelectedSlot(null);
-                                     } catch (e: any) {
-                                        alert('Erro ao cancelar: ' + e.message);
-                                     }
-                                  }
-                               }}
-                               className="w-full py-4 bg-red-50 text-red-500 border border-red-100 rounded-[30px] font-black text-xs uppercase flex items-center justify-center transition-all active:scale-95"
-                            >
-                               Cancelar Atendimento
-                            </button>
-                         </div>
-                       )}
-
-                       {app.status === 'PAYMENT' && (
-                         <div className="flex flex-col space-y-3 text-center">
-                           <p className="text-[10px] text-yellow-600 font-bold uppercase tracking-wider bg-yellow-50 py-3 rounded-2xl">Aguardando o cliente realizar o pagamento Pix e confirmar.</p>
-                           <button
-                             onClick={async () => {
-                               try {
-                                 await api.updateAppointmentStatus(app.id, 'COMPLETED');
-                                 alert('Pagamento confirmado e atendimento finalizado com sucesso!');
-                                 loadBarberAppointments();
-                                 setSelectedSlot(null);
-                               } catch (err: any) {
-                                 alert('Erro ao confirmar pagamento: ' + err.message);
-                               }
-                             }}
-                             className="w-full py-6 bg-green-500 hover:bg-green-600 text-white rounded-[30px] font-black text-sm uppercase italic shadow-xl flex items-center justify-center space-x-2 transition-all active:scale-95"
-                           >
-                             <Check size={20} /> <span>Confirmar Pagamento Recebido</span>
-                           </button>
-                         </div>
-                       )}
-
-                       {app.status === 'COMPLETED' && (
-                         <div className="flex flex-col space-y-4 text-center">
-                           <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider bg-green-50 py-3 rounded-2xl">Serviço Concluído!</p>
-                           
-                           {clientRatings[app.id] ? (
-                             <div className="py-2 bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                               <p className="text-[9px] text-blue-950 font-black uppercase">Você avaliou este cliente com:</p>
-                               <div className="flex justify-center space-x-1 mt-1.5">
-                                 {Array.from({ length: 5 }).map((_, i) => (
-                                   <Star key={i} size={14} className={i < clientRatings[app.id] ? "text-yellow-400 fill-yellow-400" : "text-gray-200"} />
-                                 ))}
-                               </div>
-                             </div>
-                           ) : (
-                             <div className="py-2 bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                               <p className="text-[9px] text-blue-950 font-black uppercase">Avalie o perfil deste Cliente:</p>
-                               <div className="flex justify-center space-x-2 mt-3">
-                                 {Array.from({ length: 5 }).map((_, i) => {
-                                   const ratingVal = i + 1;
-                                   return (
-                                     <button
-                                       key={i}
-                                       onClick={() => {
-                                         setClientRatings(prev => ({ ...prev, [app.id]: ratingVal }));
-                                         alert(`Obrigado! Cliente avaliado com ${ratingVal} estrelas.`);
-                                       }}
-                                       className="transition-transform active:scale-125"
-                                     >
-                                       <Star size={24} className="text-gray-300 hover:text-yellow-400 hover:fill-yellow-400" />
-                                     </button>
-                                   );
-                                 })}
-                               </div>
-                             </div>
-                           )}
-                         </div>
-                       )}
+                        );
+                      })}
+                      <div className="absolute top-[9px] left-3 right-3 h-[1px] bg-gray-100 z-0" />
+                      <div className="absolute top-[9px] left-3 right-3 h-[1px] bg-blue-600 z-0 transition-all" style={{ width: `${(Math.max(0, currentStepIdx) / (steps.length - 1)) * 90}%` }} />
                     </div>
-                  );
-                })() : (
-                  <div className="flex flex-col space-y-3">
-                     <h3 className="text-xl font-black text-blue-950 uppercase italic text-center mb-10 tracking-widest">Dia {selectedDate} • {selectedSlot.time}</h3>
-                     <button onClick={() => updateGlobalAgenda(selectedDate, selectedSlot.time, { status: 'radar', client_name: 'Radar Ativo' })} className="w-full py-7 bg-blue-600 text-white rounded-[30px] font-black text-sm uppercase italic shadow-xl flex items-center justify-center space-x-3"><Zap size={22} className="text-cyan-300" /> <span>Lançar no Radar</span></button>
-                     <button onClick={() => updateGlobalAgenda(selectedDate, selectedSlot.time, { status: 'occupied', client_name: 'Reserva Manual', services: ['Corte Manual'], price: 50 })} className="w-full py-6 bg-gray-900 text-white rounded-[30px] font-black text-xs uppercase flex items-center justify-center space-x-3"><Plus size={20}/> <span>Agendar Manual</span></button>
-                     <button onClick={() => updateGlobalAgenda(selectedDate, selectedSlot.time, { status: 'blocked', client_name: 'Bloqueado' })} className="w-full py-6 bg-gray-100 text-gray-400 rounded-[30px] font-black text-xs uppercase flex items-center justify-center space-x-3"><ShieldOff size={20}/> <span>Bloquear Agenda</span></button>
-                     <button onClick={() => updateGlobalAgenda(selectedDate, selectedSlot.time, { status: 'empty', client_name: 'Livre' })} className="w-full py-4 text-red-500 font-black text-[10px] uppercase mt-4 text-center">Limpar Slot</button>
+
+                    {/* CARD CLIENT DETAILS */}
+                    <div className="bg-gray-50 p-6 rounded-[35px] border border-gray-100 mb-2 text-left">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <img src={app.client?.avatar || 'https://i.pravatar.cc/150'} className="w-12 h-12 rounded-2xl border-2 border-white shadow-md object-cover" />
+                        <div>
+                          <p className="text-xs font-black text-blue-950 uppercase italic leading-none">{app.client?.name || selectedSlot.client_name}</p>
+                          <span className={`text-[8px] font-black uppercase tracking-widest mt-1 block ${app.status === 'CONFIRMED' || app.status === 'IN_SERVICE' ? 'text-green-600' : 'text-gray-400'}`}>
+                            {app.status === 'PENDING' ? 'Aguardando Aceite' :
+                              app.status === 'PROPOSAL_SENT' ? 'Proposta Enviada' :
+                                app.status === 'CONFIRMED' ? 'Confirmado' :
+                                  app.status === 'IN_SERVICE' ? 'Atendimento Ativo' :
+                                    app.status === 'PAYMENT' ? 'Faturamento / Pix' :
+                                      'Finalizado'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-4 rounded-2xl mb-4 border border-gray-100">
+                        <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Serviços Contratados</p>
+                        <div className="flex flex-wrap gap-1">
+                          {(app.services || []).map((srv: string, idx: number) => (
+                            <span key={idx} className="px-2.5 py-1 bg-gray-50 text-blue-950 rounded-lg text-[9px] font-black uppercase border border-gray-100 flex items-center space-x-1">
+                              <ScissorsIcon size={10} className="text-blue-500" />
+                              <span>{srv}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                        <span className="text-[9px] font-black text-gray-400 uppercase">Preço Acordado</span>
+                        <span className="text-lg font-black text-blue-600">R$ {app.price},00</span>
+                      </div>
+                    </div>
+
+                    {/* ACTIONS BY STEP */}
+                    {app.status === 'PENDING' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          onClick={async () => {
+                            try {
+                              await api.updateAppointmentStatus(app.id, 'CONFIRMED');
+                              alert('Agendamento confirmado!');
+                              loadBarberAppointments();
+                              setSelectedSlot(null);
+                            } catch (err: any) {
+                              alert('Erro ao confirmar: ' + err.message);
+                            }
+                          }}
+                          className="py-4 bg-blue-600 text-white rounded-[24px] font-black text-xs uppercase italic flex items-center justify-center space-x-2 shadow-lg"
+                        >
+                          <Check size={14} /> <span>Confirmar</span>
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await api.updateAppointmentStatus(app.id, 'CANCELLED');
+                              alert('Agendamento recusado.');
+                              loadBarberAppointments();
+                              setSelectedSlot(null);
+                            } catch (err: any) {
+                              alert('Erro: ' + err.message);
+                            }
+                          }}
+                          className="py-4 bg-red-50 text-red-500 rounded-[24px] font-black text-xs uppercase flex items-center justify-center border border-red-100"
+                        >
+                          Recusar
+                        </button>
+                      </div>
+                    )}
+
+                    {app.status === 'PROPOSAL_SENT' && (
+                      <div className="flex flex-col space-y-2">
+                        <p className="text-[10px] text-blue-500 font-bold uppercase tracking-wider text-center bg-blue-50 py-3 rounded-2xl">Proposta de R$ {app.price},00 enviada ao cliente. Aguardando aceitação.</p>
+                        <button
+                          onClick={async () => {
+                            if (confirm('Tem certeza de que deseja cancelar este agendamento?')) {
+                              try {
+                                await api.updateAppointmentStatus(app.id, 'CANCELLED');
+                                alert('Agendamento cancelado.');
+                                loadBarberAppointments();
+                                setSelectedSlot(null);
+                              } catch (err: any) {
+                                alert('Erro: ' + err.message);
+                              }
+                            }
+                          }}
+                          className="w-full py-4 bg-red-50 text-red-500 rounded-[24px] font-black text-xs uppercase flex items-center justify-center border border-red-100"
+                        >
+                          Cancelar Proposta
+                        </button>
+                      </div>
+                    )}
+
+                    {app.status === 'CONFIRMED' && (
+                      <div className="flex flex-col space-y-3">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const appDateObj = new Date(app.date);
+                              const todayNum = today; // Use static mock today date
+
+                              if (appDateObj.getUTCDate() !== todayNum) {
+                                if (confirm(`Este atendimento está agendado para o Dia ${appDateObj.getUTCDate()} às ${app.time}. Tem certeza de que deseja iniciar o atendimento agora? Isso irá realocar o horário na sua agenda para hoje.`)) {
+                                  const todayIso = new Date().toISOString();
+                                  const currentHourStr = `${new Date().getHours().toString().padStart(2, '0')}:00`;
+                                  await api.updateAppointmentStatus(app.id, 'IN_SERVICE', undefined, undefined, todayIso, currentHourStr);
+                                  alert('Horário realocado e atendimento iniciado com sucesso!');
+                                  loadBarberAppointments();
+                                  setSelectedSlot(null);
+                                }
+                              } else {
+                                await api.updateAppointmentStatus(app.id, 'IN_SERVICE');
+                                alert('Atendimento iniciado com sucesso!');
+                                loadBarberAppointments();
+                                setSelectedSlot(null);
+                              }
+                            } catch (err: any) {
+                              alert('Erro ao iniciar atendimento: ' + err.message);
+                            }
+                          }}
+                          className="w-full py-6 bg-green-500 hover:bg-green-600 text-white rounded-[30px] font-black text-sm uppercase italic shadow-xl flex items-center justify-center space-x-3 transition-all active:scale-95"
+                        >
+                          <Zap size={20} fill="white" /> <span>Iniciar Atendimento</span>
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            if (confirm('Tem certeza de que deseja cancelar este agendamento?')) {
+                              try {
+                                await api.updateAppointmentStatus(app.id, 'CANCELLED');
+                                alert('Agendamento cancelado com sucesso!');
+                                loadBarberAppointments();
+                                setSelectedSlot(null);
+                              } catch (e: any) {
+                                alert('Erro ao cancelar: ' + e.message);
+                              }
+                            }
+                          }}
+                          className="w-full py-5 bg-red-50 hover:bg-red-100 text-red-500 border border-red-100 rounded-[30px] font-black text-xs uppercase flex items-center justify-center space-x-3 transition-all active:scale-95"
+                        >
+                          Cancelar Atendimento
+                        </button>
+                      </div>
+                    )}
+
+                    {app.status === 'IN_SERVICE' && (
+                      <div className="flex flex-col space-y-3">
+                        <button
+                          onClick={async () => {
+                            try {
+                              await api.updateAppointmentStatus(app.id, 'PAYMENT');
+                              alert('Serviço finalizado! O cliente agora pode ver os dados de pagamento na agenda dele.');
+                              loadBarberAppointments();
+                              setSelectedSlot(null);
+                            } catch (err: any) {
+                              alert('Erro ao finalizar serviço: ' + err.message);
+                            }
+                          }}
+                          className="w-full py-6 bg-blue-600 hover:bg-blue-700 text-white rounded-[30px] font-black text-sm uppercase italic shadow-xl flex items-center justify-center space-x-3 transition-all active:scale-95"
+                        >
+                          <Check size={20} /> <span>Finalizar Serviço (Cobrar)</span>
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            if (confirm('Tem certeza de que deseja cancelar este atendimento em andamento?')) {
+                              try {
+                                await api.updateAppointmentStatus(app.id, 'CANCELLED');
+                                alert('Atendimento cancelado.');
+                                loadBarberAppointments();
+                                setSelectedSlot(null);
+                              } catch (e: any) {
+                                alert('Erro ao cancelar: ' + e.message);
+                              }
+                            }
+                          }}
+                          className="w-full py-4 bg-red-50 text-red-500 border border-red-100 rounded-[30px] font-black text-xs uppercase flex items-center justify-center transition-all active:scale-95"
+                        >
+                          Cancelar Atendimento
+                        </button>
+                      </div>
+                    )}
+
+                    {app.status === 'PAYMENT' && (
+                      <div className="flex flex-col space-y-3 text-center">
+                        <p className="text-[10px] text-yellow-600 font-bold uppercase tracking-wider bg-yellow-50 py-3 rounded-2xl">Aguardando o cliente realizar o pagamento Pix e confirmar.</p>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await api.updateAppointmentStatus(app.id, 'COMPLETED');
+                              alert('Pagamento confirmado e atendimento finalizado com sucesso!');
+                              loadBarberAppointments();
+                              setSelectedSlot(null);
+                            } catch (err: any) {
+                              alert('Erro ao confirmar pagamento: ' + err.message);
+                            }
+                          }}
+                          className="w-full py-6 bg-green-500 hover:bg-green-600 text-white rounded-[30px] font-black text-sm uppercase italic shadow-xl flex items-center justify-center space-x-2 transition-all active:scale-95"
+                        >
+                          <Check size={20} /> <span>Confirmar Pagamento Recebido</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {app.status === 'COMPLETED' && (
+                      <div className="flex flex-col space-y-4 text-center">
+                        <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider bg-green-50 py-3 rounded-2xl">Serviço Concluído!</p>
+
+                        {clientRatings[app.id] ? (
+                          <div className="py-2 bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                            <p className="text-[9px] text-blue-950 font-black uppercase">Você avaliou este cliente com:</p>
+                            <div className="flex justify-center space-x-1 mt-1.5">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <Star key={i} size={14} className={i < clientRatings[app.id] ? "text-yellow-400 fill-yellow-400" : "text-gray-200"} />
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="py-2 bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                            <p className="text-[9px] text-blue-950 font-black uppercase">Avalie o perfil deste Cliente:</p>
+                            <div className="flex justify-center space-x-2 mt-3">
+                              {Array.from({ length: 5 }).map((_, i) => {
+                                const ratingVal = i + 1;
+                                return (
+                                  <button
+                                    key={i}
+                                    onClick={() => {
+                                      setClientRatings(prev => ({ ...prev, [app.id]: ratingVal }));
+                                      alert(`Obrigado! Cliente avaliado com ${ratingVal} estrelas.`);
+                                    }}
+                                    className="transition-transform active:scale-125"
+                                  >
+                                    <Star size={24} className="text-gray-300 hover:text-yellow-400 hover:fill-yellow-400" />
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
-                <button onClick={() => setSelectedSlot(null)} className="w-full py-4 text-gray-300 font-black text-[9px] uppercase mt-2">Fechar</button>
-             </motion.div>
+                );
+              })() : (
+                <div className="flex flex-col space-y-3">
+                  <h3 className="text-xl font-black text-blue-950 uppercase italic text-center mb-10 tracking-widest">Dia {selectedDate} • {selectedSlot.time}</h3>
+                  <button onClick={() => updateGlobalAgenda(selectedDate, selectedSlot.time, { status: 'radar', client_name: 'Radar Ativo' })} className="w-full py-7 bg-blue-600 text-white rounded-[30px] font-black text-sm uppercase italic shadow-xl flex items-center justify-center space-x-3"><Zap size={22} className="text-cyan-300" /> <span>Lançar no Radar</span></button>
+                  <button onClick={() => updateGlobalAgenda(selectedDate, selectedSlot.time, { status: 'occupied', client_name: 'Reserva Manual', services: ['Corte Manual'], price: 50 })} className="w-full py-6 bg-gray-900 text-white rounded-[30px] font-black text-xs uppercase flex items-center justify-center space-x-3"><Plus size={20} /> <span>Agendar Manual</span></button>
+                  <button onClick={() => updateGlobalAgenda(selectedDate, selectedSlot.time, { status: 'blocked', client_name: 'Bloqueado' })} className="w-full py-6 bg-gray-100 text-gray-400 rounded-[30px] font-black text-xs uppercase flex items-center justify-center space-x-3"><ShieldOff size={20} /> <span>Bloquear Agenda</span></button>
+                  <button onClick={() => updateGlobalAgenda(selectedDate, selectedSlot.time, { status: 'empty', client_name: 'Livre' })} className="w-full py-4 text-red-500 font-black text-[10px] uppercase mt-4 text-center">Limpar Slot</button>
+                </div>
+              )}
+              <button onClick={() => setSelectedSlot(null)} className="w-full py-4 text-gray-300 font-black text-[9px] uppercase mt-2">Fechar</button>
+            </motion.div>
           </motion.div>
         )}
 
         {/* NOTIFICATIONS CENTER */}
         {showNotifications && (
-           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] bg-blue-950/60 backdrop-blur-md flex items-end justify-center">
-              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[55px] p-10 shadow-2xl">
-                 <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-10" />
-                 <h3 className="text-2xl font-black text-blue-950 uppercase italic text-center mb-10">Solicitações Recentes</h3>
-                 <div className="space-y-4 max-h-[450px] overflow-y-auto no-scrollbar pb-10">
-                    {notifications.length > 0 ? notifications.map((n: any) => (
-                      <div key={n.id} className="bg-gray-50 p-6 rounded-[40px] border border-gray-100">
-                         <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center space-x-4">
-                               <img src={`https://i.pravatar.cc/150?u=${n.id}`} className="w-12 h-12 rounded-2xl border-2 border-white" />
-                               <div><p className="text-xs font-black text-blue-950 uppercase italic">{n.client}</p><p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Dia {n.date} às {n.time}</p></div>
-                            </div>
-                            <button onClick={() => handleAcceptRequest(n)} className="p-4 bg-blue-600 text-white rounded-2xl shadow-xl shadow-blue-50"><Check size={20}/></button>
-                         </div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] bg-blue-950/60 backdrop-blur-md flex items-end justify-center">
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[55px] p-10 shadow-2xl">
+              <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-10" />
+              <h3 className="text-2xl font-black text-blue-950 uppercase italic text-center mb-10">Solicitações Recentes</h3>
+              <div className="space-y-4 max-h-[450px] overflow-y-auto no-scrollbar pb-10">
+                {notifications.length > 0 ? notifications.map((n: any) => (
+                  <div key={n.id} className="bg-gray-50 p-6 rounded-[40px] border border-gray-100">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center space-x-4">
+                        <img src={`https://i.pravatar.cc/150?u=${n.id}`} className="w-12 h-12 rounded-2xl border-2 border-white" />
+                        <div><p className="text-xs font-black text-blue-950 uppercase italic">{n.client}</p><p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Dia {n.date} às {n.time}</p></div>
                       </div>
-                    )) : (
-                      <div className="py-20 text-center opacity-30"><Bell size={48} className="mx-auto mb-4" /><p className="text-[10px] font-black uppercase tracking-widest">Nenhuma notificação</p></div>
-                    )}
-                 </div>
-                 <button onClick={() => setShowNotifications(false)} className="w-full py-4 text-gray-300 font-black text-[9px] uppercase mt-2">Fechar</button>
-              </motion.div>
-           </motion.div>
+                      <button onClick={() => handleAcceptRequest(n)} className="p-4 bg-blue-600 text-white rounded-2xl shadow-xl shadow-blue-50"><Check size={20} /></button>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="py-20 text-center opacity-30"><Bell size={48} className="mx-auto mb-4" /><p className="text-[10px] font-black uppercase tracking-widest">Nenhuma notificação</p></div>
+                )}
+              </div>
+              <button onClick={() => setShowNotifications(false)} className="w-full py-4 text-gray-300 font-black text-[9px] uppercase mt-2">Fechar</button>
+            </motion.div>
+          </motion.div>
         )}
 
         {/* WORK shift MODAL */}
         {showHoursConfig && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] bg-blue-950/60 backdrop-blur-md flex items-center justify-center p-6">
-             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white rounded-[40px] p-8 w-full max-w-sm shadow-2xl">
-                <h3 className="text-xl font-black text-blue-950 uppercase italic mb-6">Configurar Jornada</h3>
-                <div className="space-y-4 mb-8">
-                   <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Início</p>
-                      <select className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 font-black text-sm" defaultValue="08:00"><option value="08:00">08:00</option><option value="09:00">09:00</option><option value="10:00">10:00</option></select>
-                   </div>
-                   <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Fim</p>
-                      <select className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 font-black text-sm" defaultValue="19:00"><option value="18:00">18:00</option><option value="19:00">19:00</option><option value="20:00">20:00</option></select>
-                   </div>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white rounded-[40px] p-8 w-full max-w-sm shadow-2xl">
+              <h3 className="text-xl font-black text-blue-950 uppercase italic mb-6">Configurar Jornada</h3>
+              <div className="space-y-4 mb-8">
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Início</p>
+                  <select 
+                    className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 font-black text-sm text-blue-950 outline-none" 
+                    value={hoursConfigStart}
+                    onChange={(e) => setHoursConfigStart(e.target.value)}
+                  >
+                    {Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`).map(h => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
                 </div>
-                <button onClick={() => setWorkingHours(selectedDate, '08:00', '19:00')} className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase shadow-xl">Salvar Turno</button>
-                <button onClick={() => setShowHoursConfig(false)} className="w-full py-4 text-gray-300 font-black text-[9px] uppercase mt-2 text-center w-full">Cancelar</button>
-             </motion.div>
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Fim</p>
+                  <select 
+                    className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 font-black text-sm text-blue-950 outline-none" 
+                    value={hoursConfigEnd}
+                    onChange={(e) => setHoursConfigEnd(e.target.value)}
+                  >
+                    {Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`).map(h => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <button onClick={() => { setWorkingHours(selectedDate, hoursConfigStart, hoursConfigEnd); setShowHoursConfig(false); }} className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase shadow-xl">Salvar Turno</button>
+              <button onClick={() => setShowHoursConfig(false)} className="w-full py-4 text-gray-300 font-black text-[9px] uppercase mt-2 text-center w-full">Cancelar</button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

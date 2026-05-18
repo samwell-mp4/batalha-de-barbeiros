@@ -44,7 +44,7 @@ const generateBarbers = (count: number) => {
     const name = names[i % names.length] + ' ' + (i + 1);
     const latOffset = (Math.random() - 0.5) * 0.02;
     const lngOffset = (Math.random() - 0.5) * 0.02;
-    
+
     return {
       id: `b_gen_${i}`,
       name: name,
@@ -65,9 +65,9 @@ const generateBarbers = (count: number) => {
       battles: Math.floor(Math.random() * 500),
       followers: Math.floor(Math.random() * 10000),
       description: 'Barbeiro de elite na arena.',
-      coordinates: { 
-        latitude: BASE_COORDS.latitude + latOffset, 
-        longitude: BASE_COORDS.longitude + lngOffset 
+      coordinates: {
+        latitude: BASE_COORDS.latitude + latOffset,
+        longitude: BASE_COORDS.longitude + lngOffset
       },
       activeTournament: null,
       tournamentStatus: null,
