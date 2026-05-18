@@ -244,23 +244,10 @@ export default function MapPage() {
                   barberId: app.barberId
                 }
               }));
-            } else if (app.status === 'CONFIRMED') {
+            } else if (app.status === 'CONFIRMED' || app.status === 'ARRIVED') {
               setMatchSession((prev: any) => ({
                 ...prev,
                 status: 'accepted',
-                activeMatch: {
-                  id: app.id,
-                  price: app.price,
-                  services: app.services,
-                  client: app.client,
-                  barber: app.barber?.user || app.barber || {},
-                  barberId: app.barberId
-                }
-              }));
-            } else if (app.status === 'ARRIVED') {
-              setMatchSession((prev: any) => ({
-                ...prev,
-                status: 'arrived',
                 activeMatch: {
                   id: app.id,
                   price: app.price,
@@ -1267,6 +1254,7 @@ export default function MapPage() {
                                     setLoading(true);
                                     try {
                                       await api.updateAppointmentStatus(req.id, 'CONFIRMED', user.id);
+                                      setCurrentAppointmentId(req.id);
                                       setMatchSession((prev: any) => ({
                                         ...prev,
                                         status: 'accepted',
@@ -1475,9 +1463,28 @@ export default function MapPage() {
                           <button
                             onClick={() => { alert('Problema reportado! O suporte da Arena Battle Barber já foi notificado e entrará em contato.'); }}
                             type="button"
-                            className="flex-1 py-5 bg-red-50 text-red-500 rounded-[30px] font-black text-xs uppercase flex items-center justify-center space-x-1.5 border border-red-100"
+                            className="flex-1 py-5 bg-red-50 text-red-500 rounded-[30px] font-black text-[10px] uppercase flex items-center justify-center space-x-1 border border-red-100"
                           >
                             <AlertTriangle size={14} /> <span>Problema</span>
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (confirm('Deseja realmente cancelar este atendimento em andamento?')) {
+                                setLoading(true);
+                                try {
+                                  await api.updateAppointmentStatus(matchSession.activeMatch.id, 'CANCELLED');
+                                  setMatchSession((prev: any) => ({ ...prev, status: 'idle', activeMatch: null }));
+                                  setCurrentAppointmentId(null);
+                                } catch (e: any) {
+                                  alert('Erro ao cancelar: ' + e.message);
+                                } finally {
+                                  setLoading(false);
+                                }
+                              }
+                            }}
+                            className="flex-1 py-5 bg-gray-950 text-white rounded-[30px] font-black text-[10px] uppercase active:scale-95 transition-transform"
+                          >
+                            Cancelar
                           </button>
                           <button
                             onClick={async () => {
