@@ -282,4 +282,44 @@ router.patch('/:id/status', async (req, res) => {
   }
 });
 
+// Get active non-completed/non-cancelled appointment for a user
+router.get('/user-active/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Find if the user is a barber
+    const barber = await prisma.barber.findFirst({
+      where: { userId }
+    });
+
+    const activeAppointment = await prisma.appointment.findFirst({
+      where: {
+        OR: [
+          { clientId: userId },
+          ...(barber ? [{ barberId: barber.id }] : [])
+        ],
+        status: {
+          notIn: ['COMPLETED', 'CANCELLED']
+        }
+      },
+      include: {
+        client: true,
+        barber: {
+          include: {
+            user: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    res.json(activeAppointment || null);
+  } catch (error: any) {
+    console.error('[API ERROR] Failed to fetch active appointment:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

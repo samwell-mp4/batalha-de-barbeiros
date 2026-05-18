@@ -82,7 +82,7 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { specialties, workingHours, bio, servicesConfig, barberShop } = req.body;
+    const { specialties, workingHours, bio, servicesConfig, barberShop, schedule } = req.body;
 
     const existingBarber = await prisma.barber.findFirst({
       where: {
@@ -104,7 +104,8 @@ router.put('/:id', async (req, res) => {
         workingHours: workingHours !== undefined ? workingHours : undefined,
         bio: bio !== undefined ? bio : undefined,
         servicesConfig: servicesConfig !== undefined ? servicesConfig : undefined,
-        barberShop: barberShop !== undefined ? barberShop : undefined
+        barberShop: barberShop !== undefined ? barberShop : undefined,
+        schedule: schedule !== undefined ? schedule : undefined
       },
       include: {
         user: true

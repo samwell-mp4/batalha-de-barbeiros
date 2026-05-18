@@ -90,6 +90,11 @@ export const api = {
     if (!res.ok) return null;
     return res.json();
   },
+  getActiveAppointment: async (userId: string) => {
+    const res = await fetch(`${API_URL}/appointments/user-active/${userId}`);
+    if (!res.ok) return null;
+    return res.json();
+  },
   getActiveRequests: async (latitude?: number, longitude?: number) => {
     let url = `${API_URL}/appointments/active-requests`;
     if (latitude && longitude) {

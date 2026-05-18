@@ -57,6 +57,29 @@ export default function Agenda() {
     loadBarberAppointments();
   }, [user?.id, isBarberView]);
 
+  useEffect(() => {
+    async function loadBarberSchedule() {
+      if (isBarberView && user?.id) {
+        try {
+          const barberData = await api.getBarber(user.id);
+          if (barberData && barberData.schedule) {
+            const parsedSchedule = JSON.parse(barberData.schedule);
+            setMatchSession((prev: any) => ({
+              ...prev,
+              globalAgenda: {
+                ...(prev.globalAgenda || {}),
+                ...parsedSchedule
+              }
+            }));
+          }
+        } catch (e) {
+          console.error('Failed to load barber schedule from DB:', e);
+        }
+      }
+    }
+    loadBarberSchedule();
+  }, [user?.id, isBarberView]);
+
   const updateGlobalAgenda = (date: number, time: string, data: any) => {
     setMatchSession((prev: any) => {
       const currentAgenda = prev.globalAgenda || {};
@@ -69,10 +92,18 @@ export default function Agenda() {
         ? (prev.notifications || []).filter((n: any) => !(n.time === time && n.date === date))
         : (prev.notifications || []);
 
+      const newAgenda = { ...currentAgenda, [key]: { ...dateData, slots: updatedSlots } };
+      
+      // Save schedule to database
+      if (user?.id) {
+        api.updateBarberProfile(user.id, { schedule: JSON.stringify(newAgenda) })
+          .catch(err => console.error('Error persisting agenda update to DB:', err));
+      }
+
       return { 
         ...prev, 
         notifications: updatedNotifs,
-        globalAgenda: { ...currentAgenda, [key]: { ...dateData, slots: updatedSlots } } 
+        globalAgenda: newAgenda 
       };
     });
     setSelectedSlot(null);
@@ -82,7 +113,19 @@ export default function Agenda() {
     const hours = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
     const newSlots = hours.map(h => ({ time: h, status: action === 'block_all' ? 'blocked' : 'radar', client_name: action === 'block_all' ? 'Bloqueado' : 'Radar Ativo' }));
     const key = `${user?.id || 'default'}_${selectedDate}`;
-    setMatchSession((prev: any) => ({ ...prev, globalAgenda: { ...(prev.globalAgenda || {}), [key]: { ...(prev.globalAgenda?.[key] || {}), slots: newSlots } } }));
+    
+    setMatchSession((prev: any) => {
+      const currentAgenda = prev.globalAgenda || {};
+      const newAgenda = { ...currentAgenda, [key]: { ...(currentAgenda[key] || {}), slots: newSlots } };
+      
+      // Save schedule to database
+      if (user?.id) {
+        api.updateBarberProfile(user.id, { schedule: JSON.stringify(newAgenda) })
+          .catch(err => console.error('Error persisting agenda action to DB:', err));
+      }
+
+      return { ...prev, globalAgenda: newAgenda };
+    });
   };
 
   const hours24 = useMemo(() => Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`), []);
@@ -130,10 +173,18 @@ export default function Agenda() {
 
   const setWorkingHours = (date: number, start: string, end: string) => {
     const key = `${user?.id || 'default'}_${date}`;
-    setMatchSession((prev: any) => ({
-      ...prev,
-      globalAgenda: { ...(prev.globalAgenda || {}), [key]: { ...(prev.globalAgenda?.[key] || {}), workingHours: { start, end } } }
-    }));
+    setMatchSession((prev: any) => {
+      const currentAgenda = prev.globalAgenda || {};
+      const newAgenda = { ...currentAgenda, [key]: { ...(currentAgenda[key] || {}), workingHours: { start, end } } };
+      
+      // Save working hours to database schedule
+      if (user?.id) {
+        api.updateBarberProfile(user.id, { schedule: JSON.stringify(newAgenda) })
+          .catch(err => console.error('Error persisting working hours to DB:', err));
+      }
+
+      return { ...prev, globalAgenda: newAgenda };
+    });
     setShowHoursConfig(false);
   };
 

@@ -61,6 +61,44 @@ export default function MapPage() {
     }
   }, []);
 
+  // Restore active battle session on mount/refresh (F5)
+  useEffect(() => {
+    async function restoreActiveSession() {
+      if (user?.id) {
+        try {
+          const activeApp = await api.getActiveAppointment(user.id);
+          if (activeApp && activeApp.id) {
+            console.log('[SESSION RESTORE] Restoring active battle:', activeApp.id);
+            setCurrentAppointmentId(activeApp.id);
+            
+            let localStatus = 'idle';
+            if (activeApp.status === 'PENDING') localStatus = 'searching';
+            else if (activeApp.status === 'PROPOSAL_SENT') localStatus = 'proposal_sent';
+            else if (activeApp.status === 'CONFIRMED' || activeApp.status === 'ARRIVED') localStatus = 'accepted';
+            else if (activeApp.status === 'IN_SERVICE') localStatus = 'in_service';
+            else if (activeApp.status === 'PAYMENT') localStatus = 'payment';
+
+            setMatchSession((prev: any) => ({
+              ...prev,
+              status: localStatus,
+              activeMatch: {
+                id: activeApp.id,
+                price: activeApp.price,
+                services: activeApp.services,
+                client: activeApp.client,
+                barber: activeApp.barber?.user || activeApp.barber || {},
+                barberId: activeApp.barberId
+              }
+            }));
+          }
+        } catch (e) {
+          console.error('[SESSION RESTORE ERROR] Failed to restore active session:', e);
+        }
+      }
+    }
+    restoreActiveSession();
+  }, [user?.id]);
+
   const initialPosition: [number, number] = mapCenter;
 
   const context = useOutletContext<{
@@ -293,6 +331,25 @@ export default function MapPage() {
       const data = await api.getBarberLocations();
       if (data && data.length > 0) {
         setDbBarbers(data);
+        
+        // Merge schedules from database to globalAgenda in state!
+        setMatchSession((prev: any) => {
+          const currentAgenda = prev.globalAgenda || {};
+          const mergedAgenda = { ...currentAgenda };
+          
+          data.forEach((barber: any) => {
+            if (barber.schedule) {
+              try {
+                const parsed = JSON.parse(barber.schedule);
+                Object.assign(mergedAgenda, parsed);
+              } catch (e) {
+                console.error(`Error parsing schedule for barber ${barber.id}:`, e);
+              }
+            }
+          });
+
+          return { ...prev, globalAgenda: mergedAgenda };
+        });
       } else {
         // Se a API retornar vazio, usamos os mocks para o site não ficar morto
         console.log('Using mock barbers as fallback');
@@ -1281,132 +1338,197 @@ export default function MapPage() {
               </div>
             </div>
 
-            <div className="flex space-x-3">
-              {/* Only show cancel button if not in service */}
-              {matchSession.status !== 'in_service' && (
-                <button onClick={() => setShowCancelConfirm(true)} className="flex-1 py-6 bg-gray-50 rounded-[30px] font-black text-xs uppercase text-gray-400">Cancelar</button>
-              )}
-              
-              {/* 1. BARBER SEES PENDING: Click to propose customized price */}
-              {isBarberView && matchSession.status === 'searching' && (
-                <button
-                  onClick={async () => {
-                    setLoading(true);
-                    try {
-                      const proposalPrice = calculatePriceForServices(matchSession.activeMatch.services, barberProfile?.servicesConfig);
-                      await api.updateAppointmentStatus(matchSession.activeMatch.id, 'PROPOSAL_SENT', user.id, proposalPrice);
-                      setCurrentAppointmentId(matchSession.activeMatch.id);
-                    } catch (e: any) {
-                      alert('Erro ao enviar proposta: ' + e.message);
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  className="flex-[2] py-6 bg-blue-600 text-white rounded-[30px] font-black text-sm uppercase shadow-2xl"
-                >
-                  Enviar Proposta
-                </button>
-              )}
+            <div className="w-full">
+              {/* BUTTON ACTIONS CONTAINER */}
+              <div className="flex space-x-3">
+                {/* 1. SEARCHING / PENDING PHASE */}
+                {matchSession.status === 'searching' && (
+                  <>
+                    <button onClick={() => setShowCancelConfirm(true)} className="flex-1 py-5 bg-gray-50 rounded-[30px] font-black text-xs uppercase text-gray-400">Cancelar</button>
+                    {isBarberView ? (
+                      <button
+                        onClick={async () => {
+                          setLoading(true);
+                          try {
+                            const proposalPrice = calculatePriceForServices(matchSession.activeMatch.services, barberProfile?.servicesConfig);
+                            await api.updateAppointmentStatus(matchSession.activeMatch.id, 'PROPOSAL_SENT', user.id, proposalPrice);
+                            setCurrentAppointmentId(matchSession.activeMatch.id);
+                          } catch (e: any) {
+                            alert('Erro ao enviar proposta: ' + e.message);
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                        className="flex-[2] py-5 bg-blue-600 text-white rounded-[30px] font-black text-sm uppercase shadow-2xl active:scale-95 transition-transform"
+                      >
+                        Enviar Proposta
+                      </button>
+                    ) : (
+                      <div className="flex-[2] py-5 bg-blue-50 text-blue-600 rounded-[30px] font-black text-[10px] uppercase text-center flex items-center justify-center animate-pulse">
+                        Aguardando Resposta...
+                      </div>
+                    )}
+                  </>
+                )}
 
-              {/* 2. CLIENT SEES PROPOSAL: Click to confirm match */}
-              {!isBarberView && matchSession.status === 'proposal_sent' && (
-                <button
-                  onClick={async () => {
-                    setLoading(true);
-                    try {
-                      await api.updateAppointmentStatus(matchSession.activeMatch.id, 'CONFIRMED');
-                    } catch (e: any) {
-                      alert('Erro ao aceitar proposta: ' + e.message);
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  className="flex-[2] py-6 bg-green-500 text-white rounded-[30px] font-black text-sm uppercase shadow-2xl active:scale-95 transition-transform"
-                >
-                  Aceitar Batalha
-                </button>
-              )}
+                {/* 2. PROPOSAL SENT PHASE */}
+                {matchSession.status === 'proposal_sent' && (
+                  <>
+                    {!isBarberView ? (
+                      <>
+                        <button
+                          onClick={async () => {
+                            setLoading(true);
+                            try {
+                              await api.updateAppointmentStatus(matchSession.activeMatch.id, 'CANCELLED');
+                              setMatchSession((prev: any) => ({ ...prev, status: 'idle', activeMatch: null }));
+                              setCurrentAppointmentId(null);
+                            } catch (e: any) {
+                              alert('Erro ao recusar proposta: ' + e.message);
+                            } finally {
+                              setLoading(false);
+                            }
+                          }}
+                          className="flex-1 py-5 bg-red-50 text-red-500 rounded-[30px] font-black text-xs uppercase border border-red-100"
+                        >
+                          Recusar
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setLoading(true);
+                            try {
+                              await api.updateAppointmentStatus(matchSession.activeMatch.id, 'CONFIRMED');
+                            } catch (e: any) {
+                              alert('Erro ao aceitar proposta: ' + e.message);
+                            } finally {
+                              setLoading(false);
+                            }
+                          }}
+                          className="flex-[2] py-5 bg-green-500 text-white rounded-[30px] font-black text-sm uppercase shadow-2xl active:scale-95 transition-transform"
+                        >
+                          Aceitar Batalha
+                        </button>
+                      </>
+                    ) : (
+                      <div className="w-full py-5 bg-blue-50 text-blue-600 rounded-[30px] font-black text-[10px] uppercase text-center flex items-center justify-center animate-pulse">
+                        Aguardando decisão do cliente...
+                      </div>
+                    )}
+                  </>
+                )}
 
-              {/* 3. BARBER IS ON THE WAY: Click Cheguei */}
-              {isBarberView && matchSession.status === 'accepted' && (
-                <button
-                  onClick={async () => {
-                    setLoading(true);
-                    try {
-                      await api.updateAppointmentStatus(matchSession.activeMatch.id, 'ARRIVED');
-                    } catch (e: any) {
-                      alert('Erro ao confirmar chegada: ' + e.message);
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  className="flex-[2] py-6 bg-yellow-400 text-black rounded-[30px] font-black text-sm uppercase shadow-2xl active:scale-95 transition-transform"
-                >
-                  Cheguei
-                </button>
-              )}
+                {/* 3. ACCEPTED / CONFIRMED PHASE (A CAMINHO) */}
+                {matchSession.status === 'accepted' && (
+                  <>
+                    <button onClick={() => setShowCancelConfirm(true)} className="flex-1 py-5 bg-gray-50 rounded-[30px] font-black text-xs uppercase text-gray-400">Cancelar</button>
+                    {isBarberView ? (
+                      <button
+                        onClick={async () => {
+                          setLoading(true);
+                          try {
+                            await api.updateAppointmentStatus(matchSession.activeMatch.id, 'IN_SERVICE');
+                          } catch (e: any) {
+                            alert('Erro ao iniciar serviço: ' + e.message);
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                        className="flex-[2] py-5 bg-blue-600 text-white rounded-[30px] font-black text-sm uppercase shadow-2xl active:scale-95 transition-transform"
+                      >
+                        Iniciar Serviço
+                      </button>
+                    ) : (
+                      <div className="flex-[2] py-5 bg-blue-50 text-blue-600 rounded-[30px] font-black text-[9px] uppercase tracking-wide text-center flex flex-col items-center justify-center animate-pulse leading-none">
+                        <span className="font-bold">Você está a caminho</span>
+                        <span className="text-[7px] text-blue-400 mt-1">Vá até a arena do barbeiro</span>
+                      </div>
+                    )}
+                  </>
+                )}
 
-              {/* 4. BARBER ARRIVED: Click Iniciar Atendimento */}
-              {isBarberView && matchSession.status === 'arrived' && (
-                <button
-                  onClick={async () => {
-                    setLoading(true);
-                    try {
-                      await api.updateAppointmentStatus(matchSession.activeMatch.id, 'IN_SERVICE');
-                    } catch (e: any) {
-                      alert('Erro ao iniciar atendimento: ' + e.message);
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  className="flex-[2] py-6 bg-blue-600 text-white rounded-[30px] font-black text-sm uppercase shadow-2xl active:scale-95 transition-transform"
-                >
-                  Iniciar Atendimento
-                </button>
-              )}
+                {/* 4. IN SERVICE PHASE (TELA DE SERVIÇO INICIADO COM COMANDA E BOTÕES EXCLUSIVOS) */}
+                {matchSession.status === 'in_service' && (
+                  <div className="w-full flex flex-col space-y-3 text-center">
+                    {/* Comanda detail for both Client and Barber */}
+                    <div className="bg-gray-50 p-5 rounded-[30px] border border-gray-100 flex flex-col space-y-2">
+                      <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                        <span className="text-[9px] font-black text-blue-950 uppercase tracking-widest">Comanda de Serviços</span>
+                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-lg text-[7px] font-black uppercase">Serviço Iniciado</span>
+                      </div>
+                      <div className="divide-y divide-gray-50">
+                        {(matchSession.activeMatch.services || []).map((srv: string, idx: number) => (
+                          <div key={idx} className="py-2.5 flex justify-between items-center text-xs font-bold text-blue-950">
+                            <span>{srv}</span>
+                            <span className="text-gray-400 text-[10px]">Incluso</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="pt-2 border-t border-gray-100 flex justify-between items-center">
+                        <span className="text-[9px] font-black text-gray-400 uppercase">Valor Total</span>
+                        <span className="text-lg font-black text-blue-600">R$ {matchSession.activeMatch.price},00</span>
+                      </div>
+                    </div>
 
-              {/* 5. CLIENT SEES STATUSES: Just informative waiting text */}
-              {!isBarberView && matchSession.status === 'accepted' && (
-                <div className="flex-[2] py-6 bg-blue-50 text-blue-600 rounded-[30px] font-black text-[10px] uppercase text-center flex items-center justify-center animate-pulse">
-                  Barbeiro a caminho
-                </div>
-              )}
-              {!isBarberView && matchSession.status === 'arrived' && (
-                <div className="flex-[2] py-6 bg-yellow-50 text-yellow-600 rounded-[30px] font-black text-[10px] uppercase text-center flex items-center justify-center animate-pulse">
-                  Barbeiro no local
-                </div>
-              )}
-
-              {/* 6. BARBER IN SERVICE: Click Finalizar */}
-              {isBarberView && matchSession.status === 'in_service' && (
-                <div className="flex-[2] flex flex-col space-y-2">
-                  <button
-                    onClick={async () => {
-                      setLoading(true);
-                      try {
-                        await api.updateAppointmentStatus(matchSession.activeMatch.id, 'PAYMENT');
-                      } catch (e: any) {
-                        alert('Erro ao finalizar atendimento: ' + e.message);
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                    className="w-full py-6 bg-green-500 text-white rounded-[30px] font-black text-sm uppercase shadow-xl active:scale-95 transition-transform"
-                  >
-                    Finalizar
-                  </button>
-                  <button onClick={() => { alert('Notificação enviada ao próximo cliente: "O barbeiro solicitou mais 10 minutos para finalizar o trabalho atual." '); }} className="w-full py-3 bg-yellow-400 text-black rounded-[20px] font-black text-[10px] uppercase shadow-sm border-2 border-white flex items-center justify-center space-x-2">
-                    <Clock size={14} /> <span>Aumentar +10m</span>
-                  </button>
-                </div>
-              )}
-
-              {/* 7. CLIENT IN SERVICE: Informative text */}
-              {!isBarberView && matchSession.status === 'in_service' && (
-                <div className="flex-[2] py-6 bg-green-50 text-green-600 rounded-[30px] font-black text-[10px] uppercase text-center flex items-center justify-center animate-pulse">
-                  Em atendimento...
-                </div>
-              )}
+                    <div className="flex space-x-3 w-full">
+                      {isBarberView ? (
+                        <>
+                          <button
+                            onClick={() => { alert('Problema reportado! O suporte da Arena Battle Barber já foi notificado e entrará em contato.'); }}
+                            type="button"
+                            className="flex-1 py-5 bg-red-50 text-red-500 rounded-[30px] font-black text-xs uppercase flex items-center justify-center space-x-1.5 border border-red-100"
+                          >
+                            <AlertTriangle size={14} /> <span>Problema</span>
+                          </button>
+                          <button
+                            onClick={async () => {
+                              setLoading(true);
+                              try {
+                                await api.updateAppointmentStatus(matchSession.activeMatch.id, 'PAYMENT');
+                              } catch (e: any) {
+                                alert('Erro ao finalizar atendimento: ' + e.message);
+                              } finally {
+                                setLoading(false);
+                              }
+                            }}
+                            className="flex-[2] py-5 bg-green-500 text-white rounded-[30px] font-black text-sm uppercase shadow-xl active:scale-95 transition-transform"
+                          >
+                            Finalizar Serviço
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => { alert('Problema reportado! O suporte da Arena Battle Barber já foi notificado e entrará em contato.'); }}
+                            type="button"
+                            className="flex-1 py-5 bg-red-50 text-red-500 rounded-[30px] font-black text-xs uppercase flex items-center justify-center space-x-1.5 border border-red-100"
+                          >
+                            <AlertTriangle size={14} /> <span>Problema</span>
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (confirm('Deseja realmente cancelar este atendimento em andamento? O cancelamento durante o serviço poderá acarretar taxas.')) {
+                                setLoading(true);
+                                try {
+                                  await api.updateAppointmentStatus(matchSession.activeMatch.id, 'CANCELLED');
+                                  setMatchSession((prev: any) => ({ ...prev, status: 'idle', activeMatch: null }));
+                                  setCurrentAppointmentId(null);
+                                } catch (e: any) {
+                                  alert('Erro ao cancelar: ' + e.message);
+                                } finally {
+                                  setLoading(false);
+                                }
+                              }
+                            }}
+                            className="flex-[2] py-5 bg-gray-900 text-white rounded-[30px] font-black text-xs uppercase active:scale-95 transition-transform"
+                          >
+                            Cancelar
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </motion.div>
         )}
