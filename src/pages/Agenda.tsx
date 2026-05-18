@@ -149,7 +149,7 @@ export default function Agenda() {
       // Find DB Appointment matching this specific day & hour slot
       const dbApp = barberAppointments.find((a: any) => {
         const appDate = new Date(a.date);
-        return appDate.getDate() === selectedDate && a.time === time && ['CONFIRMED', 'IN_SERVICE', 'PAYMENT'].includes(a.status);
+        return appDate.getDate() === selectedDate && a.time === time && ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'].includes(a.status);
       });
 
       if (dbApp) {

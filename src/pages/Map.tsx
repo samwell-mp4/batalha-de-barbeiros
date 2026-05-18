@@ -141,6 +141,7 @@ export default function MapPage() {
   const [prevSlotCount, setPrevSlotCount] = useState(0);
   const [activeRequests, setActiveRequests] = useState<any[]>([]);
   const [currentAppointmentId, setCurrentAppointmentId] = useState<string | null>(null);
+  const [selectedBarberAppointments, setSelectedBarberAppointments] = useState<any[]>([]);
 
   const [barberProfile, setBarberProfile] = useState<any>(null);
 
@@ -156,6 +157,33 @@ export default function MapPage() {
         .catch(err => console.error('Error fetching barber profile in Map:', err));
     }
   }, [isBarberView, user?.id]);
+
+  useEffect(() => {
+    async function loadSelectedBarberData() {
+      if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta') {
+        try {
+          const barberData = await api.getBarber(selectedBarber.id);
+          if (barberData && barberData.schedule) {
+            const parsedSchedule = JSON.parse(barberData.schedule);
+            setMatchSession((prev: any) => ({
+              ...prev,
+              globalAgenda: {
+                ...(prev.globalAgenda || {}),
+                ...parsedSchedule
+              }
+            }));
+          }
+          const appointmentsData = await api.getBarberAppointments(selectedBarber.id);
+          setSelectedBarberAppointments(appointmentsData);
+        } catch (e) {
+          console.error('Failed to load selected barber data:', e);
+        }
+      } else {
+        setSelectedBarberAppointments([]);
+      }
+    }
+    loadSelectedBarberData();
+  }, [selectedBarber?.id]);
 
   const calculatePriceForServices = (servicesList: string[], configStr: string | null) => {
     let total = 0;
@@ -616,10 +644,26 @@ export default function MapPage() {
         return isWithinShift && isFuture;
       })
       .map(time => {
+        const dbApp = selectedBarberAppointments.find((a: any) => {
+          const appDate = new Date(a.date);
+          return appDate.getDate() === selectedBookingDate && a.time === time && ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'].includes(a.status);
+        });
+
+        if (dbApp) {
+          return {
+            time,
+            status: 'occupied',
+            client_name: 'Reservado',
+            services: dbApp.services,
+            price: dbApp.price,
+            appointment: dbApp
+          };
+        }
+
         const existing = slotsFromGlobal.find((s: any) => s.time === time);
         return existing || { time, status: 'empty', client_name: 'Livre' };
       });
-  }, [selectedBookingDate, matchSession.globalAgenda, selectedBarber]);
+  }, [selectedBookingDate, matchSession.globalAgenda, selectedBarber, selectedBarberAppointments]);
 
   return (
     <div className="flex flex-col w-full h-full bg-[#f8fafc] font-inter overflow-hidden relative" style={{ height: 'calc(100vh - 6rem)' }}>
