@@ -15,6 +15,7 @@ export default function Agenda() {
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showHoursConfig, setShowHoursConfig] = useState(false);
+  const [activeTab, setActiveTab] = useState<'agenda' | 'financeiro'>('agenda');
 
   const [user] = useState<any>(() => {
     const saved = localStorage.getItem('user');
@@ -188,6 +189,25 @@ export default function Agenda() {
     setShowHoursConfig(false);
   };
 
+  const completedApps = isBarberView
+    ? barberAppointments.filter((a: any) => a.status === 'COMPLETED')
+    : appointments.filter((a: any) => a.status === 'COMPLETED');
+
+  const faturamentoRealizado = completedApps.reduce((sum, a) => sum + (a.price || 0), 0);
+
+  const pendingOrConfirmedApps = isBarberView
+    ? barberAppointments.filter((a: any) => a.status === 'CONFIRMED' || a.status === 'IN_SERVICE')
+    : appointments.filter((a: any) => a.status === 'CONFIRMED' || a.status === 'IN_SERVICE');
+
+  const faturamentoPrevisto = pendingOrConfirmedApps.reduce((sum, a) => sum + (a.price || 0), 0);
+
+  const totalGasto = completedApps.reduce((sum, a) => sum + (a.price || 0), 0);
+  const totalAgendado = pendingOrConfirmedApps.reduce((sum, a) => sum + (a.price || 0), 0);
+
+  const allApps = isBarberView
+    ? [...barberAppointments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    : [...appointments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
   return (
     <div className="flex flex-col bg-white min-h-full font-inter text-blue-950 pb-44 overflow-y-auto no-scrollbar items-center relative">
       <div className="w-full max-w-md flex flex-col min-h-full bg-white relative">
@@ -248,151 +268,291 @@ export default function Agenda() {
 
         {/* CONTENT LAYOUT */}
         <div className="px-6 pt-6">
-          {!isBarberView ? (
-            /* CLIENT VIEW DASHBOARD */
-            <div className="flex flex-col w-full">
-              {/* CURRENT ACTIVE BOOKINGS */}
-              <div className="mb-8">
-                <h2 className="text-sm font-black text-blue-600 uppercase tracking-widest mb-4">Minhas Próximas Batalhas</h2>
-                {appointments.filter((a: any) => a.status === 'PENDING' || a.status === 'CONFIRMED').length > 0 ? (
-                  <div className="space-y-4">
-                    {appointments.filter((a: any) => a.status === 'PENDING' || a.status === 'CONFIRMED').map((app: any) => (
-                      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} key={app.id} className="bg-gradient-to-br from-blue-950 to-blue-900 text-white p-6 rounded-[35px] shadow-2xl relative overflow-hidden border border-blue-800">
-                        <div className="absolute top-0 right-0 p-6 opacity-5"><Zap size={100} /></div>
-                        <div className="flex justify-between items-start mb-6">
-                          <div className="flex items-center space-x-4">
-                            <img src={app.barber?.user?.avatar || `https://i.pravatar.cc/150?u=${app.barber?.id}`} className="w-14 h-14 rounded-2xl object-cover border-2 border-cyan-400 shadow-md" />
+          {/* TAB SYSTEM */}
+          <div className="flex space-x-2 bg-gray-50 p-1.5 rounded-[24px] border border-gray-100 mb-6 w-full">
+            <button
+              onClick={() => setActiveTab('agenda')}
+              className={`flex-1 py-3.5 rounded-[18px] text-[10px] font-black uppercase tracking-wider transition-all ${
+                activeTab === 'agenda' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-gray-400'
+              }`}
+            >
+              {isBarberView ? 'Agenda / Grade' : 'Meus Agendamentos'}
+            </button>
+            <button
+              onClick={() => setActiveTab('financeiro')}
+              className={`flex-1 py-3.5 rounded-[18px] text-[10px] font-black uppercase tracking-wider transition-all ${
+                activeTab === 'financeiro' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-gray-400'
+              }`}
+            >
+              {isBarberView ? 'Painel Financeiro' : 'Histórico & Despesas'}
+            </button>
+          </div>
+
+          {activeTab === 'financeiro' ? (
+            /* FINANCEIRO / HISTORICO PANEL */
+            <div className="flex flex-col w-full pb-20">
+              {/* SUMMARY CARDS */}
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="bg-gradient-to-br from-blue-950 to-blue-900 text-white p-5 rounded-[28px] border border-blue-800 text-left">
+                  <span className="text-[8px] font-black text-cyan-300 uppercase tracking-widest block mb-1">
+                    {isBarberView ? 'Faturamento Real' : 'Despesas Totais'}
+                  </span>
+                  <p className="text-xl font-black italic">R$ {isBarberView ? faturamentoRealizado : totalGasto},00</p>
+                  <span className="text-[7px] font-black text-cyan-400 uppercase tracking-widest block mt-2">
+                    ✓ {completedApps.length} Atendimentos
+                  </span>
+                </div>
+                <div className="bg-gray-50 p-5 rounded-[28px] border border-gray-100 text-left">
+                  <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block mb-1">
+                    {isBarberView ? 'Previsão / Agendado' : 'Agendamentos Pendentes'}
+                  </span>
+                  <p className="text-xl font-black italic text-blue-950">R$ {isBarberView ? faturamentoPrevisto : totalAgendado},00</p>
+                  <span className="text-[7px] font-black text-blue-500 uppercase tracking-widest block mt-2">
+                    ⧗ {pendingOrConfirmedApps.length} Reservas
+                  </span>
+                </div>
+              </div>
+
+              {/* HISTORICO LIST */}
+              <div className="space-y-3">
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2 text-left">Lista de Agendamentos</p>
+                {allApps.length > 0 ? (
+                  allApps.map((app: any) => {
+                    const statusColors: Record<string, string> = {
+                      PENDING: 'bg-yellow-50 text-yellow-600 border border-yellow-100',
+                      PROPOSAL_SENT: 'bg-cyan-50 text-cyan-600 border border-cyan-100',
+                      CONFIRMED: 'bg-blue-50 text-blue-600 border border-blue-100',
+                      ARRIVED: 'bg-indigo-50 text-indigo-600 border border-indigo-100',
+                      IN_SERVICE: 'bg-purple-50 text-purple-600 border border-purple-100 animate-pulse',
+                      PAYMENT: 'bg-orange-50 text-orange-600 border border-orange-100',
+                      COMPLETED: 'bg-green-50 text-green-600 border border-green-100',
+                      CANCELLED: 'bg-red-50 text-red-600 border border-red-100',
+                    };
+                    const statusLabels: Record<string, string> = {
+                      PENDING: 'Pendente',
+                      PROPOSAL_SENT: 'Proposta',
+                      CONFIRMED: 'Confirmado',
+                      ARRIVED: 'Chegou',
+                      IN_SERVICE: 'Em Andamento',
+                      PAYMENT: 'Pagamento',
+                      COMPLETED: 'Finalizado',
+                      CANCELLED: 'Cancelado',
+                    };
+                    const displayUser = isBarberView ? app.client : (app.barber?.user || app.barber || {});
+                    const appDate = new Date(app.date);
+
+                    return (
+                      <div key={app.id} className="bg-white border border-gray-100 p-5 rounded-[28px] flex flex-col space-y-4 shadow-sm text-left">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center space-x-3">
+                            <img
+                              src={displayUser?.avatar || 'https://i.pravatar.cc/150'}
+                              className="w-11 h-11 rounded-xl object-cover border-2 border-white shadow-md"
+                            />
                             <div>
-                              <h3 className="text-sm font-black uppercase italic leading-none">{app.barber?.user?.name || 'Arena Barber'}</h3>
-                              <span className={`inline-block text-[8px] font-black uppercase px-2 py-0.5 rounded-full mt-2 tracking-widest ${app.status === 'CONFIRMED' ? 'bg-green-500 text-white animate-pulse' : 'bg-yellow-500 text-black'}`}>
-                                {app.status === 'CONFIRMED' ? 'Confirmado' : 'Aguardando Barbeiro'}
+                              <h4 className="text-xs font-black text-blue-950 uppercase italic leading-none">{displayUser?.name || 'Luis'}</h4>
+                              <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1 block">
+                                Dia {appDate.getDate() || 16} às {app.time}
                               </span>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-[14px] font-black text-cyan-400 italic">R$ {app.price},00</p>
-                            <p className="text-[8px] font-bold text-blue-300 uppercase tracking-widest mt-1">{app.paymentMethod || 'Pix'}</p>
-                          </div>
-                        </div>
-                        <div className="bg-blue-900/50 p-4 rounded-2xl mb-6 flex items-center space-x-2 border border-blue-800">
-                          <ScissorsIcon size={14} className="text-cyan-400" />
-                          <span className="text-[9px] font-black uppercase tracking-wider">{(app.services || []).join(' + ')}</span>
-                        </div>
-                        
-                        <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider text-blue-300 mb-6 bg-blue-950/50 px-4 py-3 rounded-xl">
-                          <div className="flex items-center space-x-1.5"><Calendar size={12} className="text-cyan-400" /><span>Dia {new Date(app.date).getDate() || 16}</span></div>
-                          <div className="flex items-center space-x-1.5"><Clock size={12} className="text-cyan-400" /><span>Às {app.time}</span></div>
+                          <span className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-wider ${statusColors[app.status] || 'bg-gray-50 text-gray-400'}`}>
+                            {statusLabels[app.status] || app.status}
+                          </span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          <button 
-                            onClick={() => {
-                              const lat = app.barber?.latitude || -23.525;
-                              const lng = app.barber?.longitude || -46.522;
-                              alert(`Traçando rota até a Arena de ${app.barber?.user?.name || 'Gustavo'}.\nCoordenadas: [${lat}, ${lng}]`);
-                            }} 
-                            className="py-4 bg-cyan-500 text-blue-950 rounded-2xl font-black text-[9px] uppercase italic tracking-widest shadow-lg flex items-center justify-center space-x-1.5 active:scale-95 transition-transform"
-                          >
-                            <Navigation size={12} fill="currentColor" /> <span>Traçar Rota</span>
-                          </button>
-                          <button 
+                        <div className="flex justify-between items-center pt-3 border-t border-gray-50">
+                          <div>
+                            <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest">Serviços</p>
+                            <p className="text-[10px] font-black text-blue-950 uppercase mt-0.5">{(app.services || []).join(' + ')}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest">Valor</p>
+                            <p className="text-xs font-black text-blue-600 mt-0.5">R$ {app.price},00</p>
+                          </div>
+                        </div>
+
+                        {/* Cancel Action inside History for pending/confirmed ones */}
+                        {(app.status === 'PENDING' || app.status === 'CONFIRMED') && (
+                          <button
                             onClick={async () => {
-                              if (confirm('Tem certeza que deseja cancelar esta batalha?')) {
+                              if (confirm('Tem certeza de que deseja cancelar este agendamento?')) {
                                 try {
                                   await api.updateAppointmentStatus(app.id, 'CANCELLED');
-                                  alert('Batalha cancelada com sucesso!');
+                                  alert('Agendamento cancelado com sucesso!');
                                   loadClientAppointments();
+                                  loadBarberAppointments();
                                 } catch (e: any) {
                                   alert('Erro ao cancelar: ' + e.message);
                                 }
                               }
-                            }} 
-                            className="py-4 bg-red-500/20 border border-red-500/30 text-red-400 rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-transform"
+                            }}
+                            className="w-full py-3 bg-red-50 text-red-500 rounded-xl text-[8px] font-black uppercase border border-red-100 hover:bg-red-100 active:scale-95 transition-all text-center"
                           >
-                            Cancelar Batalha
+                            Cancelar Agendamento
                           </button>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-16 text-center opacity-30 flex flex-col items-center bg-gray-50 rounded-[35px] border border-gray-100">
-                    <ScissorsIcon size={40} className="mb-3 text-blue-950" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-950">Nenhuma Batalha Agendada</p>
-                  </div>
-                )}
-              </div>
-
-              {/* PAST/COMPLETED BOOKINGS */}
-              <div>
-                <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Histórico de Batalhas</h2>
-                {appointments.filter((a: any) => a.status === 'COMPLETED' || a.status === 'CANCELLED').length > 0 ? (
-                  <div className="space-y-3">
-                    {appointments.filter((a: any) => a.status === 'COMPLETED' || a.status === 'CANCELLED').map((app: any) => (
-                      <div key={app.id} className="bg-gray-50 border border-gray-100 p-5 rounded-[28px] flex items-center justify-between">
-                        <div className="flex items-center space-x-3 text-left">
-                          <img src={app.barber?.user?.avatar || `https://i.pravatar.cc/150?u=${app.barber?.id}`} className="w-10 h-10 rounded-xl object-cover" />
-                          <div>
-                            <h4 className="text-xs font-black text-blue-950 uppercase italic leading-none">{app.barber?.user?.name || 'Gustavo'}</h4>
-                            <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-1">{(app.services || []).join(' + ')}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs font-black text-blue-950">R$ {app.price},00</p>
-                          <span className={`inline-block text-[7px] font-black uppercase px-2 py-0.5 rounded-full mt-1 ${app.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {app.status === 'COMPLETED' ? 'Finalizado' : 'Cancelado'}
-                          </span>
-                        </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })
                 ) : (
-                  <div className="py-8 text-center opacity-25">
-                    <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Nenhum histórico disponível</p>
+                  <div className="py-20 text-center opacity-30 bg-gray-50 rounded-[35px] border border-gray-100">
+                    <Calendar size={48} className="mx-auto mb-4 text-blue-950" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">Nenhum Registro Encontrado</p>
                   </div>
                 )}
               </div>
             </div>
           ) : (
-            /* BARBER VIEW TIMELINE */
-            <div className="space-y-3 relative pb-20">
-               <div className="absolute left-9 top-0 bottom-0 w-px bg-gray-50 z-0" />
-               {currentTimeSlots.map((slot: any) => {
-                  const pendingRequests = notifications.filter((n: any) => n.time === slot.time && n.date === selectedDate && n.status === 'pending' && n.barberName !== 'Arena Aberta');
-                  const isMyBooking = slot.isMyBooking && !isBarberView;
-                  
-                  return (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={slot.time} className="flex items-start space-x-4 relative z-10">
-                       <div className="flex flex-col items-center w-8 pt-5"><span className="text-[8px] font-black text-gray-200">{slot.time}</span></div>
-                       <div className="flex-1">
+            /* AGENDA / TIMELINE TAB */
+            <>
+              {!isBarberView ? (
+                /* CLIENT VIEW DASHBOARD */
+                <div className="flex flex-col w-full">
+                  {/* CURRENT ACTIVE BOOKINGS */}
+                  <div className="mb-8">
+                    <h2 className="text-sm font-black text-blue-600 uppercase tracking-widest mb-4">Minhas Próximas Batalhas</h2>
+                    {appointments.filter((a: any) => a.status === 'PENDING' || a.status === 'CONFIRMED').length > 0 ? (
+                      <div className="space-y-4">
+                        {appointments.filter((a: any) => a.status === 'PENDING' || a.status === 'CONFIRMED').map((app: any) => (
+                          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} key={app.id} className="bg-gradient-to-br from-blue-950 to-blue-900 text-white p-6 rounded-[35px] shadow-2xl relative overflow-hidden border border-blue-800">
+                            <div className="absolute top-0 right-0 p-6 opacity-5"><Zap size={100} /></div>
+                            <div className="flex justify-between items-start mb-6">
+                              <div className="flex items-center space-x-4">
+                                <img src={app.barber?.user?.avatar || `https://i.pravatar.cc/150?u=${app.barber?.id}`} className="w-14 h-14 rounded-2xl object-cover border-2 border-cyan-400 shadow-md" />
+                                <div>
+                                  <h3 className="text-sm font-black uppercase italic leading-none">{app.barber?.user?.name || 'Arena Barber'}</h3>
+                                  <span className={`inline-block text-[8px] font-black uppercase px-2 py-0.5 rounded-full mt-2 tracking-widest ${app.status === 'CONFIRMED' ? 'bg-green-500 text-white animate-pulse' : 'bg-yellow-500 text-black'}`}>
+                                    {app.status === 'CONFIRMED' ? 'Confirmado' : 'Aguardando Barbeiro'}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[14px] font-black text-cyan-400 italic">R$ {app.price},00</p>
+                                <p className="text-[8px] font-bold text-blue-300 uppercase tracking-widest mt-1">{app.paymentMethod || 'Pix'}</p>
+                              </div>
+                            </div>
+                            <div className="bg-blue-900/50 p-4 rounded-2xl mb-6 flex items-center space-x-2 border border-blue-800">
+                              <ScissorsIcon size={14} className="text-cyan-400" />
+                              <span className="text-[9px] font-black uppercase tracking-wider">{(app.services || []).join(' + ')}</span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider text-blue-300 mb-6 bg-blue-950/50 px-4 py-3 rounded-xl">
+                              <div className="flex items-center space-x-1.5"><Calendar size={12} className="text-cyan-400" /><span>Dia {new Date(app.date).getDate() || 16}</span></div>
+                              <div className="flex items-center space-x-1.5"><Clock size={12} className="text-cyan-400" /><span>Às {app.time}</span></div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <button 
+                                onClick={() => {
+                                  const lat = app.barber?.latitude || -23.525;
+                                  const lng = app.barber?.longitude || -46.522;
+                                  alert(`Traçando rota até a Arena de ${app.barber?.user?.name || 'Gustavo'}.\nCoordenadas: [${lat}, ${lng}]`);
+                                }} 
+                                className="py-4 bg-cyan-500 text-blue-950 rounded-2xl font-black text-[9px] uppercase italic tracking-widest shadow-lg flex items-center justify-center space-x-1.5 active:scale-95 transition-transform"
+                              >
+                                <Navigation size={12} fill="currentColor" /> <span>Traçar Rota</span>
+                              </button>
+                              <button 
+                                onClick={async () => {
+                                  if (confirm('Tem certeza que deseja cancelar esta batalha?')) {
+                                    try {
+                                      await api.updateAppointmentStatus(app.id, 'CANCELLED');
+                                      alert('Batalha cancelada com sucesso!');
+                                      loadClientAppointments();
+                                    } catch (e: any) {
+                                      alert('Erro ao cancelar: ' + e.message);
+                                    }
+                                  }
+                                }} 
+                                className="py-4 bg-red-500/20 border border-red-500/30 text-red-400 rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-transform"
+                              >
+                                Cancelar Batalha
+                              </button>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-16 text-center opacity-30 flex flex-col items-center bg-gray-50 rounded-[35px] border border-gray-100">
+                        <ScissorsIcon size={40} className="mb-3 text-blue-950" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-950">Nenhuma Batalha Agendada</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* PAST/COMPLETED BOOKINGS */}
+                  <div>
+                    <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Histórico de Batalhas</h2>
+                    {appointments.filter((a: any) => a.status === 'COMPLETED' || a.status === 'CANCELLED').length > 0 ? (
+                      <div className="space-y-3">
+                        {appointments.filter((a: any) => a.status === 'COMPLETED' || a.status === 'CANCELLED').map((app: any) => (
+                          <div key={app.id} className="bg-gray-50 border border-gray-100 p-5 rounded-[28px] flex items-center justify-between">
+                            <div className="flex items-center space-x-3 text-left">
+                              <img src={app.barber?.user?.avatar || `https://i.pravatar.cc/150?u=${app.barber?.id}`} className="w-10 h-10 rounded-xl object-cover" />
+                              <div>
+                                <h4 className="text-xs font-black text-blue-950 uppercase italic leading-none">{app.barber?.user?.name || 'Gustavo'}</h4>
+                                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-1">{(app.services || []).join(' + ')}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs font-black text-blue-950">R$ {app.price},00</p>
+                              <span className={`inline-block text-[7px] font-black uppercase px-2 py-0.5 rounded-full mt-1 ${app.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {app.status === 'COMPLETED' ? 'Finalizado' : 'Cancelado'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center opacity-25">
+                        <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Nenhum histórico disponível</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* BARBER VIEW TIMELINE */
+                <div className="space-y-3 relative pb-20">
+                  <div className="absolute left-9 top-0 bottom-0 w-px bg-gray-50 z-0" />
+                  {currentTimeSlots.map((slot: any) => {
+                    const pendingRequests = notifications.filter((n: any) => n.time === slot.time && n.date === selectedDate && n.status === 'pending' && n.barberName !== 'Arena Aberta');
+                    const isMyBooking = slot.isMyBooking && !isBarberView;
+                    
+                    return (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={slot.time} className="flex items-start space-x-4 relative z-10">
+                        <div className="flex flex-col items-center w-8 pt-5"><span className="text-[8px] font-black text-gray-200">{slot.time}</span></div>
+                        <div className="flex-1">
                           <button onClick={() => { 
-                             if (isBarberView && pendingRequests.length > 0) {
-                                setSelectedSlot({ ...slot, requests: pendingRequests });
-                             } else {
-                                setSelectedSlot(slot);
-                             }
+                            if (isBarberView && pendingRequests.length > 0) {
+                              setSelectedSlot({ ...slot, requests: pendingRequests });
+                            } else {
+                              setSelectedSlot(slot);
+                            }
                           }}
                             className={`w-full p-5 rounded-[28px] border flex items-center justify-between transition-all ${pendingRequests.length > 0 ? 'bg-yellow-50 border-yellow-200 shadow-lg shadow-yellow-100/50' : isMyBooking ? 'bg-blue-600 border-none text-white shadow-2xl shadow-blue-100' : slot.status === 'occupied' ? 'bg-white border-gray-100 shadow-sm' : slot.status === 'radar' ? 'bg-blue-50 border-blue-200 border-dashed' : slot.status === 'blocked' ? 'bg-gray-50 opacity-50 grayscale' : 'bg-gray-50/10 border-dashed border-gray-100'}`}>
-                             <div className="flex items-center space-x-4 text-left">
-                                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${pendingRequests.length > 0 ? 'bg-yellow-400 text-white' : isMyBooking ? 'bg-white/20 text-white shadow-inner' : slot.status === 'occupied' ? 'bg-blue-50 text-blue-600' : slot.status === 'radar' ? 'bg-blue-600 text-white' : slot.status === 'blocked' ? 'bg-gray-50 text-gray-400' : 'bg-white text-gray-200'}`}>
-                                   {pendingRequests.length > 0 ? <span className="font-black text-xs">{pendingRequests.length}</span> : isMyBooking ? <User size={20} /> : slot.status === 'occupied' ? <User size={18} /> : slot.status === 'radar' ? <Zap size={18} fill="white" /> : slot.status === 'blocked' ? <ShieldOff size={18}/> : <Plus size={18} />}
-                                </div>
-                                <div>
-                                   <h4 className={`text-[12px] font-black uppercase tracking-tight ${isMyBooking ? 'text-white' : (slot.status === 'empty' && pendingRequests.length === 0 ? 'text-gray-300' : 'text-blue-950')}`}>
-                                      {pendingRequests.length > 1 ? `${pendingRequests.length} SOLICITAÇÕES` : (pendingRequests.length === 1 ? 'NOVA SOLICITAÇÃO' : (isMyBooking ? `Batalha c/ ${slot.client_name}` : slot.client_name))}
-                                   </h4>
-                                   <p className={`text-[9px] font-black uppercase tracking-widest mt-0.5 ${isMyBooking ? 'text-blue-100' : 'text-gray-400'}`}>
-                                      {pendingRequests.length > 0 ? 'Candidatos em espera' : (slot.services?.length ? `${slot.services.join(' + ')} • R$ ${slot.price},00` : slot.status)}
-                                   </p>
-                                </div>
-                             </div>
-                             {pendingRequests.length > 0 && <ChevronRight size={18} className="text-yellow-600 animate-pulse" />}
+                            <div className="flex items-center space-x-4 text-left">
+                              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${pendingRequests.length > 0 ? 'bg-yellow-400 text-white' : isMyBooking ? 'bg-white/20 text-white shadow-inner' : slot.status === 'occupied' ? 'bg-blue-50 text-blue-600' : slot.status === 'radar' ? 'bg-blue-600 text-white' : slot.status === 'blocked' ? 'bg-gray-50 text-gray-400' : 'bg-white text-gray-200'}`}>
+                                {pendingRequests.length > 0 ? <span className="font-black text-xs">{pendingRequests.length}</span> : isMyBooking ? <User size={20} /> : slot.status === 'occupied' ? <User size={18} /> : slot.status === 'radar' ? <Zap size={18} fill="white" /> : slot.status === 'blocked' ? <ShieldOff size={18}/> : <Plus size={18} />}
+                              </div>
+                              <div>
+                                <h4 className={`text-[12px] font-black uppercase tracking-tight ${isMyBooking ? 'text-white' : (slot.status === 'empty' && pendingRequests.length === 0 ? 'text-gray-300' : 'text-blue-950')}`}>
+                                  {pendingRequests.length > 1 ? `${pendingRequests.length} SOLICITAÇÕES` : (pendingRequests.length === 1 ? 'NOVA SOLICITAÇÃO' : (isMyBooking ? `Batalha c/ ${slot.client_name}` : slot.client_name))}
+                                </h4>
+                                <p className={`text-[9px] font-black uppercase tracking-widest mt-0.5 ${isMyBooking ? 'text-blue-100' : 'text-gray-400'}`}>
+                                  {pendingRequests.length > 0 ? 'Candidatos em espera' : (slot.services?.length ? `${slot.services.join(' + ')} • R$ ${slot.price},00` : slot.status)}
+                                </p>
+                              </div>
+                            </div>
+                            {pendingRequests.length > 0 && <ChevronRight size={18} className="text-yellow-600 animate-pulse" />}
                           </button>
-                       </div>
-                    </motion.div>
-                  );
-               })}
-            </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

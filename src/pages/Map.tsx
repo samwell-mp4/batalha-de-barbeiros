@@ -284,18 +284,23 @@ export default function MapPage() {
                 }
               }));
             } else if (app.status === 'COMPLETED') {
-              setMatchSession((prev: any) => ({
-                ...prev,
-                status: 'finished',
-                activeMatch: {
-                  id: app.id,
-                  price: app.price,
-                  services: app.services,
-                  client: app.client,
-                  barber: app.barber?.user || app.barber || {},
-                  barberId: app.barberId
+              setMatchSession((prev: any) => {
+                if (prev.status === 'receipt' || prev.status === 'idle') {
+                  return prev;
                 }
-              }));
+                return {
+                  ...prev,
+                  status: 'finished',
+                  activeMatch: {
+                    id: app.id,
+                    price: app.price,
+                    services: app.services,
+                    client: app.client,
+                    barber: app.barber?.user || app.barber || {},
+                    barberId: app.barberId
+                  }
+                };
+              });
             }
           } else {
             setMatchSession((prev: any) => ({ ...prev, status: 'idle', activeMatch: null }));
@@ -1567,9 +1572,79 @@ export default function MapPage() {
 
         {/* TELA DE RECIBO */}
         {matchSession?.status === 'receipt' && (
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[4000] bg-blue-950 flex flex-col items-center p-8 text-center overflow-y-auto no-scrollbar">
-            <div className="mt-12 bg-white w-full rounded-[48px] p-8 shadow-2xl relative overflow-hidden"><h2 className="text-3xl font-black text-blue-950 uppercase italic mb-2 tracking-tighter">Atendimento Finalizado</h2><div className="border-t-2 border-dashed border-gray-100 py-6 flex justify-between text-sm font-black text-blue-950 uppercase"><span>Total Pago</span><span>R$ {matchSession.activeMatch.price + tipAmount},00</span></div><div className="bg-blue-600 rounded-[32px] p-6 text-white mb-8"><span className="text-xl font-black italic">+500 Pontos</span></div><div className="grid grid-cols-2 gap-3"><button className="bg-gray-900 text-white py-5 rounded-[24px] font-black text-[10px] uppercase">Compartilhar</button><button className="bg-gray-50 text-gray-400 py-5 rounded-[24px] font-black text-[10px] uppercase">Baixar Recibo</button></div></div>
-            <button onClick={() => { setMatchSession((prev: any) => ({ ...prev, status: 'idle', activeMatch: null })); setIsRequesting(false); setIsRadarOpen(false); setSelectedServices([]); setStars(0); setTipAmount(0); setPaymentMethod(null); }} className="mt-12 w-full bg-white/10 text-white py-6 rounded-[30px] font-black text-sm uppercase">Voltar ao Mapa</button>
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[4000] bg-blue-950 flex flex-col items-center p-6 text-center overflow-y-auto no-scrollbar pb-16">
+            <div className="mt-8 bg-white w-full rounded-[40px] p-6 shadow-2xl relative overflow-hidden text-left">
+              <div className="text-center mb-4">
+                <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-2 text-green-500">
+                  <CheckCircle2 size={28} />
+                </div>
+                <h2 className="text-2xl font-black text-blue-950 uppercase italic tracking-tighter leading-none">Batalha Finalizada</h2>
+                <p className="text-[8px] font-black text-blue-500 uppercase tracking-widest mt-1">Recibo de Atendimento</p>
+              </div>
+
+              {/* COMANDA COMPLETA */}
+              <div className="border-t-2 border-dashed border-gray-100 pt-4 mb-4">
+                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block mb-2">Comanda de Serviços</span>
+                <div className="space-y-1.5">
+                  {(matchSession.activeMatch?.services || []).map((srv: string, idx: number) => (
+                    <div key={idx} className="flex justify-between items-center text-xs font-bold text-blue-950">
+                      <span className="flex items-center space-x-1.5">
+                        <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
+                        <span>{srv}</span>
+                      </span>
+                      <span className="text-gray-400 text-[10px]">Incluso</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* DETALHES DE PAGAMENTO */}
+              <div className="border-t border-gray-100 pt-3 mb-4 flex justify-between items-center">
+                <div>
+                  <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Método</span>
+                  <span className="text-xs font-black text-blue-950 uppercase">{paymentMethod || 'PIX'}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Valor Pago</span>
+                  <span className="text-base font-black text-green-600">R$ {matchSession.activeMatch?.price + tipAmount},00</span>
+                </div>
+              </div>
+
+              {/* HISTÓRICO DO CHAT DA BATALHA */}
+              <div className="border-t-2 border-dashed border-gray-100 pt-4">
+                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block mb-2">Chat da Batalha (Registro)</span>
+                <div className="bg-gray-50 rounded-2xl p-3.5 space-y-2.5 max-h-[140px] overflow-y-auto no-scrollbar border border-gray-100">
+                  <div className="text-[9px]">
+                    <span className="font-black text-blue-600 uppercase">Cliente:</span>
+                    <span className="text-gray-600 ml-1">Estou a caminho da arena!</span>
+                  </div>
+                  <div className="text-[9px]">
+                    <span className="font-black text-cyan-600 uppercase">Barbeiro:</span>
+                    <span className="text-gray-600 ml-1">Beleza, estou pronto te aguardando.</span>
+                  </div>
+                  <div className="text-[9px]">
+                    <span className="font-black text-gray-400 uppercase">Sistema:</span>
+                    <span className="text-gray-400 ml-1">Serviço iniciado pelo barbeiro.</span>
+                  </div>
+                  <div className="text-[9px]">
+                    <span className="font-black text-green-600 uppercase">Sistema:</span>
+                    <span className="text-green-600 ml-1">Pagamento processado com sucesso.</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* RECOMPENSAS */}
+              <div className="mt-4 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-3xl p-4 text-white text-center shadow-lg">
+                <p className="text-[8px] font-black uppercase tracking-widest text-cyan-200">Bônus de Fidelidade</p>
+                <p className="text-lg font-black italic mt-0.5">+500 Pontos Arena</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                <button onClick={() => alert('Recibo compartilhado com sucesso!')} className="bg-gray-900 text-white py-4 rounded-2xl font-black text-[9px] uppercase tracking-wider">Compartilhar</button>
+                <button onClick={() => alert('Recibo baixado no seu dispositivo!')} className="bg-gray-50 text-gray-400 py-4 rounded-2xl font-black text-[9px] uppercase tracking-wider border border-gray-100">Baixar PDF</button>
+              </div>
+            </div>
+            <button onClick={() => { setMatchSession((prev: any) => ({ ...prev, status: 'idle', activeMatch: null })); setIsRequesting(false); setIsRadarOpen(false); setSelectedServices([]); setStars(0); setTipAmount(0); setPaymentMethod(null); }} className="mt-6 w-full bg-white/10 text-white py-5 rounded-[30px] font-black text-sm uppercase tracking-wide border border-white/5 active:scale-95 transition-transform">Voltar ao Mapa</button>
           </motion.div>
         )}
 
