@@ -1002,7 +1002,7 @@ export default function Agenda() {
                 <div className="space-y-3 relative pb-20">
                   <div className="absolute left-9 top-0 bottom-0 w-px bg-gray-50 z-0" />
                   {currentTimeSlots.map((slot: any) => {
-                    const pendingRequests = notifications.filter((n: any) => n.time === slot.time && n.date === selectedDate && n.status === 'pending' && n.barberName !== 'Arena Aberta');
+                    const pendingRequests = notifications.filter((n: any) => n.time === slot.time && n.date === selectedDate && n.status === 'pending' && n.barberName !== 'Arena Aberta' && n.barberName !== 'Abrir Minha Agenda');
                     const isMyBooking = slot.isMyBooking && !isBarberView;
 
                     return (

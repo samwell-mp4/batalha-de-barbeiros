@@ -139,6 +139,8 @@ export default function MapPage() {
   
   const [showOpportunityAlert, setShowOpportunityAlert] = useState<string | null>(null);
   const [prevSlotCount, setPrevSlotCount] = useState(0);
+  const [showQueueSuccessModal, setShowQueueSuccessModal] = useState(false);
+  const [queueSuccessData, setQueueSuccessData] = useState<any>(null);
   const [activeRequests, setActiveRequests] = useState<any[]>([]);
   const [currentAppointmentId, setCurrentAppointmentId] = useState<string | null>(null);
   const [selectedBarberAppointments, setSelectedBarberAppointments] = useState<any[]>([]);
@@ -160,7 +162,7 @@ export default function MapPage() {
 
   useEffect(() => {
     async function loadSelectedBarberData() {
-      if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta') {
+      if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta' && selectedBarber.name !== 'Abrir Minha Agenda') {
         try {
           const barberData = await api.getBarber(selectedBarber.id);
           if (barberData && barberData.schedule) {
@@ -186,7 +188,7 @@ export default function MapPage() {
     loadSelectedBarberData();
 
     let interval: any;
-    if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta') {
+    if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta' && selectedBarber.name !== 'Abrir Minha Agenda') {
       interval = setInterval(loadSelectedBarberData, 5000);
     }
 
@@ -197,7 +199,7 @@ export default function MapPage() {
 
   useEffect(() => {
     async function loadSelectedBarberData() {
-      if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta') {
+      if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta' && selectedBarber.name !== 'Abrir Minha Agenda') {
         try {
           const barberData = await api.getBarber(selectedBarber.id);
           if (barberData && barberData.schedule) {
@@ -223,7 +225,7 @@ export default function MapPage() {
     loadSelectedBarberData();
 
     let interval: any;
-    if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta') {
+    if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta' && selectedBarber.name !== 'Abrir Minha Agenda') {
       interval = setInterval(loadSelectedBarberData, 5000);
     }
 
@@ -234,7 +236,7 @@ export default function MapPage() {
 
   useEffect(() => {
     async function loadSelectedBarberData() {
-      if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta') {
+      if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta' && selectedBarber.name !== 'Abrir Minha Agenda') {
         try {
           const barberData = await api.getBarber(selectedBarber.id);
           if (barberData && barberData.schedule) {
@@ -260,7 +262,7 @@ export default function MapPage() {
     loadSelectedBarberData();
 
     let interval: any;
-    if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta') {
+    if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta' && selectedBarber.name !== 'Abrir Minha Agenda') {
       interval = setInterval(loadSelectedBarberData, 5000);
     }
 
@@ -271,7 +273,7 @@ export default function MapPage() {
 
   useEffect(() => {
     async function loadSelectedBarberData() {
-      if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta') {
+      if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta' && selectedBarber.name !== 'Abrir Minha Agenda') {
         try {
           const barberData = await api.getBarber(selectedBarber.id);
           if (barberData && barberData.schedule) {
@@ -928,9 +930,11 @@ export default function MapPage() {
                     <div className="absolute -bottom-1 -right-1 bg-blue-600 w-7 h-7 rounded-full border-4 border-white flex items-center justify-center text-white shadow-lg"><CheckCircle2 size={12} className="fill-white" /></div>
                   </motion.button>
                   <div>
-                    <h4 className="text-2xl font-black text-blue-950 uppercase italic leading-tight">{selectedBarber.name}</h4>
+                    <h4 className="text-2xl font-black text-blue-950 uppercase italic leading-tight">{selectedBarber.name === 'Arena Aberta' ? 'Abrir Minha Agenda' : selectedBarber.name}</h4>
                     <div className="flex items-center space-x-2 mt-1">
-                      <span className="text-[10px] font-black text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100 uppercase tracking-widest">RANK {selectedBarber.id % 5 + 1}Âº</span>
+                      {selectedBarber.name !== 'Arena Aberta' && selectedBarber.name !== 'Abrir Minha Agenda' && (
+                        <span className="text-[10px] font-black text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100 uppercase tracking-widest">RANK {selectedBarber.id % 5 + 1}º</span>
+                      )}
                       <div className="flex items-center text-yellow-500 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100"><Star size={10} className="fill-yellow-500 mr-1" /><span className="text-[10px] font-black">{selectedBarber.rating}</span></div>
                     </div>
                   </div>
@@ -1059,8 +1063,8 @@ export default function MapPage() {
                 <div className="flex flex-col space-y-3 pb-6">
                   {/* FLUXO DE AGENDAMENTO MULTI-STEP */}
                   {(() => {
+                    const isPublicFila = selectedBarber?.name === 'Arena Aberta' || selectedBarber?.name === 'Abrir Minha Agenda';
                     if (!bookingStep || bookingStep === 'calendar') {
-                      const isPublicFila = selectedBarber?.name === 'Arena Aberta';
                       return (
                         <>
                           <div className="flex items-center justify-between mb-4">
@@ -1087,7 +1091,15 @@ export default function MapPage() {
                               <div className="bg-blue-50 p-6 rounded-[35px] border border-blue-100">
                                 <p className="text-[10px] font-black text-blue-950 uppercase mb-4 text-center">Qual horário você deseja?</p>
                                 <div className="grid grid-cols-4 gap-2">
-                                  {['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'].map(time => (
+                                  {['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'].filter(time => {
+                                    if (selectedBookingDate > 16) return true;
+                                    const currentHour = new Date().getHours();
+                                    const currentMin = new Date().getMinutes();
+                                    // 1 hora de antecedencia arredondada: ex 16:46 + 1h = 17:46 -> 18:00
+                                    const minHour = currentHour + 1 + (currentMin > 0 ? 1 : 0);
+                                    const slotHour = parseInt(time.split(':')[0], 10);
+                                    return slotHour >= minHour;
+                                  }).map(time => (
                                     <button
                                       key={time}
                                       onClick={() => {
@@ -1180,13 +1192,73 @@ export default function MapPage() {
                             ))}
                           </div>
 
-                          <button
-                            disabled={selectedServices.length === 0}
-                            onClick={() => setBookingStep('payment')}
-                            className="w-full py-6 bg-blue-600 text-white rounded-[32px] font-black text-sm uppercase italic tracking-widest shadow-2xl flex items-center justify-center space-x-3 disabled:opacity-50 disabled:grayscale transition-transform active:scale-95"
-                          >
-                            <span>Continuar para Pagamento</span> <ChevronRight size={20} />
-                          </button>
+                          {isPublicFila ? (
+                            <button
+                              disabled={selectedServices.length === 0}
+                              onClick={async () => {
+                                if (!user) {
+                                  alert('Você precisa estar logado para agendar.');
+                                  return;
+                                }
+                                const targetBarberId = dbBarbers[0]?.id || 'b1';
+                                if (user.id === targetBarberId) {
+                                  alert('Você não pode agendar uma batalha consigo mesmo! Escolha outro barbeiro na arena.');
+                                  return;
+                                }
+
+                                setLoading(true);
+                                try {
+                                  const totalPrice = dynamicServiceCategories.filter(s => selectedServices.includes(s.label)).reduce((acc: number, curr: any) => acc + curr.price, 0);
+                                  await api.createAppointment({
+                                    clientId: user.id,
+                                    barberId: targetBarberId,
+                                    date: bookingData.date || selectedBookingDate,
+                                    time: bookingData.time,
+                                    services: selectedServices,
+                                    price: totalPrice,
+                                    paymentMethod: 'pix',
+                                    isQueue: true,
+                                    isExpress: false,
+                                    latitude: mapCenter[0],
+                                    longitude: mapCenter[1]
+                                  });
+                                  
+                                  setQueueSuccessData({
+                                    date: selectedBookingDate,
+                                    time: bookingData.time,
+                                    price: totalPrice,
+                                    services: selectedServices
+                                  });
+                                  setShowQueueSuccessModal(true);
+                                } catch (e: any) {
+                                  console.error('Failed to create queue booking:', e);
+                                  alert('Erro ao criar agendamento: ' + e.message);
+                                } finally {
+                                  setLoading(false);
+                                }
+                              }}
+                              className="w-full py-6 bg-blue-600 text-white rounded-[32px] font-black text-sm uppercase italic tracking-widest shadow-2xl flex items-center justify-center space-x-3 disabled:opacity-50 disabled:grayscale transition-transform active:scale-95"
+                            >
+                              {loading ? (
+                                <>
+                                  <Loader2 size={20} className="animate-spin mr-2" />
+                                  <span>Processando...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>Disponibilizar no Radar</span> <Zap size={20} fill="white" />
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              disabled={selectedServices.length === 0}
+                              onClick={() => setBookingStep('payment')}
+                              className="w-full py-6 bg-blue-600 text-white rounded-[32px] font-black text-sm uppercase italic tracking-widest shadow-2xl flex items-center justify-center space-x-3 disabled:opacity-50 disabled:grayscale transition-transform active:scale-95"
+                            >
+                              <span>Continuar para Pagamento</span> <ChevronRight size={20} />
+                            </button>
+                          )}
                         </div>
                       );
                     }
@@ -1233,7 +1305,6 @@ export default function MapPage() {
                                 alert('Você precisa estar logado para agendar.');
                                 return;
                               }
-                              const isPublicFila = selectedBarber?.name === 'Arena Aberta';
                               const targetBarberId = isPublicFila ? (dbBarbers[0]?.id || 'b1') : (selectedBarber?.id || 'b1');
 
                               if (user.id === targetBarberId) {
@@ -1349,11 +1420,11 @@ export default function MapPage() {
                         <span className="font-black uppercase italic tracking-widest text-sm">Chamar Barbeiro (Raio 5km)</span>
                       </button>
                       <button onClick={() => {
-                        setSelectedBarber({ name: 'Arena Aberta', avatar: 'https://cdn-icons-png.flaticon.com/512/1458/1458260.png' });
+                        setSelectedBarber({ name: 'Abrir Minha Agenda', avatar: 'https://cdn-icons-png.flaticon.com/512/1458/1458260.png' });
                         setIsBookingAgenda(true);
                         setBookingStep('calendar');
                       }} className="w-full py-5 bg-white text-blue-600 font-black text-[10px] uppercase tracking-widest border-2 border-blue-50 rounded-2xl italic shadow-sm flex items-center justify-center space-x-2">
-                        <List size={16} /> <span>Entrar na Fila de Agendamento</span>
+                        <List size={16} /> <span>Abrir Minha Agenda</span>
                       </button>
                     </div>
                   ) : (
@@ -1442,20 +1513,8 @@ export default function MapPage() {
                                       const proposalPrice = calculatePriceForServices(req.services, configStr) || req.price;
 
                                       await api.updateAppointmentStatus(req.id, 'PROPOSAL_SENT', user.id, proposalPrice);
-                                      setCurrentAppointmentId(req.id);
-                                      setMatchSession((prev: any) => ({
-                                        ...prev,
-                                        status: 'proposal_sent',
-                                        activeMatch: {
-                                          id: req.id,
-                                          client: req.client,
-                                          services: req.services,
-                                          price: proposalPrice,
-                                          barberId: user.id,
-                                          barber: barberProfile?.user || user
-                                        }
-                                      }));
-                                      alert(`Você enviou uma proposta de R$ ${proposalPrice},00 para ${req.client?.name || 'o cliente'}!`);
+                                      alert(`Você enviou uma proposta de R$ ${proposalPrice},00 para ${req.client?.name || 'o cliente'}! O agendamento foi registrado e está disponível na sua agenda.`);
+                                      setIsRadarOpen(false); // Close the radar sheet
                                     } catch (e: any) {
                                       console.error('Failed to send proposal:', e);
                                       alert('Erro ao enviar proposta: ' + e.message);
@@ -1946,6 +2005,50 @@ export default function MapPage() {
         {showCancelledToast && (
           <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 100, opacity: 1 }} exit={{ y: -50, opacity: 0 }} className="fixed top-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[6000] flex justify-center px-8 pt-4"><div className="bg-gray-900 text-white px-8 py-4 rounded-full shadow-2xl flex items-center space-x-3 border-2 border-white/10"><AlertTriangle size={18} className="text-yellow-400" /><span className="font-black uppercase italic tracking-widest text-[10px]">Atendimento Cancelado</span></div></motion.div>
         )}
+
+        {/* FILA DE AGENDAMENTO SUCCESS MODAL */}
+        <AnimatePresence>
+          {showQueueSuccessModal && queueSuccessData && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[8000] bg-blue-950/70 backdrop-blur-md flex items-center justify-center p-6">
+              <motion.div initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 30 }} className="bg-white rounded-[45px] p-8 w-full max-w-sm shadow-2xl relative overflow-hidden text-center border border-gray-100">
+                <div className="absolute top-0 left-0 right-0 h-2 bg-blue-600" />
+                
+                <motion.div 
+                  animate={{ scale: [1, 1.15, 1], rotate: [0, 5, -5, 0] }}
+                  transition={{ repeat: Infinity, duration: 2, repeatDelay: 1 }}
+                  className="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner"
+                >
+                  <Zap size={36} fill="currentColor" />
+                </motion.div>
+
+                <h3 className="text-xl font-black text-blue-950 uppercase italic mb-2 tracking-tight">Chamada no Radar Enviada!</h3>
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-6 leading-tight">Aguardando um barbeiro aceitar sua chamada</p>
+
+                {/* EVIDENCIA DATA E HORARIO */}
+                <div className="bg-blue-50/60 p-6 rounded-[30px] border border-blue-100/50 mb-8 flex flex-col space-y-2">
+                  <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest">Data & Horário Selecionado</span>
+                  <span className="text-xl font-black text-blue-950 italic">Dia {queueSuccessData.date} de Maio</span>
+                  <span className="text-2xl font-black text-blue-600 italic">às {queueSuccessData.time}</span>
+                  <span className="text-[8px] font-bold text-gray-500 uppercase tracking-wider pt-2 border-t border-blue-100/30">
+                    {queueSuccessData.services.join(' + ')} • R$ {queueSuccessData.price},00
+                  </span>
+                </div>
+
+                <button 
+                  onClick={() => {
+                    setShowQueueSuccessModal(false);
+                    setIsBookingAgenda(false);
+                    // Navigate directly to the client's Agenda/Meus Agendamentos
+                    navigate('/agenda');
+                  }} 
+                  className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-100 active:scale-95 transition-transform"
+                >
+                  Visualizar na Agenda
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </AnimatePresence>
     </div>
   );

@@ -6,6 +6,44 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import 'leaflet/dist/leaflet.css';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+  iconUrl: markerIcon, shadowUrl: markerShadow, iconSize: [25, 41], iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+function LocationMarker({ position, setPosition }: { position: [number, number], setPosition: (p: [number, number]) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(position, 16);
+  }, [position, map]);
+
+  useMapEvents({
+    click(e) {
+      const { lat, lng } = e.latlng;
+      setPosition([lat, lng]);
+    }
+  });
+
+  return (
+    <Marker 
+      position={position} 
+      draggable={true}
+      eventHandlers={{
+        dragend(e) {
+          const marker = e.target;
+          const pos = marker.getLatLng();
+          setPosition([pos.lat, pos.lng]);
+        }
+      }}
+    />
+  );
+}
 
 type AuthStep = 'role' | 'basic' | 'location' | 'social' | 'professional' | 'success';
 
@@ -126,6 +164,59 @@ export default function Auth() {
       alert("Seu navegador não suporta geolocalização.");
     }
   };
+
+  const updateCoordsAndReverseGeocode = async (lat: number, lng: number) => {
+    setForm(prev => ({ ...prev, latitude: lat, longitude: lng }));
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const data = await response.json();
+      if (data && data.address) {
+        const detectedState = data.address.state || '';
+        const detectedCity = data.address.city || data.address.town || data.address.village || '';
+        
+        // Find state abbreviation if available
+        const stateObj = states.find(s =>
+          s.nome.toLowerCase() === detectedState.toLowerCase() ||
+          s.sigla.toLowerCase() === detectedState.toLowerCase()
+        );
+
+        setForm(prev => ({
+          ...prev,
+          state: stateObj ? stateObj.sigla : prev.state,
+          city: detectedCity || prev.city,
+          address: data.address.road || prev.address,
+          neighborhood: data.address.suburb || data.address.neighbourhood || data.address.city_district || data.address.village || prev.neighborhood,
+        }));
+      }
+    } catch (e) {
+      console.error("Erro no reverse geocoding do pin:", e);
+    }
+  };
+
+  // Forward-geocoding debounced trigger when address changes
+  useEffect(() => {
+    if (!form.address && !form.city) return;
+    
+    const delayDebounceFn = setTimeout(async () => {
+      const query = `${form.address || ''}, ${form.number || ''}, ${form.neighborhood || ''}, ${form.city || ''}, ${form.state || ''}, Brasil`;
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+        const data = await response.json();
+        if (data && data.length > 0) {
+          const { lat, lon } = data[0];
+          setForm(prev => ({
+            ...prev,
+            latitude: parseFloat(lat),
+            longitude: parseFloat(lon)
+          }));
+        }
+      } catch (error) {
+        console.error("Erro no forward-geocoding:", error);
+      }
+    }, 1200); // 1.2s debounce to avoid spamming Nominatim API
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [form.address, form.number, form.neighborhood, form.city, form.state]);
 
   const [activeServiceTab, setActiveServiceTab] = useState('Masculino');
 
@@ -436,25 +527,49 @@ export default function Auth() {
           </div>
         )}
       </div>
-      <div className="bg-blue-600/5 p-8 rounded-[40px] border-2 border-blue-100 border-dashed text-center">
-        <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 text-white shadow-xl animate-pulse">
-          <MapPin size={40} />
+      <div className="relative rounded-[32px] overflow-hidden border border-gray-100 shadow-xl bg-white p-2">
+        <div style={{ height: '240px', width: '100%' }} className="rounded-[24px] overflow-hidden z-0">
+          <MapContainer 
+            center={[form.latitude, form.longitude]} 
+            zoom={16} 
+            zoomControl={false}
+            style={{ height: '100%', width: '100%' }}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            />
+            <LocationMarker 
+              position={[form.latitude, form.longitude]} 
+              setPosition={(pos) => updateCoordsAndReverseGeocode(pos[0], pos[1])} 
+            />
+          </MapContainer>
         </div>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-6">Lat: {form.latitude.toFixed(4)} | Lng: {form.longitude.toFixed(4)}</p>
-        <button
-          onClick={detectLocation}
-          disabled={isLocating}
-          className="bg-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase text-blue-600 border border-blue-100 shadow-sm active:scale-95 transition-transform flex items-center justify-center space-x-2 mx-auto disabled:opacity-50"
-        >
-          {isLocating ? (
-            <>
-              <div className="w-3 h-3 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
-              <span>Buscando...</span>
-            </>
-          ) : (
-            <span>Detectar via GPS</span>
-          )}
-        </button>
+        <div className="p-4 flex items-center justify-between bg-gray-50/50 rounded-b-[24px] border-t border-gray-100">
+          <div className="flex flex-col text-left">
+            <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest">Coordenadas QG</span>
+            <p className="text-[9px] font-black text-blue-950 uppercase tracking-wider">
+              {form.latitude.toFixed(5)}, {form.longitude.toFixed(5)}
+            </p>
+          </div>
+          <button
+            onClick={detectLocation}
+            disabled={isLocating}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center space-x-1 active:scale-95 transition-transform shadow-md shadow-blue-100"
+          >
+            {isLocating ? (
+              <>
+                <div className="w-2.5 h-2.5 border border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Buscando...</span>
+              </>
+            ) : (
+              <>
+                <MapPin size={10} />
+                <span>Minha Posição</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
