@@ -19,6 +19,8 @@ export default function Agenda() {
   const [activeTab, setActiveTab] = useState<'agenda' | 'financeiro' | 'notificacoes'>('agenda');
   const [hoursConfigStart, setHoursConfigStart] = useState('08:00');
   const [hoursConfigEnd, setHoursConfigEnd] = useState('20:00');
+  const [shownPopupIds, setShownPopupIds] = useState<string[]>([]);
+  const [activePopupNotification, setActivePopupNotification] = useState<any>(null);
 
   const [user] = useState<any>(() => {
     const saved = localStorage.getItem('user');
@@ -34,15 +36,6 @@ export default function Agenda() {
   const globalAgenda = matchSession.globalAgenda || {};
   const barberKeyPrefix = user?.barberProfile?.id || user?.id || 'default';
   const notifications = matchSession.notifications || [];
-
-  // Sincronizar dinamicamente os inputs da jornada de trabalho ao trocar de data
-  useEffect(() => {
-    const key = `${barberKeyPrefix}_${selectedDate}`;
-    const dayData = globalAgenda[key] || {};
-    const workingHours = dayData.workingHours || { start: '08:00', end: '20:00' };
-    setHoursConfigStart(workingHours.start || '08:00');
-    setHoursConfigEnd(workingHours.end || '20:00');
-  }, [selectedDate, globalAgenda, barberKeyPrefix]);
 
   // Log derivado em tempo real de todas as notificações de status para ambos (Cliente e Barbeiro)
   const notificationsList = useMemo(() => {
@@ -135,6 +128,77 @@ export default function Agenda() {
 
     return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [barberAppointments, appointments, isBarberView]);
+
+  // Sincronizar dinamicamente os inputs da jornada de trabalho ao trocar de data
+  useEffect(() => {
+    const key = `${barberKeyPrefix}_${selectedDate}`;
+    const dayData = globalAgenda[key] || {};
+    const workingHours = dayData.workingHours || { start: '08:00', end: '20:00' };
+    setHoursConfigStart(workingHours.start || '08:00');
+    setHoursConfigEnd(workingHours.end || '20:00');
+  }, [selectedDate, globalAgenda, barberKeyPrefix]);
+
+  // Disparar alertas popup dinamicamente quando uma nova notificação chega (polling)
+  useEffect(() => {
+    if (notificationsList.length > 0) {
+      const latestNotif = notificationsList[0];
+      if (!shownPopupIds.includes(latestNotif.id)) {
+        // Evita disparos duplicados para a mesma notificação
+        setShownPopupIds(prev => [...prev, latestNotif.id]);
+        
+        // Apenas dispara popup para notificações recentes (criadas/atualizadas nos últimos 60 segundos)
+        const notifTime = new Date(latestNotif.date).getTime();
+        const nowTime = new Date().getTime();
+        const isRecent = Math.abs(nowTime - notifTime) < 60000;
+        
+        if (isRecent) {
+          setActivePopupNotification(latestNotif);
+          // Ocultar automaticamente após 8 segundos
+          const timer = setTimeout(() => {
+            setActivePopupNotification((current: any) => {
+              if (current && current.id === latestNotif.id) {
+                return null;
+              }
+              return current;
+            });
+          }, 8000);
+          return () => clearTimeout(timer);
+        }
+      }
+    }
+  }, [notificationsList, shownPopupIds]);
+
+  const handleNotificationClick = (notif: any) => {
+    if (notif.appointment) {
+      const app = notif.appointment;
+      const appDate = new Date(app.date);
+      const dayNum = appDate.getUTCDate();
+      
+      // 1. Alterna para a aba de Agenda
+      setActiveTab('agenda');
+      
+      // 2. Seleciona o dia correto
+      setSelectedDate(dayNum);
+      
+      // 3. Se for barbeiro, abre o modal de gestão do slot imediatamente
+      if (isBarberView) {
+        setSelectedSlot({
+          time: app.time,
+          status: 'occupied',
+          client_name: app.client?.name || 'Cliente',
+          services: app.services || ['Serviço'],
+          price: app.price || 50,
+          appointment: app
+        });
+      } else {
+        // Se for cliente, fecha o modal anterior e foca na agenda
+        setSelectedSlot(null);
+      }
+      
+      // 4. Limpa o popup ativo se foi clicado
+      setActivePopupNotification(null);
+    }
+  };
 
   const futureDates = useMemo(() => [16, 17, 18, 19, 20, 21, 22].filter(d => d >= today), [today]);
 
@@ -565,7 +629,8 @@ export default function Agenda() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         key={notif.id}
-                        className={`p-5 rounded-[28px] border flex items-start space-x-4 transition-all ${borderClass}`}
+                        onClick={() => handleNotificationClick(notif)}
+                        className={`p-5 rounded-[28px] border flex items-start space-x-4 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${borderClass}`}
                       >
                         <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${iconBg}`}>
                           {notif.type === 'pending' || notif.type === 'proposal' ? (
@@ -594,6 +659,11 @@ export default function Agenda() {
                           <p className="text-[10px] text-gray-500 font-bold leading-normal">
                             {notif.message}
                           </p>
+                          {notif.appointment && (
+                            <span className="text-[7px] font-black text-blue-600 uppercase tracking-widest mt-1.5 block">
+                              Ver na Grade →
+                            </span>
+                          )}
                         </div>
                       </motion.div>
                     );
@@ -1400,6 +1470,61 @@ export default function Agenda() {
               <button onClick={() => { setWorkingHours(selectedDate, hoursConfigStart, hoursConfigEnd); setShowHoursConfig(false); }} className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase shadow-xl">Salvar Turno</button>
               <button onClick={() => setShowHoursConfig(false)} className="w-full py-4 text-gray-300 font-black text-[9px] uppercase mt-2 text-center w-full">Cancelar</button>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* FLOATING POPUP TOAST ALERT */}
+      <AnimatePresence>
+        {activePopupNotification && (
+          <motion.div 
+            initial={{ y: -100, x: "-50%", opacity: 0 }} 
+            animate={{ y: 24, x: "-50%", opacity: 1 }} 
+            exit={{ y: -100, x: "-50%", opacity: 0 }} 
+            className="fixed top-0 left-1/2 w-full max-w-sm z-[9000] px-4 cursor-pointer"
+            onClick={() => handleNotificationClick(activePopupNotification)}
+          >
+            <div className="bg-blue-950/95 text-white p-5 rounded-[32px] border border-blue-800 shadow-2xl flex items-center justify-between backdrop-blur-md">
+              <div className="flex items-center space-x-3 text-left min-w-0 flex-1">
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                  activePopupNotification.type === 'pending' ? 'bg-yellow-400 text-white animate-pulse' :
+                  activePopupNotification.type === 'confirmed' ? 'bg-green-500 text-white' :
+                  activePopupNotification.type === 'cancelled' ? 'bg-red-500 text-white' :
+                  activePopupNotification.type === 'inservice' ? 'bg-cyan-500 text-white' :
+                  activePopupNotification.type === 'payment' ? 'bg-orange-500 text-white' :
+                  'bg-blue-600 text-white'
+                }`}>
+                  {activePopupNotification.type === 'pending' || activePopupNotification.type === 'proposal' ? (
+                    <Zap size={16} fill={activePopupNotification.type === 'pending' ? 'white' : 'transparent'} />
+                  ) : activePopupNotification.type === 'confirmed' ? (
+                    <Check size={16} />
+                  ) : activePopupNotification.type === 'cancelled' ? (
+                    <X size={16} />
+                  ) : activePopupNotification.type === 'inservice' ? (
+                    <Clock size={16} />
+                  ) : (
+                    <Star size={16} fill="white" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-[10px] font-black uppercase text-cyan-400 tracking-wider">
+                    {activePopupNotification.title}
+                  </h4>
+                  <p className="text-[9px] font-bold text-gray-200 uppercase tracking-tight truncate">
+                    {activePopupNotification.message}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActivePopupNotification(null);
+                }} 
+                className="p-2 text-gray-400 hover:text-white shrink-0 ml-3"
+              >
+                <X size={16} />
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
