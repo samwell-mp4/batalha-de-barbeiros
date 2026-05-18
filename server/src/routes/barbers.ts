@@ -7,7 +7,6 @@ const router = Router();
 router.get('/locations', async (req, res) => {
   try {
     const barbers = await prisma.barber.findMany({
-      where: { isOnline: true },
       include: {
         user: {
           select: {

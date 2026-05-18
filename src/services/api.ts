@@ -77,11 +77,11 @@ export const api = {
     if (!res.ok) return [];
     return res.json();
   },
-  updateAppointmentStatus: async (id: string, status: string, barberId?: string, price?: number) => {
+  updateAppointmentStatus: async (id: string, status: string, barberId?: string, price?: number, date?: string, time?: string) => {
     const res = await fetch(`${API_URL}/appointments/${id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, barberId, price }),
+      body: JSON.stringify({ status, barberId, price, date, time }),
     });
     return res.json();
   },

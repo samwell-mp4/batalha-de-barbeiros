@@ -67,7 +67,7 @@ export default function MapPage() {
       if (user?.id) {
         try {
           const activeApp = await api.getActiveAppointment(user.id);
-          if (activeApp && activeApp.id) {
+          if (activeApp && activeApp.id && activeApp.isExpress) {
             console.log('[SESSION RESTORE] Restoring active battle:', activeApp.id);
             setCurrentAppointmentId(activeApp.id);
             
@@ -1160,7 +1160,7 @@ export default function MapPage() {
             <div className="flex items-center justify-between mb-8 px-2"><h3 className="text-2xl font-black text-blue-950 uppercase italic">{isBarberView ? 'Status Disponível' : 'O que deseja hoje?'}</h3><LayoutGrid size={24} className="text-blue-600" /></div>
             <div className="px-6 py-2 flex space-x-2 mb-4">
               <button onClick={() => setClientMode('expresso')} className={`flex-1 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${clientMode === 'expresso' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-gray-100 text-gray-400'}`}>Expresso (Match)</button>
-              <button onClick={() => setClientMode('radares')} className={`flex-1 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${clientMode === 'radares' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-gray-100 text-gray-400'}`}>Radares Abertos</button>
+              <button onClick={() => { setClientMode('radares'); fetchBarberLocations(); }} className={`flex-1 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${clientMode === 'radares' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-gray-100 text-gray-400'}`}>Radares Abertos</button>
             </div>
 
             <div className="flex flex-col space-y-3">

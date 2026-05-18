@@ -247,6 +247,14 @@ router.patch('/:id/status', async (req, res) => {
       updateData.price = parseFloat(price as string);
     }
 
+    if (req.body.date !== undefined) {
+      updateData.date = new Date(req.body.date);
+    }
+
+    if (req.body.time !== undefined) {
+      updateData.time = req.body.time;
+    }
+
     if (barberId) {
       // Find the barber's actual ID if the user ID was provided
       const barber = await prisma.barber.findFirst({

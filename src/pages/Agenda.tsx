@@ -7,7 +7,7 @@ import { api } from '../services/api';
 export default function Agenda() {
   const context = useOutletContext<{ isBarberView: boolean, matchSession: any, setMatchSession: (s: any) => void }>() || { isBarberView: true, matchSession: {}, setMatchSession: () => {} };
   const { isBarberView, matchSession, setMatchSession } = context;
-  const navigate = useNavigate();
+  const navigate = useNavigate(); console.log(navigate);
 
   const today = 16;
   const currentHour = new Date().getHours();
@@ -21,11 +21,13 @@ export default function Agenda() {
   const [user] = useState<any>(() => {
     const saved = localStorage.getItem('user');
     if (!saved || saved === 'undefined') return null;
-    try { return JSON.parse(saved); } catch (e) { return null; }
+    try { return JSON.parse(saved); } catch (e: any) { return null; }
   });
 
   const [appointments, setAppointments] = useState<any[]>([]);
   const [barberAppointments, setBarberAppointments] = useState<any[]>([]);
+  const [clientRatings, setClientRatings] = useState<Record<string, number>>({});
+  const [barberRatings, setBarberRatings] = useState<Record<string, number>>({});
 
   const globalAgenda = matchSession.globalAgenda || {};
   const notifications = matchSession.notifications || [];
@@ -37,7 +39,7 @@ export default function Agenda() {
       try {
         const res = await api.getClientAppointments(user.id);
         setAppointments(res);
-      } catch (e) {
+      } catch (e: any) {
         console.error('Failed to load client appointments:', e);
       }
     }
@@ -48,7 +50,7 @@ export default function Agenda() {
       try {
         const res = await api.getBarberAppointments(user.id);
         setBarberAppointments(res);
-      } catch (e) {
+      } catch (e: any) {
         console.error('Failed to load barber appointments:', e);
       }
     }
@@ -74,7 +76,7 @@ export default function Agenda() {
               }
             }));
           }
-        } catch (e) {
+        } catch (e: any) {
           console.error('Failed to load barber schedule from DB:', e);
         }
       }
@@ -147,7 +149,7 @@ export default function Agenda() {
       // Find DB Appointment matching this specific day & hour slot
       const dbApp = barberAppointments.find((a: any) => {
         const appDate = new Date(a.date);
-        return appDate.getDate() === selectedDate && a.time === time && a.status === 'CONFIRMED';
+        return appDate.getDate() === selectedDate && a.time === time && ['CONFIRMED', 'IN_SERVICE', 'PAYMENT'].includes(a.status);
       });
 
       if (dbApp) {
@@ -158,7 +160,8 @@ export default function Agenda() {
           services: dbApp.services,
           price: dbApp.price,
           isMyBooking: true,
-          id: dbApp.id
+          id: dbApp.id,
+          appointment: dbApp
         };
       }
 
@@ -197,8 +200,8 @@ export default function Agenda() {
   const faturamentoRealizado = completedApps.reduce((sum, a) => sum + (a.price || 0), 0);
 
   const pendingOrConfirmedApps = isBarberView
-    ? barberAppointments.filter((a: any) => a.status === 'CONFIRMED' || a.status === 'IN_SERVICE')
-    : appointments.filter((a: any) => a.status === 'CONFIRMED' || a.status === 'IN_SERVICE');
+    ? barberAppointments.filter((a: any) => ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT'].includes(a.status))
+    : appointments.filter((a: any) => ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT'].includes(a.status));
 
   const faturamentoPrevisto = pendingOrConfirmedApps.reduce((sum, a) => sum + (a.price || 0), 0);
 
@@ -411,68 +414,279 @@ export default function Agenda() {
                 /* CLIENT VIEW DASHBOARD */
                 <div className="flex flex-col w-full">
                   {/* CURRENT ACTIVE BOOKINGS */}
+                  {/* CURRENT ACTIVE BOOKINGS */}
                   <div className="mb-8">
                     <h2 className="text-sm font-black text-blue-600 uppercase tracking-widest mb-4">Minhas Próximas Batalhas</h2>
-                    {appointments.filter((a: any) => a.status === 'PENDING' || a.status === 'CONFIRMED').length > 0 ? (
+                    {appointments.filter((a: any) => ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'].includes(a.status)).length > 0 ? (
                       <div className="space-y-4">
-                        {appointments.filter((a: any) => a.status === 'PENDING' || a.status === 'CONFIRMED').map((app: any) => (
-                          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} key={app.id} className="bg-gradient-to-br from-blue-950 to-blue-900 text-white p-6 rounded-[35px] shadow-2xl relative overflow-hidden border border-blue-800">
-                            <div className="absolute top-0 right-0 p-6 opacity-5"><Zap size={100} /></div>
-                            <div className="flex justify-between items-start mb-6">
-                              <div className="flex items-center space-x-4">
-                                <img src={app.barber?.user?.avatar || `https://i.pravatar.cc/150?u=${app.barber?.id}`} className="w-14 h-14 rounded-2xl object-cover border-2 border-cyan-400 shadow-md" />
-                                <div>
-                                  <h3 className="text-sm font-black uppercase italic leading-none">{app.barber?.user?.name || 'Arena Barber'}</h3>
-                                  <span className={`inline-block text-[8px] font-black uppercase px-2 py-0.5 rounded-full mt-2 tracking-widest ${app.status === 'CONFIRMED' ? 'bg-green-500 text-white animate-pulse' : 'bg-yellow-500 text-black'}`}>
-                                    {app.status === 'CONFIRMED' ? 'Confirmado' : 'Aguardando Barbeiro'}
-                                  </span>
+                        {appointments.filter((a: any) => ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'].includes(a.status)).map((app: any) => {
+                          const steps = ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'];
+                          const stepLabels = ['Solicitado', 'Proposta', 'Confirmado', 'Ativo', 'Pagamento', 'Avaliado'];
+                          const currentStepIdx = steps.indexOf(app.status);
+
+                          return (
+                            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} key={app.id} className="bg-gradient-to-br from-blue-950 to-blue-900 text-white p-6 rounded-[35px] shadow-2xl relative overflow-hidden border border-blue-800">
+                              <div className="absolute top-0 right-0 p-6 opacity-5"><Zap size={100} /></div>
+                              
+                              {/* HEADER INFO */}
+                              <div className="flex justify-between items-start mb-4">
+                                <div className="flex items-center space-x-4">
+                                  <img src={app.barber?.user?.avatar || `https://i.pravatar.cc/150?u=${app.barber?.id}`} className="w-14 h-14 rounded-2xl object-cover border-2 border-cyan-400 shadow-md" />
+                                  <div>
+                                    <h3 className="text-sm font-black uppercase italic leading-none">{app.barber?.user?.name || 'Arena Barber'}</h3>
+                                    <span className={`inline-block text-[8px] font-black uppercase px-2 py-0.5 rounded-full mt-2 tracking-widest ${app.status === 'CONFIRMED' || app.status === 'IN_SERVICE' ? 'bg-green-500 text-white animate-pulse' : 'bg-yellow-500 text-black'}`}>
+                                      {app.status === 'PENDING' ? 'Aguardando Barbeiro' :
+                                       app.status === 'PROPOSAL_SENT' ? 'Proposta Recebida' :
+                                       app.status === 'CONFIRMED' ? 'Confirmado' :
+                                       app.status === 'IN_SERVICE' ? 'Serviço Iniciado' :
+                                       app.status === 'PAYMENT' ? 'Aguardando Pagamento' :
+                                       'Concluído'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-[14px] font-black text-cyan-400 italic">R$ {app.price},00</p>
+                                  <p className="text-[8px] font-bold text-blue-300 uppercase tracking-widest mt-1">{app.paymentMethod || 'Pix'}</p>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <p className="text-[14px] font-black text-cyan-400 italic">R$ {app.price},00</p>
-                                <p className="text-[8px] font-bold text-blue-300 uppercase tracking-widest mt-1">{app.paymentMethod || 'Pix'}</p>
-                              </div>
-                            </div>
-                            <div className="bg-blue-900/50 p-4 rounded-2xl mb-6 flex items-center space-x-2 border border-blue-800">
-                              <ScissorsIcon size={14} className="text-cyan-400" />
-                              <span className="text-[9px] font-black uppercase tracking-wider">{(app.services || []).join(' + ')}</span>
-                            </div>
-                            
-                            <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider text-blue-300 mb-6 bg-blue-950/50 px-4 py-3 rounded-xl">
-                              <div className="flex items-center space-x-1.5"><Calendar size={12} className="text-cyan-400" /><span>Dia {new Date(app.date).getDate() || 16}</span></div>
-                              <div className="flex items-center space-x-1.5"><Clock size={12} className="text-cyan-400" /><span>Às {app.time}</span></div>
-                            </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                              <button 
-                                onClick={() => {
-                                  const lat = app.barber?.latitude || -23.525;
-                                  const lng = app.barber?.longitude || -46.522;
-                                  alert(`Traçando rota até a Arena de ${app.barber?.user?.name || 'Gustavo'}.\nCoordenadas: [${lat}, ${lng}]`);
-                                }} 
-                                className="py-4 bg-cyan-500 text-blue-950 rounded-2xl font-black text-[9px] uppercase italic tracking-widest shadow-lg flex items-center justify-center space-x-1.5 active:scale-95 transition-transform"
-                              >
-                                <Navigation size={12} fill="currentColor" /> <span>Traçar Rota</span>
-                              </button>
-                              <button 
-                                onClick={async () => {
-                                  if (confirm('Tem certeza que deseja cancelar esta batalha?')) {
-                                    try {
-                                      await api.updateAppointmentStatus(app.id, 'CANCELLED');
-                                      alert('Batalha cancelada com sucesso!');
-                                      loadClientAppointments();
-                                    } catch (e: any) {
-                                      alert('Erro ao cancelar: ' + e.message);
-                                    }
-                                  }
-                                }} 
-                                className="py-4 bg-red-500/20 border border-red-500/30 text-red-400 rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-transform"
-                              >
-                                Cancelar Batalha
-                              </button>
-                            </div>
-                          </motion.div>
-                        ))}
+                              {/* SERVICES & SCHEDULE INFO */}
+                              <div className="bg-blue-900/40 p-3.5 rounded-2xl mb-4 flex items-center space-x-2 border border-blue-800">
+                                <ScissorsIcon size={14} className="text-cyan-400" />
+                                <span className="text-[9px] font-black uppercase tracking-wider">{(app.services || []).join(' + ')}</span>
+                              </div>
+
+                              <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider text-blue-300 mb-6 bg-blue-950/40 px-4 py-3 rounded-xl">
+                                <div className="flex items-center space-x-1.5"><Calendar size={12} className="text-cyan-400" /><span>Dia {new Date(app.date).getDate() || 16}</span></div>
+                                <div className="flex items-center space-x-1.5"><Clock size={12} className="text-cyan-400" /><span>Às {app.time}</span></div>
+                              </div>
+
+                              {/* NEON STEPPER */}
+                              <div className="flex items-center justify-between mt-2 mb-6 px-1 relative w-full">
+                                {steps.map((st, idx) => {
+                                  const isCompleted = idx < currentStepIdx;
+                                  const isActive = idx === currentStepIdx;
+                                  return (
+                                    <div key={st} className="flex flex-col items-center relative z-10">
+                                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-black transition-all ${isCompleted ? 'bg-cyan-500 text-blue-950' : isActive ? 'bg-green-400 text-blue-950 ring-4 ring-green-400/20 scale-110 animate-pulse' : 'bg-blue-900 text-blue-400'}`}>
+                                        {idx + 1}
+                                      </div>
+                                      <span className={`text-[6px] font-black uppercase mt-1 tracking-tighter ${isActive ? 'text-green-300' : 'text-blue-300'}`}>{stepLabels[idx]}</span>
+                                    </div>
+                                  );
+                                })}
+                                <div className="absolute top-[11px] left-3 right-3 h-[2px] bg-blue-900 z-0" />
+                                <div className="absolute top-[11px] left-3 right-3 h-[2px] bg-cyan-400 z-0 transition-all" style={{ width: `${(Math.max(0, currentStepIdx) / (steps.length - 1)) * 90}%` }} />
+                              </div>
+
+                              {/* STATE ACTIONS */}
+                              {app.status === 'PENDING' && (
+                                <div className="flex flex-col space-y-2">
+                                  <p className="text-[10px] text-yellow-300 font-bold uppercase tracking-wider text-center">Aguardando aceite do barbeiro na timeline dele.</p>
+                                  <button
+                                    onClick={async () => {
+                                      if (confirm('Tem certeza de que deseja cancelar este agendamento?')) {
+                                        try {
+                                          await api.updateAppointmentStatus(app.id, 'CANCELLED');
+                                          alert('Agendamento cancelado com sucesso!');
+                                          loadClientAppointments();
+                                        } catch (e: any) {
+                                          alert('Erro ao cancelar: ' + e.message);
+                                        }
+                                      }
+                                    }}
+                                    className="w-full py-4 bg-red-500/20 border border-red-500/30 text-red-400 rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-transform"
+                                  >
+                                    Cancelar Desafio
+                                  </button>
+                                </div>
+                              )}
+
+                              {app.status === 'PROPOSAL_SENT' && (
+                                <div className="flex flex-col space-y-3 bg-blue-950/50 p-4 rounded-3xl border border-blue-800">
+                                  <p className="text-[10px] text-cyan-300 font-bold uppercase tracking-wider text-center">Preço customizado proposto pelo barbeiro: R$ {app.price},00</p>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          await api.updateAppointmentStatus(app.id, 'CONFIRMED');
+                                          alert('Proposta aceita! O agendamento está confirmado.');
+                                          loadClientAppointments();
+                                        } catch (err: any) {
+                                          alert('Erro ao aceitar proposta: ' + err.message);
+                                        }
+                                      }}
+                                      className="py-4 bg-green-500 hover:bg-green-600 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-transform flex items-center justify-center space-x-1.5"
+                                    >
+                                      <Check size={12} /> <span>Aceitar</span>
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          await api.updateAppointmentStatus(app.id, 'CANCELLED');
+                                          alert('Proposta recusada.');
+                                          loadClientAppointments();
+                                        } catch (err: any) {
+                                          alert('Erro ao recusar proposta: ' + err.message);
+                                        }
+                                      }}
+                                      className="py-4 bg-red-500/20 border border-red-500/30 text-red-400 rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-transform"
+                                    >
+                                      Recusar
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {app.status === 'CONFIRMED' && (
+                                <div className="flex flex-col space-y-2">
+                                  <p className="text-[10px] text-green-300 font-bold uppercase tracking-wider text-center mb-1">Você está a caminho! Dirija-se até a Arena.</p>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                      onClick={() => {
+                                        const lat = app.barber?.latitude || -23.525;
+                                        const lng = app.barber?.longitude || -46.522;
+                                        alert(`Traçando rota até a Arena de ${app.barber?.user?.name || 'Gustavo'}.\nCoordenadas: [${lat}, ${lng}]`);
+                                      }}
+                                      className="py-4 bg-cyan-500 text-blue-950 rounded-2xl font-black text-[9px] uppercase italic tracking-widest shadow-lg flex items-center justify-center space-x-1.5 active:scale-95 transition-transform"
+                                    >
+                                      <Navigation size={12} fill="currentColor" /> <span>Traçar Rota</span>
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        if (confirm('Tem certeza que deseja cancelar esta batalha?')) {
+                                          try {
+                                            await api.updateAppointmentStatus(app.id, 'CANCELLED');
+                                            alert('Batalha cancelada com sucesso!');
+                                            loadClientAppointments();
+                                          } catch (e: any) {
+                                            alert('Erro ao cancelar: ' + e.message);
+                                          }
+                                        }
+                                      }}
+                                      className="py-4 bg-red-500/20 border border-red-500/30 text-red-400 rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-transform"
+                                    >
+                                      Cancelar Batalha
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {app.status === 'IN_SERVICE' && (
+                                <div className="flex flex-col space-y-4 bg-blue-950/40 p-4 rounded-3xl border border-blue-800">
+                                  <div className="text-center">
+                                    <span className="w-2 h-2 bg-green-500 rounded-full inline-block animate-ping mr-2" />
+                                    <p className="text-[10px] text-green-400 font-black uppercase tracking-wider inline-block">Atendimento em Andamento</p>
+                                  </div>
+                                  <div className="bg-blue-900/20 p-3 rounded-2xl">
+                                    <p className="text-[7px] font-black text-blue-300 uppercase tracking-widest mb-1.5">Comanda de Serviços Activa</p>
+                                    <ul className="space-y-1">
+                                      {(app.services || []).map((srv: string, i: number) => (
+                                        <li key={i} className="text-[9px] font-bold text-white flex items-center space-x-1.5">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                                          <span>{srv}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                    <div className="flex justify-between items-center pt-2 mt-2 border-t border-blue-800/40">
+                                      <span className="text-[8px] font-black text-blue-300 uppercase">Total Consolidado</span>
+                                      <span className="text-xs font-black text-cyan-400">R$ {app.price},00</span>
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                      onClick={async () => {
+                                        if (confirm('Deseja reportar um problema? Nossa equipe de suporte será notificada.')) {
+                                          alert('Problema reportado! Entraremos em contato.');
+                                        }
+                                      }}
+                                      className="py-3 bg-yellow-500/20 text-yellow-400 rounded-xl font-black text-[9px] uppercase tracking-wider border border-yellow-500/20"
+                                    >
+                                      Reportar Problema
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        if (confirm('Tem certeza de que deseja cancelar este atendimento em andamento?')) {
+                                          try {
+                                            await api.updateAppointmentStatus(app.id, 'CANCELLED');
+                                            alert('Atendimento cancelado com sucesso.');
+                                            loadClientAppointments();
+                                          } catch (e: any) {
+                                            alert('Erro ao cancelar: ' + e.message);
+                                          }
+                                        }
+                                      }}
+                                      className="py-3 bg-red-500/20 text-red-400 rounded-xl font-black text-[9px] uppercase tracking-wider border border-red-500/20"
+                                    >
+                                      Cancelar
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {app.status === 'PAYMENT' && (
+                                <div className="flex flex-col space-y-4 bg-blue-950/50 p-4 rounded-3xl border border-blue-800">
+                                  <p className="text-[10px] text-cyan-300 font-bold uppercase tracking-wider text-center">Fase de Pagamento Ativa</p>
+                                  <div className="bg-white text-blue-950 p-4 rounded-2xl text-center flex flex-col items-center">
+                                    <div className="w-24 h-24 bg-gray-100 rounded-xl flex items-center justify-center border border-gray-200 mb-2">
+                                      <Zap size={48} className="text-cyan-500 animate-pulse" />
+                                    </div>
+                                    <p className="text-[9px] font-black uppercase text-blue-950">Chave Pix Copia e Cola:</p>
+                                    <code className="text-[7px] font-mono bg-gray-50 p-1.5 rounded border border-gray-100 block w-full select-all overflow-x-auto whitespace-nowrap mt-1 text-gray-500">00020126360014BR.GOV.BCB.PIX0114battlebarberpix</code>
+                                    <span className="text-[7px] font-bold text-gray-400 mt-1">Clique acima para copiar</span>
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      alert('Pagamento enviado! Aguardando o barbeiro confirmar o recebimento na tela dele.');
+                                    }}
+                                    className="w-full py-4 bg-green-500 hover:bg-green-600 text-white rounded-2xl font-black text-[10px] uppercase italic tracking-widest shadow-xl flex items-center justify-center space-x-2 active:scale-95 transition-transform"
+                                  >
+                                    <Check size={14} /> <span>Já realizei o pagamento</span>
+                                  </button>
+                                </div>
+                              )}
+
+                              {app.status === 'COMPLETED' && (
+                                <div className="flex flex-col space-y-4 bg-blue-950/60 p-5 rounded-3xl border border-blue-800 text-center">
+                                  <p className="text-[10px] text-green-300 font-bold uppercase tracking-wider">Atendimento Concluído com Sucesso!</p>
+                                  
+                                  {barberRatings[app.id] ? (
+                                    <div className="py-2">
+                                      <p className="text-[9px] text-cyan-400 font-black uppercase">Avaliação enviada com sucesso!</p>
+                                      <div className="flex justify-center space-x-1 mt-1.5">
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                          <Star key={i} size={14} className={i < barberRatings[app.id] ? "text-yellow-400 fill-yellow-400" : "text-gray-600"} />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="py-2">
+                                      <p className="text-[9px] text-blue-200 font-black uppercase">Avalie o atendimento do Barbeiro:</p>
+                                      <div className="flex justify-center space-x-2 mt-3">
+                                        {Array.from({ length: 5 }).map((_, i) => {
+                                          const ratingValue = i + 1;
+                                          return (
+                                            <button
+                                              key={i}
+                                              onClick={() => {
+                                                setBarberRatings(prev => ({ ...prev, [app.id]: ratingValue }));
+                                                alert(`Muito obrigado! Você avaliou este atendimento com ${ratingValue} estrelas.`);
+                                              }}
+                                              className="transition-transform active:scale-125"
+                                            >
+                                              <Star size={24} className="text-gray-500 hover:text-yellow-400 hover:fill-yellow-400" />
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                            </motion.div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="py-16 text-center opacity-30 flex flex-col items-center bg-gray-50 rounded-[35px] border border-gray-100">
@@ -596,7 +810,7 @@ export default function Agenda() {
                                        try {
                                           await api.updateAppointmentStatus(req.appointment.id, 'CANCELLED');
                                           loadBarberAppointments();
-                                       } catch (err) {
+                                       } catch (err: any) {
                                           console.error('Failed to cancel appointment:', err);
                                        }
                                     }
@@ -608,94 +822,289 @@ export default function Agenda() {
                         ))}
                      </div>
                   </div>
-                ) : selectedSlot.status === 'occupied' ? (
-                  <div className="flex flex-col space-y-4 text-left">
-                     <h3 className="text-xl font-black text-blue-950 uppercase italic text-center mb-2 tracking-widest">Atendimento Reservado</h3>
-                     <p className="text-[10px] text-gray-400 font-black uppercase text-center mb-6 tracking-widest">Dia {selectedDate} às {selectedSlot.time}</p>
-                     
-                     <div className="bg-gray-50 p-6 rounded-[35px] border border-gray-100 mb-4 text-left">
-                        <div className="flex items-center space-x-3 mb-4">
-                           <img src={selectedSlot.appointment?.client?.avatar || 'https://i.pravatar.cc/150'} className="w-12 h-12 rounded-2xl border-2 border-white shadow-md object-cover" />
-                           <div>
-                              <p className="text-xs font-black text-blue-950 uppercase italic leading-none">{selectedSlot.client_name}</p>
-                              <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest mt-1 block">Arena Battle Barber</span>
-                           </div>
-                        </div>
-                        
-                        <div className="bg-white p-4 rounded-2xl mb-4 border border-gray-100">
-                           <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Serviços Selecionados</p>
-                           <div className="flex flex-wrap gap-1">
-                              {(selectedSlot.services || []).map((srv: string, idx: number) => (
-                                 <span key={idx} className="px-2.5 py-1 bg-gray-50 text-blue-950 rounded-lg text-[9px] font-black uppercase border border-gray-100 flex items-center space-x-1">
-                                    <ScissorsIcon size={10} className="text-blue-500" />
-                                    <span>{srv}</span>
-                                 </span>
-                              ))}
-                           </div>
-                        </div>
+                ) : selectedSlot.status === 'occupied' ? (() => {
+                  const app = selectedSlot.appointment || {
+                    id: 'manual',
+                    status: 'CONFIRMED',
+                    client: { name: selectedSlot.client_name || 'Cliente' },
+                    services: selectedSlot.services || ['Corte Manual'],
+                    price: selectedSlot.price || 50,
+                    date: new Date(2026, 4, selectedDate).toISOString(),
+                    time: selectedSlot.time
+                  };
 
-                        <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-                           <span className="text-[9px] font-black text-gray-400 uppercase">Valor Total</span>
-                           <span className="text-lg font-black text-blue-600">R$ {selectedSlot.price},00</span>
-                        </div>
-                     </div>
+                  const steps = ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'];
+                  const stepLabels = ['Solicitado', 'Proposta', 'Confirmado', 'Ativo', 'Pagamento', 'Avaliado'];
+                  const currentStepIdx = steps.indexOf(app.status);
 
-                     <button
-                        onClick={async () => {
-                          if (selectedSlot.appointment?.id) {
-                            try {
-                              if (selectedSlot.appointment.status === 'CONFIRMED') {
-                                await api.updateAppointmentStatus(selectedSlot.appointment.id, 'IN_SERVICE');
-                              }
-                              setMatchSession((prev: any) => ({
-                                ...prev,
-                                status: 'in_service',
-                                activeMatch: {
-                                  id: selectedSlot.appointment.id,
-                                  client: selectedSlot.appointment.client,
-                                  services: selectedSlot.services,
-                                  price: selectedSlot.price,
-                                  barberId: user.id
-                                }
-                              }));
-                              setSelectedSlot(null);
-                              navigate('/map');
-                            } catch (err: any) {
-                              alert('Erro ao iniciar atendimento: ' + err.message);
-                            }
-                          } else {
-                            setSelectedSlot(null);
-                            navigate('/map');
-                          }
-                        }}
-                        className="w-full py-6 bg-green-500 hover:bg-green-600 text-white rounded-[30px] font-black text-sm uppercase italic shadow-xl flex items-center justify-center space-x-3 transition-all active:scale-95"
-                     >
-                        <Zap size={20} fill="white" /> <span>Iniciar Atendimento</span>
-                     </button>
+                  return (
+                    <div className="flex flex-col space-y-4 text-left">
+                       <h3 className="text-xl font-black text-blue-950 uppercase italic text-center mb-1 tracking-widest">Painel do Atendimento</h3>
+                       <p className="text-[9px] text-gray-400 font-black uppercase text-center mb-3 tracking-widest">Dia {selectedDate} às {selectedSlot.time}</p>
 
-                     <button
-                        onClick={async () => {
-                           if (confirm('Tem certeza de que deseja cancelar este agendamento?')) {
-                              try {
-                                 if (selectedSlot.appointment?.id) {
-                                    await api.updateAppointmentStatus(selectedSlot.appointment.id, 'CANCELLED');
-                                 } else {
-                                    updateGlobalAgenda(selectedDate, selectedSlot.time, { status: 'empty', client_name: 'Livre' });
-                                 }
-                                 alert('Agendamento cancelado com sucesso!');
+                       {/* STEPPER */}
+                       <div className="flex items-center justify-between mt-2 mb-6 px-1 relative w-full">
+                         {steps.map((st, idx) => {
+                           const isCompleted = idx < currentStepIdx;
+                           const isActive = idx === currentStepIdx;
+                           return (
+                             <div key={st} className="flex flex-col items-center relative z-10">
+                               <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-black transition-all ${isCompleted ? 'bg-blue-600 text-white' : isActive ? 'bg-green-500 text-white ring-4 ring-green-500/20 scale-110 animate-pulse' : 'bg-gray-100 text-gray-400'}`}>
+                                 {idx + 1}
+                               </div>
+                               <span className={`text-[5px] font-black uppercase mt-1 tracking-tighter ${isActive ? 'text-green-600' : 'text-gray-400'}`}>{stepLabels[idx]}</span>
+                             </div>
+                           );
+                         })}
+                         <div className="absolute top-[9px] left-3 right-3 h-[1px] bg-gray-100 z-0" />
+                         <div className="absolute top-[9px] left-3 right-3 h-[1px] bg-blue-600 z-0 transition-all" style={{ width: `${(Math.max(0, currentStepIdx) / (steps.length - 1)) * 90}%` }} />
+                       </div>
+
+                       {/* CARD CLIENT DETAILS */}
+                       <div className="bg-gray-50 p-6 rounded-[35px] border border-gray-100 mb-2 text-left">
+                          <div className="flex items-center space-x-3 mb-4">
+                             <img src={app.client?.avatar || 'https://i.pravatar.cc/150'} className="w-12 h-12 rounded-2xl border-2 border-white shadow-md object-cover" />
+                             <div>
+                                <p className="text-xs font-black text-blue-950 uppercase italic leading-none">{app.client?.name || selectedSlot.client_name}</p>
+                                <span className={`text-[8px] font-black uppercase tracking-widest mt-1 block ${app.status === 'CONFIRMED' || app.status === 'IN_SERVICE' ? 'text-green-600' : 'text-gray-400'}`}>
+                                  {app.status === 'PENDING' ? 'Aguardando Aceite' :
+                                   app.status === 'PROPOSAL_SENT' ? 'Proposta Enviada' :
+                                   app.status === 'CONFIRMED' ? 'Confirmado' :
+                                   app.status === 'IN_SERVICE' ? 'Atendimento Ativo' :
+                                   app.status === 'PAYMENT' ? 'Faturamento / Pix' :
+                                   'Finalizado'}
+                                </span>
+                             </div>
+                          </div>
+                          
+                          <div className="bg-white p-4 rounded-2xl mb-4 border border-gray-100">
+                             <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Serviços Contratados</p>
+                             <div className="flex flex-wrap gap-1">
+                                {(app.services || []).map((srv: string, idx: number) => (
+                                   <span key={idx} className="px-2.5 py-1 bg-gray-50 text-blue-950 rounded-lg text-[9px] font-black uppercase border border-gray-100 flex items-center space-x-1">
+                                      <ScissorsIcon size={10} className="text-blue-500" />
+                                      <span>{srv}</span>
+                                   </span>
+                                ))}
+                             </div>
+                          </div>
+
+                          <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                             <span className="text-[9px] font-black text-gray-400 uppercase">Preço Acordado</span>
+                             <span className="text-lg font-black text-blue-600">R$ {app.price},00</span>
+                          </div>
+                       </div>
+
+                       {/* ACTIONS BY STEP */}
+                       {app.status === 'PENDING' && (
+                         <div className="grid grid-cols-2 gap-3">
+                           <button
+                             onClick={async () => {
+                               try {
+                                 await api.updateAppointmentStatus(app.id, 'CONFIRMED');
+                                 alert('Agendamento confirmado!');
                                  loadBarberAppointments();
                                  setSelectedSlot(null);
-                              } catch (e: any) {
-                                 alert('Erro ao cancelar: ' + e.message);
-                              }
-                           }
-                        }}
-                        className="w-full py-5 bg-red-50 hover:bg-red-100 text-red-500 border border-red-100 rounded-[30px] font-black text-xs uppercase flex items-center justify-center space-x-3 transition-all active:scale-95"
-                     >
-                        Cancelar Atendimento
-                     </button>
-                  </div>
-                ) : (
+                               } catch (err: any) {
+                                 alert('Erro ao confirmar: ' + err.message);
+                               }
+                             }}
+                             className="py-4 bg-blue-600 text-white rounded-[24px] font-black text-xs uppercase italic flex items-center justify-center space-x-2 shadow-lg"
+                           >
+                             <Check size={14} /> <span>Confirmar</span>
+                           </button>
+                           <button
+                             onClick={async () => {
+                               try {
+                                 await api.updateAppointmentStatus(app.id, 'CANCELLED');
+                                 alert('Agendamento recusado.');
+                                 loadBarberAppointments();
+                                 setSelectedSlot(null);
+                               } catch (err: any) {
+                                 alert('Erro: ' + err.message);
+                               }
+                             }}
+                             className="py-4 bg-red-50 text-red-500 rounded-[24px] font-black text-xs uppercase flex items-center justify-center border border-red-100"
+                           >
+                             Recusar
+                           </button>
+                         </div>
+                       )}
+
+                       {app.status === 'PROPOSAL_SENT' && (
+                         <div className="flex flex-col space-y-2">
+                           <p className="text-[10px] text-blue-500 font-bold uppercase tracking-wider text-center bg-blue-50 py-3 rounded-2xl">Proposta de R$ {app.price},00 enviada ao cliente. Aguardando aceitação.</p>
+                           <button
+                             onClick={async () => {
+                               if (confirm('Tem certeza de que deseja cancelar este agendamento?')) {
+                                 try {
+                                   await api.updateAppointmentStatus(app.id, 'CANCELLED');
+                                   alert('Agendamento cancelado.');
+                                   loadBarberAppointments();
+                                   setSelectedSlot(null);
+                                 } catch (err: any) {
+                                   alert('Erro: ' + err.message);
+                                 }
+                               }
+                             }}
+                             className="w-full py-4 bg-red-50 text-red-500 rounded-[24px] font-black text-xs uppercase flex items-center justify-center border border-red-100"
+                           >
+                             Cancelar Proposta
+                           </button>
+                         </div>
+                       )}
+
+                       {app.status === 'CONFIRMED' && (
+                         <div className="flex flex-col space-y-3">
+                            <button
+                               onClick={async () => {
+                                 try {
+                                   const appDateObj = new Date(app.date);
+                                   const todayNum = new Date().getDate();
+
+                                   if (appDateObj.getDate() !== todayNum) {
+                                     if (confirm(`Este atendimento está agendado para o Dia ${appDateObj.getDate()} às ${app.time}. Tem certeza de que deseja iniciar o atendimento agora? Isso irá realocar o horário na sua agenda para hoje.`)) {
+                                       const todayIso = new Date().toISOString();
+                                       const currentHourStr = `${new Date().getHours().toString().padStart(2, '0')}:00`;
+                                       await api.updateAppointmentStatus(app.id, 'IN_SERVICE', undefined, undefined, todayIso, currentHourStr);
+                                       alert('Horário realocado e atendimento iniciado com sucesso!');
+                                       loadBarberAppointments();
+                                       setSelectedSlot(null);
+                                     }
+                                   } else {
+                                     await api.updateAppointmentStatus(app.id, 'IN_SERVICE');
+                                     alert('Atendimento iniciado com sucesso!');
+                                     loadBarberAppointments();
+                                     setSelectedSlot(null);
+                                   }
+                                 } catch (err: any) {
+                                   alert('Erro ao iniciar atendimento: ' + err.message);
+                                 }
+                               }}
+                               className="w-full py-6 bg-green-500 hover:bg-green-600 text-white rounded-[30px] font-black text-sm uppercase italic shadow-xl flex items-center justify-center space-x-3 transition-all active:scale-95"
+                            >
+                               <Zap size={20} fill="white" /> <span>Iniciar Atendimento</span>
+                            </button>
+
+                            <button
+                               onClick={async () => {
+                                  if (confirm('Tem certeza de que deseja cancelar este agendamento?')) {
+                                     try {
+                                        await api.updateAppointmentStatus(app.id, 'CANCELLED');
+                                        alert('Agendamento cancelado com sucesso!');
+                                        loadBarberAppointments();
+                                        setSelectedSlot(null);
+                                     } catch (e: any) {
+                                        alert('Erro ao cancelar: ' + e.message);
+                                     }
+                                  }
+                               }}
+                               className="w-full py-5 bg-red-50 hover:bg-red-100 text-red-500 border border-red-100 rounded-[30px] font-black text-xs uppercase flex items-center justify-center space-x-3 transition-all active:scale-95"
+                            >
+                               Cancelar Atendimento
+                            </button>
+                         </div>
+                       )}
+
+                       {app.status === 'IN_SERVICE' && (
+                         <div className="flex flex-col space-y-3">
+                            <button
+                               onClick={async () => {
+                                 try {
+                                   await api.updateAppointmentStatus(app.id, 'PAYMENT');
+                                   alert('Serviço finalizado! O cliente agora pode ver os dados de pagamento na agenda dele.');
+                                   loadBarberAppointments();
+                                   setSelectedSlot(null);
+                                 } catch (err: any) {
+                                   alert('Erro ao finalizar serviço: ' + err.message);
+                                 }
+                               }}
+                               className="w-full py-6 bg-blue-600 hover:bg-blue-700 text-white rounded-[30px] font-black text-sm uppercase italic shadow-xl flex items-center justify-center space-x-3 transition-all active:scale-95"
+                            >
+                               <Check size={20} /> <span>Finalizar Serviço (Cobrar)</span>
+                            </button>
+
+                            <button
+                               onClick={async () => {
+                                  if (confirm('Tem certeza de que deseja cancelar este atendimento em andamento?')) {
+                                     try {
+                                        await api.updateAppointmentStatus(app.id, 'CANCELLED');
+                                        alert('Atendimento cancelado.');
+                                        loadBarberAppointments();
+                                        setSelectedSlot(null);
+                                     } catch (e: any) {
+                                        alert('Erro ao cancelar: ' + e.message);
+                                     }
+                                  }
+                               }}
+                               className="w-full py-4 bg-red-50 text-red-500 border border-red-100 rounded-[30px] font-black text-xs uppercase flex items-center justify-center transition-all active:scale-95"
+                            >
+                               Cancelar Atendimento
+                            </button>
+                         </div>
+                       )}
+
+                       {app.status === 'PAYMENT' && (
+                         <div className="flex flex-col space-y-3 text-center">
+                           <p className="text-[10px] text-yellow-600 font-bold uppercase tracking-wider bg-yellow-50 py-3 rounded-2xl">Aguardando o cliente realizar o pagamento Pix e confirmar.</p>
+                           <button
+                             onClick={async () => {
+                               try {
+                                 await api.updateAppointmentStatus(app.id, 'COMPLETED');
+                                 alert('Pagamento confirmado e atendimento finalizado com sucesso!');
+                                 loadBarberAppointments();
+                                 setSelectedSlot(null);
+                               } catch (err: any) {
+                                 alert('Erro ao confirmar pagamento: ' + err.message);
+                               }
+                             }}
+                             className="w-full py-6 bg-green-500 hover:bg-green-600 text-white rounded-[30px] font-black text-sm uppercase italic shadow-xl flex items-center justify-center space-x-2 transition-all active:scale-95"
+                           >
+                             <Check size={20} /> <span>Confirmar Pagamento Recebido</span>
+                           </button>
+                         </div>
+                       )}
+
+                       {app.status === 'COMPLETED' && (
+                         <div className="flex flex-col space-y-4 text-center">
+                           <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider bg-green-50 py-3 rounded-2xl">Serviço Concluído!</p>
+                           
+                           {clientRatings[app.id] ? (
+                             <div className="py-2 bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                               <p className="text-[9px] text-blue-950 font-black uppercase">Você avaliou este cliente com:</p>
+                               <div className="flex justify-center space-x-1 mt-1.5">
+                                 {Array.from({ length: 5 }).map((_, i) => (
+                                   <Star key={i} size={14} className={i < clientRatings[app.id] ? "text-yellow-400 fill-yellow-400" : "text-gray-200"} />
+                                 ))}
+                               </div>
+                             </div>
+                           ) : (
+                             <div className="py-2 bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                               <p className="text-[9px] text-blue-950 font-black uppercase">Avalie o perfil deste Cliente:</p>
+                               <div className="flex justify-center space-x-2 mt-3">
+                                 {Array.from({ length: 5 }).map((_, i) => {
+                                   const ratingVal = i + 1;
+                                   return (
+                                     <button
+                                       key={i}
+                                       onClick={() => {
+                                         setClientRatings(prev => ({ ...prev, [app.id]: ratingVal }));
+                                         alert(`Obrigado! Cliente avaliado com ${ratingVal} estrelas.`);
+                                       }}
+                                       className="transition-transform active:scale-125"
+                                     >
+                                       <Star size={24} className="text-gray-300 hover:text-yellow-400 hover:fill-yellow-400" />
+                                     </button>
+                                   );
+                                 })}
+                               </div>
+                             </div>
+                           )}
+                         </div>
+                       )}
+                    </div>
+                  );
+                })() : (
                   <div className="flex flex-col space-y-3">
                      <h3 className="text-xl font-black text-blue-950 uppercase italic text-center mb-10 tracking-widest">Dia {selectedDate} • {selectedSlot.time}</h3>
                      <button onClick={() => updateGlobalAgenda(selectedDate, selectedSlot.time, { status: 'radar', client_name: 'Radar Ativo' })} className="w-full py-7 bg-blue-600 text-white rounded-[30px] font-black text-sm uppercase italic shadow-xl flex items-center justify-center space-x-3"><Zap size={22} className="text-cyan-300" /> <span>Lançar no Radar</span></button>
