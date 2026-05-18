@@ -1273,30 +1273,36 @@ export default function MapPage() {
                                   onClick={async () => {
                                     setLoading(true);
                                     try {
-                                      await api.updateAppointmentStatus(req.id, 'CONFIRMED', user.id);
+                                      const configStr = typeof barberProfile?.servicesConfig === 'string'
+                                        ? barberProfile.servicesConfig
+                                        : (barberProfile?.servicesConfig ? JSON.stringify(barberProfile.servicesConfig) : null);
+                                      const proposalPrice = calculatePriceForServices(req.services, configStr) || req.price;
+
+                                      await api.updateAppointmentStatus(req.id, 'PROPOSAL_SENT', user.id, proposalPrice);
                                       setCurrentAppointmentId(req.id);
                                       setMatchSession((prev: any) => ({
                                         ...prev,
-                                        status: 'accepted',
+                                        status: 'proposal_sent',
                                         activeMatch: {
                                           id: req.id,
                                           client: req.client,
                                           services: req.services,
-                                          price: req.price,
-                                          barberId: user.id
+                                          price: proposalPrice,
+                                          barberId: user.id,
+                                          barber: barberProfile?.user || user
                                         }
                                       }));
-                                      alert(`Você aceitou a batalha de ${req.client?.name || 'Luis'}!`);
+                                      alert(`Você enviou uma proposta de R$ ${proposalPrice},00 para ${req.client?.name || 'o cliente'}!`);
                                     } catch (e: any) {
-                                      console.error('Failed to accept request:', e);
-                                      alert('Erro ao aceitar pedido: ' + e.message);
+                                      console.error('Failed to send proposal:', e);
+                                      alert('Erro ao enviar proposta: ' + e.message);
                                     } finally {
                                       setLoading(false);
                                     }
                                   }}
                                   className="w-full py-4 bg-cyan-500 text-blue-950 rounded-2xl font-black text-[9px] uppercase italic tracking-widest shadow-lg flex items-center justify-center space-x-2 active:scale-95 transition-transform"
                                 >
-                                  <CheckCircle2 size={16} /> <span>Aceitar Desafio</span>
+                                  <CheckCircle2 size={16} /> <span>Enviar Proposta</span>
                                 </button>
                               </div>
                             ))
