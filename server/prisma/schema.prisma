@@ -61,6 +61,7 @@ model Barber {
   isOnline      Boolean   @default(false)
   statsWins     Int       @default(0)
   statsLosses   Int       @default(0)
+  followersCount Int     @default(0)
   
   // Relations
   appointments  Appointment[] @relation("BarberAppointments")
@@ -69,15 +70,22 @@ model Barber {
 }
 
 model Appointment {
-  id          String            @id @default(uuid())
-  clientId    String
-  client      User              @relation("ClientAppointments", fields: [clientId], references: [id])
-  barberId    String
-  barber      Barber            @relation("BarberAppointments", fields: [barberId], references: [id])
-  date        DateTime
-  time        String
-  status      AppointmentStatus @default(PENDING)
-  createdAt   DateTime          @default(now())
+  id            String            @id @default(uuid())
+  clientId      String
+  client        User              @relation("ClientAppointments", fields: [clientId], references: [id])
+  barberId      String
+  barber        Barber            @relation("BarberAppointments", fields: [barberId], references: [id])
+  date          DateTime
+  time          String
+  status        AppointmentStatus @default(PENDING)
+  services      String[]
+  price         Float             @default(0)
+  paymentMethod String?
+  isExpress     Boolean           @default(false)
+  isQueue       Boolean           @default(false)
+  latitude      Float?
+  longitude     Float?
+  createdAt     DateTime          @default(now())
 }
 
 enum AppointmentStatus {

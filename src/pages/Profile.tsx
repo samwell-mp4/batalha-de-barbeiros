@@ -38,6 +38,9 @@ export default function Profile() {
    // Dados do Barbeiro (do banco/URL ou do usuário logado)
    const [barber, setBarber] = useState<any>(null);
    const [loading, setLoading] = useState(true);
+   const [followersCount, setFollowersCount] = useState(0);
+   const [appointmentsCount, setAppointmentsCount] = useState(0);
+   const [reviewsCount, setReviewsCount] = useState(0);
 
    useEffect(() => {
       async function loadProfile() {
@@ -57,6 +60,9 @@ export default function Profile() {
                   status: { id: 's1', icon: '⚡', color: '#22c55e' },
                   waitTime: 0
                });
+               setFollowersCount(response.followersCount ?? 0);
+               setAppointmentsCount(response._count?.appointments ?? response.appointmentsCount ?? 0);
+               setReviewsCount(response.reviewsCount ?? 0);
             } else if (isOwnProfile && loggedUser) {
                // Fallback para perfil de usuário comum se não for barbeiro
                setBarber({
@@ -69,6 +75,9 @@ export default function Profile() {
                   waitTime: 0,
                   isClientOnly: true
                });
+               setFollowersCount(0);
+               setAppointmentsCount(0);
+               setReviewsCount(0);
             }
          } catch (e) {
             console.error('Erro ao carregar perfil do banco:', e);
@@ -82,6 +91,15 @@ export default function Profile() {
 
    const [isFavorited, setIsFavorited] = useState(false);
    const [isFollowing, setIsFollowing] = useState(false);
+   const handleFollowToggle = () => {
+      if (isFollowing) {
+         setIsFollowing(false);
+         setFollowersCount(prev => Math.max(0, prev - 1));
+      } else {
+         setIsFollowing(true);
+         setFollowersCount(prev => prev + 1);
+      }
+   };
    const [likedItems, setLikedItems] = useState<Set<number>>(new Set());
    const [selectedHighlight, setSelectedHighlight] = useState<any>(null);
    const [storyIndex, setStoryIndex] = useState(0);
@@ -284,7 +302,11 @@ export default function Profile() {
 
             {/* STATS DE MÉRITO (3 COLUNAS) */}
             <div className="w-full grid grid-cols-3 gap-2 px-2 mb-8">
-               {[{ l: 'Atendimentos', v: '1.4k' }, { l: 'Avaliações', v: '850' }, { l: 'Seguidores', v: '3.2k' }].map(s => (
+               {[
+                  { l: 'Atendimentos', v: appointmentsCount },
+                  { l: 'Avaliações', v: reviewsCount },
+                  { l: 'Seguidores', v: followersCount }
+               ].map(s => (
                   <div key={s.l} className="bg-white py-3 rounded-2xl border border-gray-50 shadow-sm">
                      <p className="text-base font-black text-blue-950">{s.v}</p>
                      <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{s.l}</p>
@@ -295,7 +317,7 @@ export default function Profile() {
             {/* BOTÕES SOCIAIS */}
             <div className="flex space-x-3 mb-8 w-full max-w-[280px]">
                <button
-                  onClick={() => setIsFollowing(!isFollowing)}
+                  onClick={handleFollowToggle}
                   className={`flex-1 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${isFollowing ? 'bg-gray-100 text-gray-400 border border-gray-200' : 'bg-blue-600 text-white shadow-lg shadow-blue-50'}`}
                >
                   {isFollowing ? 'Seguindo' : 'Seguir'}

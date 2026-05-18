@@ -57,4 +57,41 @@ export const api = {
     });
     return res.json();
   },
+
+  // APPOINTMENTS & MATCHMAKING
+  createAppointment: async (data: any) => {
+    const res = await fetch(`${API_URL}/appointments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+  getClientAppointments: async (clientId: string) => {
+    const res = await fetch(`${API_URL}/appointments/client/${clientId}`);
+    if (!res.ok) return [];
+    return res.json();
+  },
+  getBarberAppointments: async (barberId: string) => {
+    const res = await fetch(`${API_URL}/appointments/barber/${barberId}`);
+    if (!res.ok) return [];
+    return res.json();
+  },
+  updateAppointmentStatus: async (id: string, status: string, barberId?: string) => {
+    const res = await fetch(`${API_URL}/appointments/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, barberId }),
+    });
+    return res.json();
+  },
+  getActiveRequests: async (latitude?: number, longitude?: number) => {
+    let url = `${API_URL}/appointments/active-requests`;
+    if (latitude && longitude) {
+      url += `?latitude=${latitude}&longitude=${longitude}`;
+    }
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    return res.json();
+  },
 };

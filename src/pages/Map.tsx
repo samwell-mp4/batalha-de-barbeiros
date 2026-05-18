@@ -101,10 +101,68 @@ export default function MapPage() {
   
   const [showOpportunityAlert, setShowOpportunityAlert] = useState<string | null>(null);
   const [prevSlotCount, setPrevSlotCount] = useState(0);
+  const [activeRequests, setActiveRequests] = useState<any[]>([]);
+  const [currentAppointmentId, setCurrentAppointmentId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBarberLocations();
   }, []);
+
+  // POLLING SYSTEM FOR LIVE MATCHMAKING
+  useEffect(() => {
+    let interval: any;
+
+    const poll = async () => {
+      // BARBER POLLING: Fetch active Express & Queue requests within 5km of mapCenter
+      if (isBarberView && (isRadarOpen || clientMode === 'radares')) {
+        try {
+          const reqs = await api.getActiveRequests(mapCenter[0], mapCenter[1]);
+          setActiveRequests(reqs);
+        } catch (e) {
+          console.error('Error polling active requests:', e);
+        }
+      }
+
+      // CLIENT POLLING: Fetch the status of their active express/queue booking
+      if (!isBarberView && matchSession?.status === 'searching' && currentAppointmentId) {
+        try {
+          const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/appointments/client/${user?.id}`);
+          if (res.ok) {
+            const clientAppointments = await res.json();
+            const currentApp = clientAppointments.find((a: any) => a.id === currentAppointmentId);
+            if (currentApp) {
+              if (currentApp.status === 'CONFIRMED') {
+                // Barber accepted! Update client view
+                setMatchSession((prev: any) => ({
+                  ...prev,
+                  status: 'accepted',
+                  activeMatch: {
+                    id: currentApp.id,
+                    price: currentApp.price,
+                    services: currentApp.services,
+                    client: { name: user?.name || 'Luis', avatar: user?.avatar || 'https://i.pravatar.cc/150?u=luis', rating: 4.8 },
+                    barber: currentApp.barber.user,
+                    barberId: currentApp.barber.id
+                  }
+                }));
+              } else if (currentApp.status === 'CANCELLED') {
+                // Request cancelled
+                setMatchSession((prev: any) => ({ ...prev, status: 'idle', activeMatch: null }));
+                setCurrentAppointmentId(null);
+                alert('Sua solicitação de agendamento foi cancelada.');
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error polling appointment status:', e);
+        }
+      }
+    };
+
+    poll();
+    interval = setInterval(poll, 3500);
+    return () => clearInterval(interval);
+  }, [isBarberView, isRadarOpen, clientMode, matchSession?.status, currentAppointmentId, mapCenter, user?.id]);
 
   const fetchBarberLocations = async () => {
     setLoading(true);
@@ -167,27 +225,76 @@ export default function MapPage() {
     return () => clearInterval(interval);
   }, [matchSession?.status]);
 
-  const handleSendProposal = () => {
-    const newRequest = {
-      id: 'user_req_' + Date.now(),
-      client: { name: 'Luis', avatar: 'https://i.pravatar.cc/150?u=luis', rating: 4.8, isNew: true },
-      services: selectedServices.map(s => SERVICE_CATEGORIES.find(cat => cat.id === s)?.label),
-      price: proposalPrice,
-      observations: observations,
-      distance: '1.2km'
-    };
-    setMatchSession((prev: any) => ({ ...prev, status: 'searching', activeMatch: newRequest, incomingRequests: [newRequest, ...prev.incomingRequests] }));
-    setIsRequesting(false);
+  const handleSendProposal = async () => {
+    if (!user) {
+      alert('Você precisa estar logado para solicitar atendimento.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const targetBarberId = selectedBarber?.id || dbBarbers[0]?.id || 'b1';
+
+      const appointment = await api.createAppointment({
+        clientId: user.id,
+        barberId: targetBarberId,
+        date: new Date(),
+        time: 'EXPRESS',
+        services: selectedServices,
+        price: proposalPrice,
+        paymentMethod: paymentMethod || 'pix',
+        isExpress: true,
+        latitude: mapCenter[0],
+        longitude: mapCenter[1]
+      });
+
+      if (appointment?.id) {
+        setCurrentAppointmentId(appointment.id);
+        const newRequest = {
+          id: appointment.id,
+          client: { name: user.name || 'Luis', avatar: user.avatar || 'https://i.pravatar.cc/150?u=luis', rating: 4.8, isNew: true },
+          services: selectedServices,
+          price: proposalPrice,
+          observations: observations,
+          distance: '1.2km'
+        };
+        setMatchSession((prev: any) => ({
+          ...prev,
+          status: 'searching',
+          activeMatch: newRequest,
+          incomingRequests: [newRequest, ...prev.incomingRequests]
+        }));
+      }
+    } catch (e: any) {
+      console.error('Failed to request Express Match:', e);
+      alert('Erro ao solicitar Express Match: ' + e.message);
+    } finally {
+      setLoading(false);
+      setIsRequesting(false);
+    }
   };
 
   const handleFinalizePayment = () => {
     setIsProcessingPayment(true);
-    setTimeout(() => { setIsProcessingPayment(false); setMatchSession((prev: any) => ({ ...prev, status: 'finished' })); }, 2500);
+    setTimeout(() => { 
+      setIsProcessingPayment(false); 
+      setMatchSession((prev: any) => ({ ...prev, status: 'finished' })); 
+      if (currentAppointmentId) {
+        api.updateAppointmentStatus(currentAppointmentId, 'COMPLETED');
+      }
+    }, 2500);
   };
 
-  const handleFinalCancel = () => {
+  const handleFinalCancel = async () => {
     setShowCancelConfirm(false);
     setShowCancelledToast(true);
+    if (currentAppointmentId) {
+      try {
+        await api.updateAppointmentStatus(currentAppointmentId, 'CANCELLED');
+      } catch (e) {
+        console.error('Failed to cancel appointment in DB:', e);
+      }
+      setCurrentAppointmentId(null);
+    }
     setTimeout(() => {
       setMatchSession((prev: any) => ({ ...prev, status: 'idle', activeMatch: null }));
       setShowCancelledToast(false);
@@ -756,29 +863,43 @@ export default function MapPage() {
 
                           <button
                             disabled={!paymentMethod}
-                            onClick={() => {
-                              alert(`SolicitaÃ§Ã£o enviada para o dia ${bookingData.date} Ã s ${bookingData.time}!`);
-                              setMatchSession((prev: any) => ({
-                                ...prev,
-                                notifications: [
-                                  {
-                                    id: Date.now(),
-                                    type: 'booking',
-                                    time: bookingData.time,
-                                    date: bookingData.date,
-                                    client: 'Luis (Novo)',
-                                    status: 'pending',
-                                    barberName: selectedBarber.name,
-                                    services: selectedServices,
-                                    price: totalPrice,
-                                    paymentMethod: paymentMethod
-                                  },
-                                  ...(prev.notifications || [])
-                                ]
-                              }));
-                              setIsBookingAgenda(false);
-                              setSelectedBarber(null);
-                              setBookingStep('calendar');
+                            onClick={async () => {
+                              if (!user) {
+                                alert('Você precisa estar logado para agendar.');
+                                return;
+                              }
+                              setLoading(true);
+                              try {
+                                const isPublicFila = selectedBarber?.name === 'Arena Aberta';
+                                const targetBarberId = isPublicFila ? (dbBarbers[0]?.id || 'b1') : (selectedBarber?.id || 'b1');
+                                
+                                const appointment = await api.createAppointment({
+                                  clientId: user.id,
+                                  barberId: targetBarberId,
+                                  date: bookingData.date,
+                                  time: bookingData.time,
+                                  services: selectedServices,
+                                  price: totalPrice,
+                                  paymentMethod: paymentMethod,
+                                  isQueue: isPublicFila,
+                                  isExpress: false,
+                                  latitude: mapCenter[0],
+                                  longitude: mapCenter[1]
+                                });
+
+                                alert(isPublicFila 
+                                  ? 'Batalha enviada para a Fila de Agendamento! Barbeiros da região poderão aceitá-la.'
+                                  : `Sua solicitação foi enviada para ${selectedBarber?.name || 'o barbeiro'}!`
+                                );
+                              } catch (e: any) {
+                                console.error('Failed to create booking:', e);
+                                alert('Erro ao criar agendamento: ' + e.message);
+                              } finally {
+                                setLoading(false);
+                                setIsBookingAgenda(false);
+                                setSelectedBarber(null);
+                                setBookingStep('calendar');
+                              }
                             }}
                             className="w-full py-7 bg-green-500 text-white rounded-[32px] font-black text-sm uppercase italic tracking-widest shadow-2xl flex items-center justify-center space-x-3 disabled:opacity-50 disabled:grayscale transition-transform active:scale-95"
                           >
@@ -908,20 +1029,22 @@ export default function MapPage() {
                         </div>
                       )}
 
-                      {/* VISÃƒO DO BARBEIRO: VÃŠ CLIENTES BUSCANDO (FILA) */}
+                      {/* VISÃO DO BARBEIRO: VÊ CLIENTES BUSCANDO (FILA) */}
                       {isBarberView && (
                         <div className="space-y-4">
                           <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest px-2">CLIENTES BUSCANDO</p>
-                          {(matchSession.notifications || []).filter((n: any) => n.status === 'pending' && n.type === 'booking').length > 0 ? (
-                            (matchSession.notifications || []).filter((n: any) => n.status === 'pending' && n.type === 'booking').map((req: any) => (
+                          {activeRequests.length > 0 ? (
+                            activeRequests.map((req: any) => (
                               <div key={req.id} className="bg-blue-950 text-white p-5 rounded-[35px] shadow-xl relative overflow-hidden">
                                 <div className="absolute top-0 right-0 p-4 opacity-10"><Swords size={60} /></div>
                                 <div className="flex items-center justify-between mb-4">
                                   <div className="flex items-center space-x-3">
-                                    <img src={`https://i.pravatar.cc/150?u=${req.id}`} className="w-10 h-10 rounded-xl border-2 border-blue-800" />
+                                    <img src={req.client?.avatar || `https://i.pravatar.cc/150?u=${req.id}`} className="w-10 h-10 rounded-xl border-2 border-blue-800" />
                                     <div>
-                                      <p className="text-[11px] font-black uppercase italic leading-none">{req.client}</p>
-                                      <p className="text-[8px] font-bold text-blue-400 uppercase tracking-widest mt-1">Dia {req.date} Ã s {req.time}</p>
+                                      <p className="text-[11px] font-black uppercase italic leading-none">{req.client?.name || 'Cliente'}</p>
+                                      <p className="text-[8px] font-bold text-blue-400 uppercase tracking-widest mt-1">
+                                        {req.isExpress ? 'Chamado Expresso Live' : `Agendamento: ${req.time}`}
+                                      </p>
                                     </div>
                                   </div>
                                   <div className="text-right">
@@ -933,15 +1056,28 @@ export default function MapPage() {
                                   <Scissors size={14} className="text-cyan-400" /><span className="text-[8px] font-black uppercase">{(req.services || []).join(' + ')}</span>
                                 </div>
                                 <button
-                                  onClick={() => {
-                                    setMatchSession((prev: any) => {
-                                      const currentAgenda = prev.globalAgenda || {};
-                                      const dateData = currentAgenda[req.date] || {};
-                                      const dateSlots = dateData.slots || [];
-                                      const updatedSlots = [...dateSlots.filter((s: any) => s.time !== req.time), { time: req.time, status: 'occupied', client_name: req.client, services: req.services, price: req.price, isMyBooking: true }];
-                                      return { ...prev, notifications: (prev.notifications || []).filter((n: any) => n.id !== req.id), globalAgenda: { ...currentAgenda, [req.date]: { ...dateData, slots: updatedSlots } } };
-                                    });
-                                    alert(`VocÃª aceitou o desafio de ${req.client}! Agenda atualizada para o dia ${req.date}.`);
+                                  onClick={async () => {
+                                    setLoading(true);
+                                    try {
+                                      await api.updateAppointmentStatus(req.id, 'CONFIRMED', user.id);
+                                      setMatchSession((prev: any) => ({
+                                        ...prev,
+                                        status: 'accepted',
+                                        activeMatch: {
+                                          id: req.id,
+                                          client: req.client,
+                                          services: req.services,
+                                          price: req.price,
+                                          barberId: user.id
+                                        }
+                                      }));
+                                      alert(`Você aceitou a batalha de ${req.client?.name || 'Luis'}!`);
+                                    } catch (e: any) {
+                                      console.error('Failed to accept request:', e);
+                                      alert('Erro ao aceitar pedido: ' + e.message);
+                                    } finally {
+                                      setLoading(false);
+                                    }
                                   }}
                                   className="w-full py-4 bg-cyan-500 text-blue-950 rounded-2xl font-black text-[9px] uppercase italic tracking-widest shadow-lg flex items-center justify-center space-x-2 active:scale-95 transition-transform"
                                 >
@@ -951,7 +1087,7 @@ export default function MapPage() {
                             ))
                           ) : (
                             <div className="py-20 text-center opacity-30 flex flex-col items-center">
-                              <User size={48} className="mb-4 text-blue-600" />
+                              <User size={48} className="mb-4 text-blue-600 animate-pulse" />
                               <p className="text-[9px] font-black uppercase tracking-widest text-blue-950">Nenhum Cliente na Fila</p>
                             </div>
                           )}
@@ -1049,7 +1185,6 @@ export default function MapPage() {
                       <span className="text-2xl">{cat.icon}</span>
                       <div>
                         <p className="font-black text-blue-950 text-sm">{cat.label}</p>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase">R$ {cat.price}</p>
                       </div>
                     </div>
                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedServices.includes(cat.label) ? 'bg-blue-600 border-blue-600' : 'border-gray-200'}`}>
