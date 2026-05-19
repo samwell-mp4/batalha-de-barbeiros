@@ -37,7 +37,7 @@ export default function Layout() {
 
     syncUser();
 
-    if (!user && location.pathname !== '/auth') {
+    if (!user && location.pathname !== '/auth' && location.pathname !== '/league') {
       navigate('/auth');
     }
   }, [location.pathname]); 
