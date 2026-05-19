@@ -30,7 +30,8 @@ function RecenterButton({ coords }: { coords: [number, number] }) {
 }
 
 const getDatesRange = () => {
-  const start = new Date(Date.UTC(2026, 4, 16)); // May 16, 2026
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
   const end = new Date(Date.UTC(2026, 11, 31)); // Dec 31, 2026
   const arr = [];
   const dt = new Date(start);
@@ -48,20 +49,12 @@ const getUTCDateString = (d: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const getWeekRangeLabel = (d: Date) => {
-  const current = new Date(d);
-  const day = current.getUTCDay();
-  const diffToSunday = current.getUTCDate() - day;
-  const sunday = new Date(current);
-  sunday.setUTCDate(diffToSunday);
-  
-  const saturday = new Date(sunday);
-  saturday.setUTCDate(sunday.getUTCDate() + 6);
-  
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const format = (date: Date) => `${pad(date.getUTCDate())}/${pad(date.getUTCMonth() + 1)}`;
-  return `Semana de ${format(sunday)} a ${format(saturday)}`;
+const getMonthLabel = (d: Date) => {
+  const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  return `${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 };
+
+
 
 export default function MapPage() {
   const [loading, setLoading] = useState(false);
@@ -149,9 +142,12 @@ export default function MapPage() {
   const [clientMode, setClientMode] = useState<'expresso' | 'radares'>('expresso');
   const [isBookingAgenda, setIsBookingAgenda] = useState(false);
   const [bookingStep, setBookingStep] = useState<'calendar' | 'services' | 'payment'>('calendar');
-  const [bookingData, setBookingData] = useState<any>({ time: '', date: '2026-05-16' });
-  const [selectedBookingDate, setSelectedBookingDate] = useState('2026-05-16'); // Data padrão hoje ("2026-05-16")
-  const [selectedBookingWeek, setSelectedBookingWeek] = useState(() => getWeekRangeLabel(new Date(Date.UTC(2026, 4, 16))));
+  const [bookingData, setBookingData] = useState<any>(() => {
+    const todayStr = getUTCDateString(new Date());
+    return { time: '', date: todayStr };
+  });
+  const [selectedBookingDate, setSelectedBookingDate] = useState(() => getUTCDateString(new Date()));
+  const [selectedBookingMonth, setSelectedBookingMonth] = useState(() => getMonthLabel(new Date()));
   const [isRadarOpen, setIsRadarOpen] = useState(false);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [proposalPrice, setProposalPrice] = useState<number>(0);
@@ -1087,31 +1083,37 @@ export default function MapPage() {
                             <div className="w-10" />
                           </div>
 
-                          {/* SELETOR DE SEMANAS */}
-                          <div className="mb-4">
+                          {/* SELETOR DE MÊS COM ÍCONE DE CALENDÁRIO */}
+                          <div className="mb-4 relative">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600 pointer-events-none">
+                              <CalendarDays size={18} />
+                            </div>
                             <select
-                              value={selectedBookingWeek}
+                              value={selectedBookingMonth}
                               onChange={(e) => {
-                                setSelectedBookingWeek(e.target.value);
-                                // Automatically select first day of the week
-                                const firstDayInWeek = getDatesRange().find(d => getWeekRangeLabel(d) === e.target.value);
-                                if (firstDayInWeek) {
-                                  const dayStr = getUTCDateString(firstDayInWeek);
+                                setSelectedBookingMonth(e.target.value);
+                                // Automatically select first day of the month
+                                const firstDayInMonth = getDatesRange().find(d => getMonthLabel(d) === e.target.value);
+                                if (firstDayInMonth) {
+                                  const dayStr = getUTCDateString(firstDayInMonth);
                                   setSelectedBookingDate(dayStr);
                                   setBookingData((prev: any) => ({ ...prev, date: dayStr }));
                                 }
                               }}
-                              className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 font-black text-xs text-blue-950 outline-none uppercase"
+                              className="w-full p-4 pl-12 bg-gray-50 rounded-2xl border border-gray-100 font-black text-xs text-blue-950 outline-none uppercase appearance-none"
                             >
-                              {Array.from(new Set(getDatesRange().map(d => getWeekRangeLabel(d)))).map(weekLabel => (
-                                <option key={weekLabel} value={weekLabel}>{weekLabel}</option>
+                              {Array.from(new Set(getDatesRange().map(d => getMonthLabel(d)))).map(monthLabel => (
+                                <option key={monthLabel} value={monthLabel}>{monthLabel}</option>
                               ))}
                             </select>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                              <ChevronRight size={16} className="rotate-90" />
+                            </div>
                           </div>
 
                           <div className="flex space-x-3 overflow-x-auto no-scrollbar pb-6 px-1">
                             {getDatesRange()
-                              .filter(d => getWeekRangeLabel(d) === selectedBookingWeek)
+                              .filter(d => getMonthLabel(d) === selectedBookingMonth)
                               .map(dayObj => {
                                 const dayStr = getUTCDateString(dayObj);
                                 const isToday = dayStr === getUTCDateString(new Date());

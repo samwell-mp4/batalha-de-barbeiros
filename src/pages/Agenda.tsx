@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, ChevronRight, ChevronLeft, Plus, X, Zap, Bell, ShieldOff, Check, Scissors as ScissorsIcon, Star, Settings, Calendar, Clock, Navigation, Trash2, Filter } from 'lucide-react';
+import { User, ChevronRight, ChevronLeft, Plus, X, Zap, Bell, ShieldOff, Check, Scissors as ScissorsIcon, Star, Settings, Calendar, CalendarDays, Clock, Navigation, Trash2, Filter } from 'lucide-react';
 import { api } from '../services/api';
 
 const getDatesRange = () => {
-  const start = new Date(Date.UTC(2026, 4, 16)); // May 16, 2026
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
   const end = new Date(Date.UTC(2026, 11, 31)); // Dec 31, 2026
   const arr = [];
   const dt = new Date(start);
@@ -21,6 +22,11 @@ const getUTCDateString = (d: Date) => {
   const month = String(d.getUTCMonth() + 1).padStart(2, '0');
   const day = String(d.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+const getMonthLabel = (d: Date) => {
+  const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  return `${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 };
 
 const getWeekRangeLabel = (d: Date) => {
@@ -46,8 +52,8 @@ export default function Agenda() {
   const today = getUTCDateString(new Date());
   const currentHour = new Date().getHours();
 
-  const [selectedDate, setSelectedDate] = useState("2026-05-16");
-  const [selectedWeek, setSelectedWeek] = useState(() => getWeekRangeLabel(new Date(Date.UTC(2026, 4, 16))));
+  const [selectedDate, setSelectedDate] = useState(() => getUTCDateString(new Date()));
+  const [selectedMonth, setSelectedMonth] = useState(() => getMonthLabel(new Date()));
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showHoursConfig, setShowHoursConfig] = useState(false);
@@ -429,7 +435,7 @@ export default function Agenda() {
       
       // 2. Seleciona o dia correto
       setSelectedDate(dayStr);
-      setSelectedWeek(getWeekRangeLabel(appDate));
+      setSelectedMonth(getMonthLabel(appDate));
       
       // 3. Se for barbeiro, abre o modal de gestão do slot imediatamente
       if (isBarberView) {
@@ -695,24 +701,30 @@ export default function Agenda() {
           {/* DATE PICKER SLIDER (BARBER VIEW ONLY) */}
           {isBarberView && (
             <div className="flex flex-col space-y-3 mb-6">
-              {/* WEEK SELECTION DROPDOWN */}
-              <div className="flex items-center justify-between bg-gray-50/50 p-2 rounded-[25px] border border-gray-100">
-                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest pl-3">Semana</span>
+              {/* MONTH SELECTION DROPDOWN WITH CALENDAR ICON */}
+              <div className="flex items-center justify-between bg-gray-50/50 p-2.5 rounded-[25px] border border-gray-100 relative">
+                <div className="flex items-center space-x-2 pl-3">
+                  <CalendarDays size={14} className="text-blue-600" />
+                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Mês</span>
+                </div>
                 <select
-                  value={selectedWeek}
+                  value={selectedMonth}
                   onChange={(e) => {
-                    setSelectedWeek(e.target.value);
-                    const firstDayInWeek = getDatesRange().find(d => getWeekRangeLabel(d) === e.target.value);
-                    if (firstDayInWeek) {
-                      setSelectedDate(getUTCDateString(firstDayInWeek));
+                    setSelectedMonth(e.target.value);
+                    const firstDayInMonth = getDatesRange().find(d => getMonthLabel(d) === e.target.value);
+                    if (firstDayInMonth) {
+                      setSelectedDate(getUTCDateString(firstDayInMonth));
                     }
                   }}
-                  className="bg-transparent font-black text-xs text-blue-950 outline-none uppercase text-right pr-3"
+                  className="bg-transparent font-black text-xs text-blue-950 outline-none uppercase text-right pr-6 appearance-none cursor-pointer"
                 >
-                  {Array.from(new Set(getDatesRange().map(d => getWeekRangeLabel(d)))).map(weekLabel => (
-                    <option key={weekLabel} value={weekLabel}>{weekLabel}</option>
+                  {Array.from(new Set(getDatesRange().map(d => getMonthLabel(d)))).map(monthLabel => (
+                    <option key={monthLabel} value={monthLabel}>{monthLabel}</option>
                   ))}
                 </select>
+                <div className="absolute right-4 pointer-events-none text-gray-400">
+                  <ChevronRight size={14} className="rotate-90" />
+                </div>
               </div>
 
               {/* HORIZONTAL DATE SLIDER */}
@@ -720,7 +732,7 @@ export default function Agenda() {
                 <button className="p-2 text-gray-300"><ChevronLeft size={20} /></button>
                 <div className="flex space-x-3 overflow-x-auto no-scrollbar py-1">
                   {getDatesRange()
-                    .filter(d => getWeekRangeLabel(d) === selectedWeek)
+                    .filter(d => getMonthLabel(d) === selectedMonth)
                     .map(dayObj => {
                       const dayStr = getUTCDateString(dayObj);
                       const isToday = dayStr === getUTCDateString(new Date());
