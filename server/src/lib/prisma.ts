@@ -19,7 +19,9 @@ let useMock = false;
 const db: Record<string, any[]> = {
   user: [
     { id: 'client-1', name: 'Luis Cliente', email: 'client@battlebarber.com', password: '123', role: 'CLIENT', avatar: 'https://i.pravatar.cc/150?u=1' },
-    { id: 'barber-user-1', name: 'Gustavo Barbeiro', email: 'barber@battlebarber.com', password: '123', role: 'BARBER', avatar: 'https://i.pravatar.cc/150?u=2' }
+    { id: 'barber-user-1', name: 'Gustavo Barbeiro', email: 'barber@battlebarber.com', password: '123', role: 'BARBER', avatar: 'https://i.pravatar.cc/150?u=2' },
+    { id: 'barber-user-2', name: 'Henrique Barber', email: 'henrique@elite.com', password: '123', role: 'BARBER', avatar: 'https://i.pravatar.cc/150?u=3' },
+    { id: 'barber-user-3', name: 'Vitor do Corte', email: 'vitor@elite.com', password: '123', role: 'BARBER', avatar: 'https://i.pravatar.cc/150?u=4' }
   ],
   barber: [
     {
@@ -34,10 +36,68 @@ const db: Record<string, any[]> = {
       isOnline: true,
       gallery: [],
       user: { id: 'barber-user-1', name: 'Gustavo Barbeiro', email: 'barber@battlebarber.com', avatar: 'https://i.pravatar.cc/150?u=2' }
+    },
+    {
+      id: 'barber-2',
+      userId: 'barber-user-2',
+      barberShop: 'Elite Barber Shop',
+      latitude: -23.525,
+      longitude: -46.522,
+      specialties: ['Fade', 'Pigmentação'],
+      workingHours: '09:00 às 20:00',
+      rating: 4.9,
+      isOnline: true,
+      gallery: [],
+      user: { id: 'barber-user-2', name: 'Henrique Barber', email: 'henrique@elite.com', avatar: 'https://i.pravatar.cc/150?u=3' }
+    },
+    {
+      id: 'barber-3',
+      userId: 'barber-user-3',
+      barberShop: 'Mooca Barber',
+      latitude: -23.535,
+      longitude: -46.532,
+      specialties: ['Navalhado'],
+      workingHours: '09:00 às 21:00',
+      rating: 4.8,
+      isOnline: true,
+      gallery: [],
+      user: { id: 'barber-user-3', name: 'Vitor do Corte', email: 'vitor@elite.com', avatar: 'https://i.pravatar.cc/150?u=4' }
     }
   ],
   appointment: [],
-  mapmarker: []
+  mapmarker: [],
+  championship: [
+    {
+      id: 'champ-1',
+      name: 'Batalha do Tatuapé',
+      ligaId: 2,
+      modality: 'x1',
+      theme: 'Degradê Perfeito',
+      prize: 'R$ 1.000 + Kit Premium',
+      status: 'ONGOING',
+      arbitration: 'hybrid',
+      maxParticipants: 2,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      _participantIds: ['barber-2', 'barber-3']
+    }
+  ],
+  match: [
+    {
+      id: 'match-1',
+      championshipId: 'champ-1',
+      round: 1,
+      player1Id: 'barber-2',
+      player2Id: 'barber-3',
+      status: 'LIVE',
+      score1: 0,
+      score2: 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+  ],
+  vote: [],
+  refereelog: []
 };
 
 // Check if database is reachable on startup
@@ -65,6 +125,15 @@ function matchesWhere(item: any, where: any): boolean {
 
   for (const key of Object.keys(where)) {
     const filter = where[key];
+
+    // Compound key matchId_userId support
+    if (key === 'matchId_userId' && filter && typeof filter === 'object') {
+      if (item.matchId !== filter.matchId || item.userId !== filter.userId) {
+        return false;
+      }
+      continue;
+    }
+
     const val = item[key];
 
     if (filter && typeof filter === 'object' && !Array.isArray(filter)) {
@@ -101,6 +170,27 @@ function resolveRelations(modelName: string, item: any, include: any): any {
       }
     }
   }
+  if (modelName === 'championship') {
+    if (include?.participants) {
+      const pIds = item._participantIds || [];
+      copy.participants = db.barber
+        .filter(b => pIds.includes(b.id))
+        .map(b => resolveRelations('barber', b, include.participants.include || { user: true }));
+    }
+    if (include?.matches) {
+      copy.matches = db.match
+        .filter(m => m.championshipId === item.id)
+        .map(m => resolveRelations('match', m, include.matches.include));
+    }
+  }
+  if (modelName === 'match') {
+    if (include?.votes) {
+      copy.votes = db.vote.filter(v => v.matchId === item.id);
+    }
+    if (include?.refereeLogs) {
+      copy.refereeLogs = db.refereelog.filter(r => r.matchId === item.id);
+    }
+  }
   return copy;
 }
 
@@ -125,11 +215,21 @@ const mockPrisma = new Proxy({}, {
         },
         create: async (args: any) => {
           const newId = modelName + '-' + Math.random().toString(36).substr(2, 9);
+          
+          let parsedData = { ...args.data };
+          let participantIds: string[] = [];
+          
+          if (modelName === 'championship' && args.data.participants?.connect) {
+            participantIds = args.data.participants.connect.map((c: any) => c.id);
+            delete parsedData.participants;
+          }
+
           const newItem = {
             id: newId,
             createdAt: new Date(),
             updatedAt: new Date(),
-            ...args.data
+            ...parsedData,
+            ...(modelName === 'championship' ? { _participantIds: participantIds } : {})
           };
           db[modelName].push(newItem);
           return resolveRelations(modelName, newItem, args?.include);
@@ -137,9 +237,19 @@ const mockPrisma = new Proxy({}, {
         update: async (args: any) => {
           const index = db[modelName].findIndex(x => matchesWhere(x, args?.where));
           if (index !== -1) {
+            const currentItem = db[modelName][index];
+            const updatedData = { ...args.data };
+            
+            for (const k of Object.keys(updatedData)) {
+              if (updatedData[k] && typeof updatedData[k] === 'object' && 'increment' in updatedData[k]) {
+                const incValue = updatedData[k].increment;
+                updatedData[k] = (currentItem[k] || 0) + incValue;
+              }
+            }
+
             db[modelName][index] = {
-              ...db[modelName][index],
-              ...args.data,
+              ...currentItem,
+              ...updatedData,
               updatedAt: new Date()
             };
             return resolveRelations(modelName, db[modelName][index], args?.include);

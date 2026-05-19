@@ -25,6 +25,7 @@ export default function League() {
     judges: [] as string[], 
     liga: 1, 
     opponentNick: '',
+    opponentId: '',
     theme: '',
     startDate: '',
     startTime: ''
@@ -35,9 +36,44 @@ export default function League() {
   const [dbChampionships, setDbChampionships] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const [currentUser] = useState<any>(() => {
+    const saved = localStorage.getItem('user');
+    if (!saved || saved === 'undefined' || saved === 'null') return null;
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const [dbBarbers, setDbBarbers] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedOpponent, setSelectedOpponent] = useState<any>(null);
+
+  const [refereeScores, setRefereeScores] = useState<Record<string, number>>({
+    'Acabamento': 9,
+    'Simetria': 9,
+    'Transicao': 9,
+    'Originalidade': 9
+  });
+
   useEffect(() => {
     fetchChampionships();
+    fetchBarbers();
   }, []);
+
+  const fetchBarbers = async () => {
+    try {
+      const data = await api.getBarbers();
+      if (data && Array.isArray(data)) {
+        // Exclude the current logged-in barber from the options!
+        const filtered = data.filter((b: any) => b.userId !== currentUser?.id && b.id !== currentUser?.barberProfile?.id);
+        setDbBarbers(filtered);
+      }
+    } catch (error) {
+      console.error('Failed to fetch barbers', error);
+    }
+  };
 
   const fetchChampionships = async () => {
     setLoading(true);
@@ -52,6 +88,26 @@ export default function League() {
       setLoading(false);
     }
   };
+
+  const fetchChampionshipDetails = async (id: string) => {
+    setLoading(true);
+    try {
+      const res = await api.getChampionshipDetails(id);
+      if (res && res.id) {
+        setSelectedChamp(res);
+      }
+    } catch (error) {
+      console.error('Failed to fetch championship details', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedChamp?.id && view === 'detail') {
+      fetchChampionshipDetails(selectedChamp.id);
+    }
+  }, [view]);
 
   const LEAGUES = [
     { id: 1, name: 'Duelo 1x1', type: 'X1 CLASSIC', players: '2', radius: 'Global (Nickname)', duration: 'Definido pelo usuário', icon: <Swords size={18} />, canCreate: true },
@@ -211,7 +267,20 @@ export default function League() {
           </div>
         )}
       </div>
-      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setView('create')} className="fixed bottom-28 right-6 w-16 h-16 bg-blue-600 text-white rounded-3xl shadow-2xl z-50 flex items-center justify-center"><Plus size={32} /></motion.button>
+      <motion.button 
+        whileHover={{ scale: 1.05 }} 
+        whileTap={{ scale: 0.95 }} 
+        onClick={() => {
+          if (currentUser?.role !== 'BARBER') {
+            alert('Somente barbeiros profissionais podem criar ou participar de desafios da liga!');
+            return;
+          }
+          setView('create');
+        }} 
+        className="fixed bottom-28 right-6 w-16 h-16 bg-blue-600 text-white rounded-3xl shadow-2xl z-50 flex items-center justify-center"
+      >
+        <Plus size={32} />
+      </motion.button>
     </motion.div>
   );
 
@@ -228,6 +297,8 @@ export default function League() {
         maxParticipants: form.maxParticipants,
         startDate: form.startDate,
         startTime: form.startTime,
+        creatorId: currentUser?.barberProfile?.id || null,
+        opponentId: form.opponentId || null,
         opponentNick: form.opponentNick
       });
       setNewlyCreated(data);
@@ -271,9 +342,64 @@ export default function League() {
             <h3 className="text-2xl font-black text-blue-950 uppercase italic font-orbitron">{form.liga === 1 ? 'Desafiar quem?' : 'Escolha a Modalidade'}</h3>
             {form.liga === 1 ? (
               <div className="space-y-4">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2">Digite o Nickname do Oponente</p>
-                <input type="text" placeholder="@nickname_do_barbeiro" value={form.opponentNick} onChange={e=>setForm({...form, opponentNick: e.target.value})} className="w-full p-6 bg-gray-50 rounded-[25px] border-2 border-gray-200 text-lg font-black outline-none focus:border-blue-600 transition-all !text-blue-950 placeholder:text-gray-400 shadow-sm" />
-                <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex items-center space-x-3"><Info size={18} className="text-blue-600" /><p className="text-[10px] font-bold text-blue-600 uppercase leading-tight">O oponente receberá uma notificação para aceitar o desafio.</p></div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2">Buscar Barbeiro no Banco de Dados</p>
+                <div className="relative">
+                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <input 
+                    type="text" 
+                    placeholder="Buscar por nome ou barbearia..." 
+                    value={searchTerm} 
+                    onChange={e=>setSearchTerm(e.target.value)} 
+                    className="w-full p-6 pl-16 bg-gray-50 rounded-[25px] border-2 border-gray-200 text-lg font-black outline-none focus:border-blue-600 transition-all !text-blue-950 placeholder:text-gray-400 shadow-sm" 
+                  />
+                </div>
+                
+                {selectedOpponent && (
+                  <div className="p-4 bg-green-50 rounded-[25px] border-2 border-green-500 flex items-center justify-between animate-in fade-in zoom-in-95">
+                    <div className="flex items-center space-x-3">
+                      <img src={selectedOpponent.user?.avatar || `https://i.pravatar.cc/150?u=${selectedOpponent.id}`} className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm" />
+                      <div>
+                        <p className="text-sm font-black text-green-950 uppercase">{selectedOpponent.user?.name}</p>
+                        <p className="text-[9px] font-bold text-green-700 uppercase">{selectedOpponent.barberShop}</p>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => { setSelectedOpponent(null); setForm(f => ({ ...f, opponentId: '', opponentNick: '' })); }} className="p-2 bg-green-100 hover:bg-green-200 rounded-full text-green-700"><X size={16} /></button>
+                  </div>
+                )}
+
+                <div className="max-h-[220px] overflow-y-auto space-y-2 pr-1 no-scrollbar border-t border-gray-100 pt-3">
+                  {(() => {
+                    const filteredBarbers = dbBarbers.filter(barber => {
+                      const name = barber.user?.name?.toLowerCase() || '';
+                      const shop = barber.barberShop?.toLowerCase() || '';
+                      const query = searchTerm.toLowerCase();
+                      return name.includes(query) || shop.includes(query);
+                    });
+
+                    if (filteredBarbers.length === 0) {
+                      return <p className="text-center text-[10px] font-black text-gray-400 uppercase py-6">Nenhum barbeiro encontrado</p>;
+                    }
+
+                    return filteredBarbers.map(barber => (
+                      <button 
+                        type="button"
+                        key={barber.id}
+                        onClick={() => {
+                          setSelectedOpponent(barber);
+                          setForm(f => ({ ...f, opponentId: barber.id, opponentNick: barber.user?.name || '' }));
+                          setSearchTerm('');
+                        }}
+                        className={`w-full p-4 rounded-2xl border-2 text-left flex items-center space-x-3 transition-all ${selectedOpponent?.id === barber.id ? 'border-blue-600 bg-blue-50' : 'border-gray-100 bg-white hover:border-blue-300'}`}
+                      >
+                        <img src={barber.user?.avatar || `https://i.pravatar.cc/150?u=${barber.id}`} className="w-10 h-10 rounded-full object-cover border border-gray-100 shadow-sm" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-black text-blue-950 truncate uppercase">{barber.user?.name}</p>
+                          <p className="text-[9px] font-bold text-gray-400 truncate uppercase">{barber.barberShop} • {barber.user?.city || 'Brasil'}</p>
+                        </div>
+                      </button>
+                    ));
+                  })()}
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
@@ -351,141 +477,275 @@ export default function League() {
     </motion.div>
   );
 
-  const renderDetail = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[5500] bg-[#F8FAFC] flex flex-col shadow-2xl">
-      <div className="px-6 py-6 flex items-center justify-between bg-white border-b border-gray-100">
-        <button onClick={() => setView('home')} className="p-3 bg-gray-50 rounded-2xl text-blue-950"><ChevronLeft size={24} /></button>
-        <div className="text-center"><span className="text-[8px] font-black text-red-500 uppercase flex items-center justify-center"><div className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1 animate-pulse" /> {selectedChamp?.status === 'waiting' ? 'INSCRIÇÕES ABERTAS' : 'SEMIFINAL LIVE'}</span><h2 className="text-sm font-black text-blue-950 font-orbitron italic uppercase">{selectedChamp?.name}</h2></div>
-        <button className="p-3 bg-gray-50 rounded-2xl text-gray-400"><Share2 size={24} /></button>
-      </div>
-      <div className="flex-1 overflow-y-auto no-scrollbar">
-        <div className="bg-blue-600 p-8 text-white relative overflow-hidden">
-           <div className="flex items-center justify-between relative z-10">
-              <div className="text-center">
-                 <div className="w-20 h-20 rounded-full border-4 border-white/20 mb-3 shadow-xl bg-blue-900 flex items-center justify-center text-xl font-black">?</div>
-                 <p className="text-[10px] font-black uppercase">Vaga Aberta</p>
-                 <div className="bg-white/20 px-3 py-1 rounded-full text-[12px] font-black mt-2 italic">0 Votos</div>
-              </div>
-              <div className="flex flex-col items-center">
-                 <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-xl mb-2 font-orbitron font-black italic text-xl">VS</div>
-                 <div className={`px-3 py-1 rounded-full text-[8px] font-black text-black uppercase ${selectedChamp?.status === 'waiting' ? 'bg-gray-300' : 'bg-yellow-400'}`}>{selectedChamp?.status === 'waiting' ? 'AGUARDANDO' : 'LIVE NOW'}</div>
-              </div>
-              <div className="text-center">
-                 <div className="w-20 h-20 rounded-full border-4 border-white/20 mb-3 shadow-xl bg-blue-900 flex items-center justify-center text-xl font-black">?</div>
-                 <p className="text-[10px] font-black uppercase">Vaga Aberta</p>
-                 <div className="bg-white/20 px-3 py-1 rounded-full text-[12px] font-black mt-2 italic">0 Votos</div>
-              </div>
-           </div>
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[120px] font-black text-white/5 font-orbitron italic pointer-events-none uppercase">{selectedChamp?.type || 'BATTLE'}</div>
-        </div>
+  const renderDetail = () => {
+    const p1 = selectedChamp?.participants?.[0];
+    const p2 = selectedChamp?.participants?.[1];
+    const match = selectedChamp?.matches?.[0];
+    const votes1 = match ? (selectedChamp.matches[0].votes?.filter((v: any) => v.choiceId === p1?.id)?.length || match.score1 || 0) : 0;
+    const votes2 = match ? (selectedChamp.matches[0].votes?.filter((v: any) => v.choiceId === p2?.id)?.length || match.score2 || 0) : 0;
 
-        <div className="p-6 space-y-8">
-           <div className="bg-blue-950 rounded-[30px] p-6 text-white">
-              <div className="flex justify-between items-center mb-4"><p className="text-[10px] font-black text-blue-400 uppercase tracking-widest italic">Informações da Arena</p><ShieldCheck size={16} className="text-blue-400" /></div>
-              <div className="grid grid-cols-2 gap-4">
-                 <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Premiação</p><p className="text-sm font-black italic">{selectedChamp?.prize}</p></div>
-                 <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Vagas</p><p className="text-sm font-black italic">{selectedChamp?.participants} BARBEIROS</p></div>
-                 <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Arbitragem</p><p className="text-sm font-black italic uppercase">{selectedChamp?.arbitration}</p></div>
-                 <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Tema</p><p className="text-sm font-black italic uppercase">{selectedChamp?.theme || 'Livre'}</p></div>
-              </div>
-           </div>
-
-           <div>
-              <div className="flex items-center justify-between mb-4"><p className="text-[10px] font-black text-blue-950 uppercase tracking-widest italic">Chaveamento Oficial</p><p className="text-[8px] font-black text-blue-600 uppercase">Ver Chave Completa</p></div>
-              <div className="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm space-y-6">
-                 {selectedChamp?.status === 'waiting' ? (
-                   <div className="text-center py-4"><p className="text-[10px] font-bold text-gray-400 uppercase">Chaveamento será gerado assim que as vagas forem preenchidas.</p></div>
-                 ) : (
-                   [{p1:'Henrique',p2:'Vitor',s1:12.5,s2:11.8,active:true},{p1:'Gustavo',p2:'Caio',s1:8.2,s2:15.1,active:false}].map((m,i)=>(
-                    <div key={i} className={`p-4 rounded-2xl border-2 ${m.active?'border-blue-600 bg-blue-50':'border-gray-50 opacity-60'}`}>
-                       <div className="flex justify-between items-center mb-2"><span className="text-[10px] font-black text-blue-950 uppercase">{m.p1}</span><span className="text-[12px] font-black text-blue-600">{m.s1}k</span></div>
-                       <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mb-2"><div className="h-full bg-blue-600" style={{width:(m.s1/(m.s1+m.s2)*100)+'%'}} /></div>
-                       <div className="flex justify-between items-center"><span className="text-[10px] font-black text-blue-950 uppercase">{m.p2}</span><span className="text-[12px] font-black text-blue-600">{m.s2}k</span></div>
-                    </div>
-                   ))
-                 )}
-              </div>
-           </div>
-        </div>
-      </div>
-      <div className="p-6 bg-white border-t border-gray-100 flex space-x-3">
-         <button onClick={() => setView('voting')} className={`flex-[2] py-5 rounded-[20px] font-black uppercase italic tracking-widest shadow-xl transition-all ${selectedChamp?.status === 'waiting' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white'}`} disabled={selectedChamp?.status === 'waiting'}>Votar Agora</button>
-         <button onClick={() => setView('referee')} className="flex-1 py-5 bg-gray-900 text-white rounded-[20px] font-black uppercase italic tracking-widest shadow-xl flex items-center justify-center"><BrainCircuit size={20} /></button>
-      </div>
-    </motion.div>
-  );
-
-  const renderReferee = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[7000] bg-black flex flex-col">
-       <div className="px-6 py-8 flex items-center justify-between border-b border-white/10">
-          <button onClick={() => setView('detail')} className="p-3 bg-white/10 rounded-2xl text-white"><ChevronLeft size={24} /></button>
-          <div className="text-center"><p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">Sala do Árbitro</p><h2 className="text-sm font-black text-white font-orbitron italic uppercase">Avaliação Técnica</h2></div>
-          <div className="w-12" />
-       </div>
-       <div className="flex-1 p-6 space-y-6 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-4 h-[300px]">
-             <div className="bg-gray-900 rounded-[30px] overflow-hidden relative border-2 border-white/10"><img src="https://picsum.photos/400/600?random=1" className="w-full h-full object-cover opacity-60" /><div className="absolute inset-0 flex items-center justify-center font-black text-white italic">PLAYER L</div></div>
-             <div className="bg-gray-900 rounded-[30px] overflow-hidden relative border-2 border-blue-600"><img src="https://picsum.photos/400/600?random=2" className="w-full h-full object-cover" /><div className="absolute top-4 right-4 bg-blue-600 p-2 rounded-lg text-[10px] font-black">AI 89%</div><div className="absolute inset-0 flex items-center justify-center font-black text-white italic">PLAYER R</div></div>
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[5500] bg-[#F8FAFC] flex flex-col shadow-2xl">
+        <div className="px-6 py-6 flex items-center justify-between bg-white border-b border-gray-100">
+          <button onClick={() => setView('home')} className="p-3 bg-gray-50 rounded-2xl text-blue-950"><ChevronLeft size={24} /></button>
+          <div className="text-center">
+            <span className="text-[8px] font-black text-red-500 uppercase flex items-center justify-center">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1 animate-pulse" /> 
+              {selectedChamp?.status === 'waiting' ? 'INSCRIÇÕES ABERTAS' : 'BATTLE LIVE NOW'}
+            </span>
+            <h2 className="text-sm font-black text-blue-950 font-orbitron italic uppercase">{selectedChamp?.name}</h2>
           </div>
-          <div className="bg-gray-900 rounded-[40px] p-8 space-y-8 border border-white/5">
-             {['Acabamento','Simetria','Transicao','Originalidade'].map(c=>(
-                <div key={c} className="space-y-4">
-                   <div className="flex justify-between items-center"><p className="text-[10px] font-black text-white uppercase">{c}</p><span className="text-cyan-400 font-black font-orbitron">9.5</span></div>
-                   <div className="flex justify-between space-x-1">{[1,2,3,4,5,6,7,8,9,10].map(n=>(<button key={n} className={`flex-1 h-8 rounded-md font-black text-[10px] ${n===9?'bg-cyan-500 text-black':'bg-white/5 text-white/20'}`}>{n}</button>))}</div>
+          <button className="p-3 bg-gray-50 rounded-2xl text-gray-400"><Share2 size={24} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto no-scrollbar">
+          <div className="bg-blue-600 p-8 text-white relative overflow-hidden">
+             <div className="flex items-center justify-between relative z-10">
+                <div className="text-center w-[120px] flex flex-col items-center">
+                   {p1 ? (
+                     <img src={p1.user?.avatar || `https://i.pravatar.cc/150?u=${p1.id}`} className="w-20 h-20 rounded-full border-4 border-white/20 mb-3 shadow-xl object-cover" />
+                   ) : (
+                     <div className="w-20 h-20 rounded-full border-4 border-white/20 mb-3 shadow-xl bg-blue-900 flex items-center justify-center text-xl font-black">?</div>
+                   )}
+                   <p className="text-[10px] font-black uppercase truncate max-w-full">{p1?.user?.name || 'Vaga Aberta'}</p>
+                   <div className="bg-white/20 px-3 py-1 rounded-full text-[12px] font-black mt-2 italic">{votes1} Votos</div>
                 </div>
-             ))}
-          </div>
-       </div>
-       <div className="p-6 bg-black border-t border-white/10">
-          <button onClick={() => setView('final')} className="w-full py-6 bg-cyan-500 text-black rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl">Publicar Notas</button>
-       </div>
-    </motion.div>
-  );
-
-  const renderVoting = () => (
-    <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[7000] bg-white flex flex-col shadow-2xl">
-       <div className="px-6 py-8 flex items-center justify-between border-b border-gray-100">
-          <button onClick={() => setView('detail')} className="p-3 bg-gray-50 rounded-2xl text-blue-950"><ChevronLeft size={24} /></button>
-          <div className="text-center"><p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Arena de Votação</p><h2 className="text-sm font-black text-blue-950 font-orbitron italic uppercase">Quem vence essa?</h2></div>
-          <div className="w-12" />
-       </div>
-       <div className="flex-1 flex flex-col p-6 space-y-6">
-          <div className="flex-1 grid grid-rows-2 gap-4">
-             <div className="rounded-[40px] overflow-hidden relative group border-4 border-transparent hover:border-blue-600 transition-all cursor-pointer">
-                <img src="https://picsum.photos/800/600?random=11" className="w-full h-full object-cover" />
-                <div className="absolute bottom-6 left-6 flex items-center space-x-3 bg-black/60 backdrop-blur-md p-3 rounded-2xl"><p className="text-[12px] font-black text-white uppercase italic">Henrique Barber</p></div>
-                <div className="absolute inset-0 bg-blue-600/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Check size={80} className="text-white" /></div>
+                <div className="flex flex-col items-center">
+                   <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-xl mb-2 font-orbitron font-black italic text-xl">VS</div>
+                   <div className={`px-3 py-1 rounded-full text-[8px] font-black text-black uppercase ${selectedChamp?.status === 'WAITING' ? 'bg-gray-300' : 'bg-yellow-400'}`}>{selectedChamp?.status === 'WAITING' ? 'AGUARDANDO' : 'LIVE NOW'}</div>
+                </div>
+                <div className="text-center w-[120px] flex flex-col items-center">
+                   {p2 ? (
+                     <img src={p2.user?.avatar || `https://i.pravatar.cc/150?u=${p2.id}`} className="w-20 h-20 rounded-full border-4 border-white/20 mb-3 shadow-xl object-cover" />
+                   ) : (
+                     <div className="w-20 h-20 rounded-full border-4 border-white/20 mb-3 shadow-xl bg-blue-900 flex items-center justify-center text-xl font-black">?</div>
+                   )}
+                   <p className="text-[10px] font-black uppercase truncate max-w-full">{p2?.user?.name || 'Vaga Aberta'}</p>
+                   <div className="bg-white/20 px-3 py-1 rounded-full text-[12px] font-black mt-2 italic">{votes2} Votos</div>
+                </div>
              </div>
-             <div className="rounded-[40px] overflow-hidden relative group border-4 border-transparent hover:border-blue-600 transition-all cursor-pointer">
-                <img src="https://picsum.photos/800/600?random=12" className="w-full h-full object-cover" />
-                <div className="absolute bottom-6 left-6 flex items-center space-x-3 bg-black/60 backdrop-blur-md p-3 rounded-2xl"><p className="text-[12px] font-black text-white uppercase italic">Vitor do Corte</p></div>
-                <div className="absolute inset-0 bg-blue-600/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Check size={80} className="text-white" /></div>
+             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[120px] font-black text-white/5 font-orbitron italic pointer-events-none uppercase">{selectedChamp?.modality || 'x1'}</div>
+          </div>
+
+          <div className="p-6 space-y-8">
+             <div className="bg-blue-950 rounded-[30px] p-6 text-white">
+                <div className="flex justify-between items-center mb-4"><p className="text-[10px] font-black text-blue-400 uppercase tracking-widest italic">Informações da Arena</p><ShieldCheck size={16} className="text-blue-400" /></div>
+                <div className="grid grid-cols-2 gap-4">
+                   <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Premiação</p><p className="text-sm font-black italic">{selectedChamp?.prize || 'Respeito'}</p></div>
+                   <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Vagas</p><p className="text-sm font-black italic">{selectedChamp?.maxParticipants || 2} BARBEIROS</p></div>
+                   <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Arbitragem</p><p className="text-sm font-black italic uppercase">{selectedChamp?.arbitration || 'hybrid'}</p></div>
+                   <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Tema</p><p className="text-sm font-black italic uppercase">{selectedChamp?.theme || 'Livre'}</p></div>
+                </div>
+             </div>
+
+             <div>
+                <div className="flex items-center justify-between mb-4"><p className="text-[10px] font-black text-blue-950 uppercase tracking-widest italic">Chaveamento Oficial</p><p className="text-[8px] font-black text-blue-600 uppercase">Ver Chave Completa</p></div>
+                <div className="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm space-y-6">
+                   {selectedChamp?.status === 'WAITING' || !p1 ? (
+                     <div className="text-center py-4"><p className="text-[10px] font-bold text-gray-400 uppercase">Chaveamento será gerado assim que as vagas forem preenchidas.</p></div>
+                   ) : (
+                     <div className={`p-4 rounded-2xl border-2 border-blue-600 bg-blue-50`}>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-[10px] font-black text-blue-950 uppercase">{p1?.user?.name}</span>
+                          <span className="text-[12px] font-black text-blue-600">{votes1} votos</span>
+                        </div>
+                        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mb-2">
+                          <div className="h-full bg-blue-600" style={{width: ((votes1 + votes2) > 0 ? (votes1 / (votes1 + votes2) * 100) : 50)+'%'}} />
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-black text-blue-950 uppercase">{p2 ? p2.user?.name : 'Vaga Aberta'}</span>
+                          <span className="text-[12px] font-black text-blue-600">{votes2} votos</span>
+                        </div>
+                     </div>
+                   )}
+                </div>
              </div>
           </div>
-          <div className="flex items-center justify-center space-x-8 py-4">
-             <button className="w-16 h-16 bg-pink-50 text-pink-600 rounded-full flex items-center justify-center shadow-lg"><Heart size={32} /></button>
-             <button className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center shadow-lg"><MessageCircle size={32} /></button>
-             <button className="w-16 h-16 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center shadow-lg"><Share2 size={32} /></button>
-          </div>
-       </div>
-    </motion.div>
-  );
+        </div>
+        <div className="p-6 bg-white border-t border-gray-100 flex space-x-3">
+           <button onClick={() => setView('voting')} className={`flex-[2] py-5 rounded-[20px] font-black uppercase italic tracking-widest shadow-xl transition-all ${selectedChamp?.status === 'WAITING' || !p2 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white'}`} disabled={selectedChamp?.status === 'WAITING' || !p2}>Votar Agora</button>
+           <button onClick={() => setView('referee')} className="flex-1 py-5 bg-gray-900 text-white rounded-[20px] font-black uppercase italic tracking-widest shadow-xl flex items-center justify-center"><BrainCircuit size={20} /></button>
+        </div>
+      </motion.div>
+    );
+  };
 
-  const renderFinal = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[8000] bg-blue-950 flex flex-col items-center justify-center text-center p-8 overflow-hidden shadow-2xl">
-       <div className="absolute top-0 left-0 w-full h-full"><div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-600/20 blur-[120px] rounded-full animate-pulse" /></div>
-       <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', bounce: 0.5, delay: 0.2 }} className="relative z-10 mb-12">
-          <div className="w-48 h-48 bg-yellow-400 rounded-[60px] flex items-center justify-center shadow-2xl rotate-12 relative"><Trophy size={100} className="text-blue-950 -rotate-12" /><div className="absolute -top-4 -right-4 bg-white p-4 rounded-3xl shadow-xl text-blue-600 rotate-12"><Star size={32} fill="currentColor" /></div></div>
-       </motion.div>
-       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }} className="relative z-10">
-          <p className="text-cyan-400 font-black font-orbitron tracking-[0.4em] uppercase text-[12px] mb-4">Novo Campeão do Tatuapé</p>
-          <h2 className="text-5xl font-black text-white font-orbitron italic uppercase tracking-tighter mb-4">Henrique Barber</h2>
-          <div className="flex items-center justify-center space-x-3 mb-12"><span className="text-[14px] font-black text-blue-200 uppercase tracking-widest italic">IA Score: 98.5</span><div className="w-2 h-2 rounded-full bg-blue-300" /><span className="text-[14px] font-black text-blue-200 uppercase tracking-widest italic">15k Votos</span></div>
-          <button onClick={() => setView('home')} className="px-12 py-6 bg-white text-blue-950 rounded-[30px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all">Sair da Arena</button>
-       </motion.div>
-       <div className="absolute bottom-0 w-full p-8"><p className="text-[10px] font-black text-blue-300/40 uppercase tracking-[0.2em] italic italic">Próxima Batalha em 2h 45m</p></div>
-    </motion.div>
-  );
+  const handleVoteSubmit = async (choiceId: string) => {
+    if (!currentUser?.id) {
+      alert('Você precisa estar logado para votar!');
+      return;
+    }
+    const match = selectedChamp?.matches?.[0];
+    if (!match) {
+      alert('Nenhuma batalha disponível para votar!');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.voteMatch(selectedChamp.id, {
+        userId: currentUser.id,
+        matchId: match.id,
+        choiceId: choiceId
+      });
+      if (res.error) {
+        alert(res.error);
+      } else {
+        alert('Voto computado com sucesso!');
+        await fetchChampionshipDetails(selectedChamp.id);
+        setView('detail');
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert('Falha ao registrar o voto.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefereeSubmit = async () => {
+    const match = selectedChamp?.matches?.[0];
+    if (!match) {
+      alert('Nenhuma batalha ativa para avaliar!');
+      return;
+    }
+    setLoading(true);
+    try {
+      const avgScore = Object.values(refereeScores).reduce((a, b) => a + b, 0) / Object.keys(refereeScores).length;
+      
+      const res = await api.addRefereeLog(selectedChamp.id, {
+        refereeId: currentUser?.id || 'ia-referee',
+        matchId: match.id,
+        criteria: 'Acabamento, Simetria, Transição, Originalidade',
+        score: avgScore,
+        notes: `Scores: ${JSON.stringify(refereeScores)}`
+      });
+      
+      if (res.error) {
+        alert(res.error);
+      } else {
+        alert('Avaliação do árbitro registrada com sucesso!');
+        await fetchChampionshipDetails(selectedChamp.id);
+        setView('final');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Falha ao enviar avaliação do árbitro.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderReferee = () => {
+    const p1 = selectedChamp?.participants?.[0];
+    const p2 = selectedChamp?.participants?.[1];
+
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[7000] bg-black flex flex-col">
+         <div className="px-6 py-8 flex items-center justify-between border-b border-white/10">
+            <button onClick={() => setView('detail')} className="p-3 bg-white/10 rounded-2xl text-white"><ChevronLeft size={24} /></button>
+            <div className="text-center"><p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">Sala do Árbitro</p><h2 className="text-sm font-black text-white font-orbitron italic uppercase">Avaliação Técnica</h2></div>
+            <div className="w-12" />
+         </div>
+         <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+            <div className="grid grid-cols-2 gap-4 h-[300px]">
+               <div className="bg-gray-900 rounded-[30px] overflow-hidden relative border-2 border-white/10">
+                 <img src={p1?.user?.avatar || "https://picsum.photos/400/600?random=1"} className="w-full h-full object-cover opacity-60" />
+                 <div className="absolute inset-0 flex items-center justify-center font-black text-white italic truncate px-2 text-center text-xs uppercase">{p1?.user?.name || 'PLAYER 1'}</div>
+               </div>
+               <div className="bg-gray-900 rounded-[30px] overflow-hidden relative border-2 border-blue-600">
+                 <img src={p2?.user?.avatar || "https://picsum.photos/400/600?random=2"} className="w-full h-full object-cover" />
+                 <div className="absolute top-4 right-4 bg-blue-600 p-2 rounded-lg text-[10px] font-black font-orbitron">AI 89%</div>
+                 <div className="absolute inset-0 flex items-center justify-center font-black text-white italic truncate px-2 text-center text-xs uppercase">{p2?.user?.name || 'PLAYER 2'}</div>
+               </div>
+            </div>
+            <div className="bg-gray-900 rounded-[40px] p-8 space-y-8 border border-white/5">
+               {['Acabamento','Simetria','Transicao','Originalidade'].map(c=>(
+                  <div key={c} className="space-y-4">
+                     <div className="flex justify-between items-center"><p className="text-[10px] font-black text-white uppercase">{c}</p><span className="text-cyan-400 font-black font-orbitron">{refereeScores[c]}</span></div>
+                     <div className="flex justify-between space-x-1">
+                       {[1,2,3,4,5,6,7,8,9,10].map(n=>(
+                         <button key={n} type="button" onClick={() => setRefereeScores(prev => ({ ...prev, [c]: n }))} className={`flex-1 h-8 rounded-md font-black text-[10px] ${n===refereeScores[c]?'bg-cyan-500 text-black':'bg-white/5 text-white/20'}`}>{n}</button>
+                       ))}
+                     </div>
+                  </div>
+               ))}
+            </div>
+         </div>
+         <div className="p-6 bg-black border-t border-white/10">
+            <button onClick={handleRefereeSubmit} className="w-full py-6 bg-cyan-500 text-black rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl">Publicar Notas</button>
+         </div>
+      </motion.div>
+    );
+  };
+
+  const renderVoting = () => {
+    const p1 = selectedChamp?.participants?.[0];
+    const p2 = selectedChamp?.participants?.[1];
+
+    return (
+      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[7000] bg-white flex flex-col shadow-2xl">
+         <div className="px-6 py-8 flex items-center justify-between border-b border-gray-100">
+            <button onClick={() => setView('detail')} className="p-3 bg-gray-50 rounded-2xl text-blue-950"><ChevronLeft size={24} /></button>
+            <div className="text-center"><p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Arena de Votação</p><h2 className="text-sm font-black text-blue-950 font-orbitron italic uppercase">Quem vence essa?</h2></div>
+            <div className="w-12" />
+         </div>
+         <div className="flex-1 flex flex-col p-6 space-y-6">
+            <div className="flex-1 grid grid-rows-2 gap-4">
+               {p1 && (
+                 <div onClick={() => handleVoteSubmit(p1.id)} className="rounded-[40px] overflow-hidden relative group border-4 border-transparent hover:border-blue-600 transition-all cursor-pointer">
+                    <img src={p1.user?.avatar || `https://picsum.photos/800/600?random=11`} className="w-full h-full object-cover" />
+                    <div className="absolute bottom-6 left-6 flex items-center space-x-3 bg-black/60 backdrop-blur-md p-3 rounded-2xl"><p className="text-[12px] font-black text-white uppercase italic">{p1.user?.name}</p></div>
+                    <div className="absolute inset-0 bg-blue-600/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Check size={80} className="text-white" /></div>
+                 </div>
+               )}
+               {p2 && (
+                 <div onClick={() => handleVoteSubmit(p2.id)} className="rounded-[40px] overflow-hidden relative group border-4 border-transparent hover:border-blue-600 transition-all cursor-pointer">
+                    <img src={p2.user?.avatar || `https://picsum.photos/800/600?random=12`} className="w-full h-full object-cover" />
+                    <div className="absolute bottom-6 left-6 flex items-center space-x-3 bg-black/60 backdrop-blur-md p-3 rounded-2xl"><p className="text-[12px] font-black text-white uppercase italic">{p2.user?.name}</p></div>
+                    <div className="absolute inset-0 bg-blue-600/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Check size={80} className="text-white" /></div>
+                 </div>
+               )}
+            </div>
+            <div className="flex items-center justify-center space-x-8 py-4">
+               <button className="w-16 h-16 bg-pink-50 text-pink-600 rounded-full flex items-center justify-center shadow-lg"><Heart size={32} /></button>
+               <button className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center shadow-lg"><MessageCircle size={32} /></button>
+               <button className="w-16 h-16 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center shadow-lg"><Share2 size={32} /></button>
+            </div>
+         </div>
+      </motion.div>
+    );
+  };
+
+  const renderFinal = () => {
+    const p1 = selectedChamp?.participants?.[0];
+    const p2 = selectedChamp?.participants?.[1];
+    const match = selectedChamp?.matches?.[0];
+    const votes1 = match ? (selectedChamp.matches[0].votes?.filter((v: any) => v.choiceId === p1?.id)?.length || match.score1 || 0) : 0;
+    const votes2 = match ? (selectedChamp.matches[0].votes?.filter((v: any) => v.choiceId === p2?.id)?.length || match.score2 || 0) : 0;
+    
+    const winner = votes1 >= votes2 ? p1 : p2;
+    const winnerVotes = votes1 >= votes2 ? votes1 : votes2;
+    const avgScore = match?.refereeLogs?.[0]?.score || 9.5;
+
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[8000] bg-blue-950 flex flex-col items-center justify-center text-center p-8 overflow-hidden shadow-2xl">
+         <div className="absolute top-0 left-0 w-full h-full"><div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-600/20 blur-[120px] rounded-full animate-pulse" /></div>
+         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', bounce: 0.5, delay: 0.2 }} className="relative z-10 mb-12">
+            <div className="w-48 h-48 bg-yellow-400 rounded-[60px] flex items-center justify-center shadow-2xl rotate-12 relative"><Trophy size={100} className="text-blue-950 -rotate-12" /><div className="absolute -top-4 -right-4 bg-white p-4 rounded-3xl shadow-xl text-blue-600 rotate-12"><Star size={32} fill="currentColor" /></div></div>
+         </motion.div>
+         <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }} className="relative z-10">
+            <p className="text-cyan-400 font-black font-orbitron tracking-[0.4em] uppercase text-[12px] mb-4">Vencedor do Combate</p>
+            <h2 className="text-4xl font-black text-white font-orbitron italic uppercase tracking-tighter mb-4">{winner?.user?.name || 'Sem Vencedor'}</h2>
+            <div className="flex items-center justify-center space-x-3 mb-12">
+              <span className="text-[14px] font-black text-blue-200 uppercase tracking-widest italic">Nota Técnica: {avgScore.toFixed(1)}</span>
+              <div className="w-2 h-2 rounded-full bg-blue-300" />
+              <span className="text-[14px] font-black text-blue-200 uppercase tracking-widest italic">{winnerVotes} Votos</span>
+            </div>
+            <button onClick={() => setView('home')} className="px-12 py-6 bg-white text-blue-950 rounded-[30px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all">Sair da Arena</button>
+         </motion.div>
+         <div className="absolute bottom-0 w-full p-8"><p className="text-[10px] font-black text-blue-300/40 uppercase tracking-[0.2em] italic">Próxima Batalha em breve</p></div>
+      </motion.div>
+    );
+  };
 
   return (
     <div className="h-full relative font-inter overflow-hidden no-scrollbar">
@@ -515,7 +775,7 @@ export default function League() {
                   Ver Detalhes Agora
                 </button>
                 <button 
-                  onClick={() => { setShowSuccess(false); setView('home'); setCreateStep(0); setForm({ name: '', modality: 'x1', arbitration: 'hybrid', maxParticipants: 16, prize: '', votingTime: 24, judges: [] as string[], liga: 1, opponentNick: '', theme: '', startDate: '', startTime: '' }); }} 
+                  onClick={() => { setShowSuccess(false); setView('home'); setCreateStep(0); setForm({ name: '', modality: 'x1', arbitration: 'hybrid', maxParticipants: 16, prize: '', votingTime: 24, judges: [] as string[], liga: 1, opponentNick: '', opponentId: '', theme: '', startDate: '', startTime: '' }); }} 
                   className="w-full py-4 text-blue-950 font-black uppercase text-[10px] tracking-widest"
                 >
                   Voltar para Home

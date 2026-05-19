@@ -124,4 +124,28 @@ export const api = {
     });
     return res.json();
   },
+  getBarbers: async () => {
+    const res = await fetch(`${API_URL}/barbers`);
+    return res.json();
+  },
+  getChampionshipDetails: async (id: string) => {
+    const res = await fetch(`${API_URL}/championships/${id}`);
+    return res.json();
+  },
+  voteMatch: async (championshipId: string, data: any) => {
+    const res = await fetch(`${API_URL}/championships/${championshipId}/vote`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+  addRefereeLog: async (championshipId: string, data: any) => {
+    const res = await fetch(`${API_URL}/championships/${championshipId}/referee`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
 };
