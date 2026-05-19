@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Globe, Heart, MessageCircle, Share2, Send, ChevronUp, ChevronDown, CheckCircle2, X } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Send, ChevronUp, ChevronDown, CheckCircle2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../services/api';
 
@@ -225,31 +225,19 @@ export default function World() {
       
       {/* HUD HEADER & TABS */}
       <div className="sticky top-0 bg-[#030303]/90 backdrop-blur-xl border-b border-white/5 z-50 px-6 py-4 flex flex-col space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="bg-gradient-to-tr from-blue-600 to-blue-800 p-2 rounded-xl text-white shadow-lg">
-              <Globe size={18} className="animate-spin-slow" />
-            </div>
-            <div>
-              <h1 className="text-base font-black italic tracking-wider font-orbitron uppercase bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">BATTLE WORLD</h1>
-              <p className="text-[7px] font-black text-blue-500 uppercase tracking-widest leading-none">Feed & Duelos Globais</p>
-            </div>
-          </div>
-        </div>
-
         {/* Navigation Tabs */}
         <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
           <button
             onClick={() => setActiveTab('feed')}
             className={`flex-1 py-3 text-center rounded-xl font-orbitron text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${activeTab === 'feed' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-400 hover:text-white'}`}
           >
-            Feed Social
+            Explorar
           </button>
           <button
             onClick={() => setActiveTab('duels')}
             className={`flex-1 py-3 text-center rounded-xl font-orbitron text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${activeTab === 'duels' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-400 hover:text-white'}`}
           >
-            Duelos (Reels)
+            Duelos
           </button>
         </div>
       </div>
