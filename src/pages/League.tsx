@@ -290,7 +290,7 @@ export default function League() {
                     const currentBarberId = currentUser?.barberProfile?.id;
                     const currentUserId = currentUser?.id;
                     const isCreator = c.creatorId === currentBarberId || c.creatorId === currentUserId;
-                    const isParticipant = c.participants?.some((p: any) => p.id === currentBarberId || p.userId === currentUserId);
+                    const isParticipant = Array.isArray(c.participants) && c.participants.some((p: any) => p.id === currentBarberId || p.userId === currentUserId);
                     return isCreator || isParticipant;
                   });
 
@@ -390,7 +390,7 @@ export default function League() {
                             </div>
                             <h4 className="text-blue-950 text-lg font-black font-orbitron italic mb-4">{t.name.toUpperCase()}</h4>
                             <div className="flex items-center justify-between">
-                              <div className="flex -space-x-2">{[1,2,3,4].map(i=>(<img key={i} src={`https://i.pravatar.cc/150?u=${t.id}${i}`} className="w-8 h-8 rounded-full border-2 border-white shadow-sm object-cover" />))}<div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[8px] font-black text-gray-400">+{ (t.participants?.length || t.participants || 16) - 4}</div></div>
+                              <div className="flex -space-x-2">{[1,2,3,4].map(i=>(<img key={i} src={`https://i.pravatar.cc/150?u=${t.id}${i}`} className="w-8 h-8 rounded-full border-2 border-white shadow-sm object-cover" />))}<div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[8px] font-black text-gray-400">+{Math.max(0, (Array.isArray(t.participants) ? t.participants.length : (t.participants || 16)) - 4)}</div></div>
                               <button className="bg-gray-900 text-white px-4 py-2.5 rounded-xl text-[9px] font-black uppercase italic shadow-lg">{isFinished ? 'Ver Resultado' : 'Assistir Live'}</button>
                             </div>
                           </div>
@@ -703,7 +703,7 @@ export default function League() {
 
     const currentBarberId = currentUser?.barberProfile?.id;
     const isCreator = currentUser && (selectedChamp?.creatorId === currentBarberId || selectedChamp?.creatorId === currentUser.id);
-    const isOpponent = currentUser && selectedChamp?.participants?.some((p: any) => p.id === currentBarberId && p.id !== selectedChamp.creatorId);
+    const isOpponent = currentUser && Array.isArray(selectedChamp?.participants) && selectedChamp?.participants.some((p: any) => p.id === currentBarberId && p.id !== selectedChamp.creatorId);
 
     const hasPhoto2 = match && match.photo2 !== null && match.photo2 !== undefined;
     const isX1 = selectedChamp?.modality === 'x1' || selectedChamp?.ligaId === 1;
