@@ -117,6 +117,7 @@ export default function Profile() {
    const [selectedPost, setSelectedPost] = useState<any>(null);
    const [commentText, setCommentText] = useState('');
    const [doubleTapHeart, setDoubleTapHeart] = useState(false);
+   const [showFullPortfolio, setShowFullPortfolio] = useState(false);
 
    // Messenger State
    const [showMessenger, setShowMessenger] = useState(false);
@@ -454,8 +455,7 @@ export default function Profile() {
 
 
 
-   // Méritos Dinâmicos (Vazio para novos)
-   const merits = barber.merits || [];
+
 
    // Highlights Dinâmicos (Vazio para novos)
    const highlights = barber.highlights || [];
@@ -640,22 +640,40 @@ export default function Profile() {
             </div>
          </div>
 
-         {/* MÉRITOS (3 COLUNAS SLIDER) */}
-         <div className="px-6 mb-10">
+         {/* GALERIA / PORTFÓLIO CAROUSEL (Substituindo Conquistas) */}
+         <div className="px-6 mb-10 text-left">
             <div className="flex items-center justify-between mb-4 px-1">
-               <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em]">Conquistas de Carreira</h3>
-               <div className="flex space-x-1">
-                  <div className="w-4 h-1 rounded-full bg-blue-600" />
-                  <div className="w-1 h-1 rounded-full bg-gray-200" />
-               </div>
+               <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em]">Portfólio de Cortes</h3>
+               <button
+                  onClick={() => setShowFullPortfolio(true)}
+                  className="text-[9px] font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 flex items-center space-x-1 hover:bg-blue-100/50 transition-colors"
+               >
+                  <span>Ver Todos</span>
+               </button>
             </div>
-            <div className="flex space-x-3 overflow-x-auto no-scrollbar py-2">
-               {merits.map((merit: any) => (
-                  <div key={merit.id} className="min-w-[31%] bg-white p-4 rounded-[28px] border border-gray-50 shadow-sm flex flex-col items-center text-center">
-                     <div className={`p-3 rounded-xl mb-3 ${merit.bg} ${merit.color}`}>{merit.icon}</div>
-                     <p className="text-[8px] font-black text-blue-950 uppercase tracking-tighter">{merit.title}</p>
+            <div className="flex space-x-4 overflow-x-auto no-scrollbar py-2">
+               {feedImages.map((img: any) => (
+                  <div
+                     key={img.id}
+                     onClick={() => setSelectedPost(img)}
+                     className="min-w-[140px] w-[140px] aspect-square rounded-[24px] overflow-hidden bg-gray-100 shadow-sm border border-gray-50 flex-shrink-0 relative group cursor-pointer"
+                  >
+                     <img src={img.imageUrl || img.url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-3 pt-6 flex justify-between items-center text-white">
+                        <span className="flex items-center space-x-1 text-[9px] font-black font-orbitron">
+                           <Heart size={10} className="fill-white" />
+                           <span>{img.likes?.length || img.likesCount || 0}</span>
+                        </span>
+                        <span className="flex items-center space-x-1 text-[9px] font-black font-orbitron">
+                           <MessageSquare size={10} className="fill-white" />
+                           <span>{img.comments?.length || 0}</span>
+                        </span>
+                     </div>
                   </div>
                ))}
+               {feedImages.length === 0 && (
+                  <p className="text-[10px] text-gray-300 italic py-6 pl-2">Nenhum corte no portfólio ainda.</p>
+               )}
             </div>
          </div>
 
@@ -834,29 +852,6 @@ export default function Profile() {
             ))}
          </div>
 
-         {/* FEED GRID COM LIKE ÚNICO */}
-         <div className="px-6 grid grid-cols-3 gap-2">
-            {feedImages.map((img: any) => (
-               <motion.div
-                  key={img.id}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setSelectedPost(img)}
-                  className="aspect-square rounded-[22px] overflow-hidden bg-gray-100 relative group cursor-pointer"
-               >
-                  <img src={img.imageUrl || img.url} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4 text-white">
-                     <span className="flex items-center space-x-1 font-bold text-xs">
-                        <Heart size={14} className="fill-white" />
-                        <span>{img.likes?.length || img.likesCount || 0}</span>
-                     </span>
-                     <span className="flex items-center space-x-1 font-bold text-xs">
-                        <MessageSquare size={14} className="fill-white" />
-                        <span>{img.comments?.length || 0}</span>
-                     </span>
-                  </div>
-               </motion.div>
-            ))}
-         </div>
 
          {/* STORY VIEWER (MULTI-SLIDE & TOQUE) */}
          <AnimatePresence>
@@ -1395,6 +1390,62 @@ export default function Profile() {
                            </div>
                         </div>
                      )}
+                  </motion.div>
+               </motion.div>
+            )}
+         </AnimatePresence>
+
+         {/* PORTFOLIO COMPLETO ESTILO INSTAGRAM */}
+         <AnimatePresence>
+            {showFullPortfolio && (
+               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] bg-blue-950/60 backdrop-blur-md flex items-end justify-center">
+                  <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-[#fcfcfd] rounded-t-[45px] h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+                     <div className="w-12 h-1.5 bg-gray-150 rounded-full mx-auto my-4" />
+
+                     {/* Header */}
+                     <div className="px-6 pb-4 border-b border-gray-100 flex items-center justify-between bg-white">
+                        <div className="flex items-center space-x-3 text-left">
+                           <img src={barber.avatar} className="w-9 h-9 rounded-xl object-cover border border-gray-100" />
+                           <div>
+                              <h3 className="text-xs font-black text-blue-950 uppercase italic leading-none">{barber.username}</h3>
+                              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Portfólio Completo</p>
+                           </div>
+                        </div>
+                        <button onClick={() => setShowFullPortfolio(false)} className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:bg-gray-100 transition-colors"><X size={20} /></button>
+                     </div>
+
+                     {/* Gallery Grid */}
+                     <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
+                        <div className="grid grid-cols-3 gap-2">
+                           {feedImages.map((img: any) => (
+                              <motion.div
+                                 key={img.id}
+                                 whileTap={{ scale: 0.98 }}
+                                 onClick={() => setSelectedPost(img)}
+                                 className="aspect-square rounded-[18px] overflow-hidden bg-gray-100 relative group cursor-pointer border border-gray-100/50 shadow-sm"
+                              >
+                                 <img src={img.imageUrl || img.url} className="w-full h-full object-cover" />
+                                 <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center space-y-1 text-white">
+                                    <span className="flex items-center space-x-1 font-black font-orbitron text-[10px]">
+                                       <Heart size={12} className="fill-white" />
+                                       <span>{img.likes?.length || img.likesCount || 0}</span>
+                                    </span>
+                                    <span className="flex items-center space-x-1 font-black font-orbitron text-[10px]">
+                                       <MessageSquare size={12} className="fill-white" />
+                                       <span>{img.comments?.length || 0}</span>
+                                    </span>
+                                 </div>
+                              </motion.div>
+                           ))}
+                        </div>
+
+                        {feedImages.length === 0 && (
+                           <div className="py-20 text-center opacity-30">
+                              <MessageSquare size={36} className="mx-auto mb-3 text-blue-950" />
+                              <p className="text-[10px] font-black uppercase tracking-widest text-blue-950">Nenhum post publicado</p>
+                           </div>
+                        )}
+                     </div>
                   </motion.div>
                </motion.div>
             )}
