@@ -693,29 +693,33 @@ export default function Profile() {
                   )}
                </div>
 
-               <div className="grid grid-cols-1 gap-3">
+               <div className="flex space-x-4 overflow-x-auto no-scrollbar py-2">
                   {currentServices.map((srv: any) => {
                      const isBarba = srv.name.toLowerCase().includes('barba');
                      const isFade = srv.name.toLowerCase().includes('fade') || srv.name.toLowerCase().includes('degradê') || srv.name.toLowerCase().includes('degrade');
                      const isFreestyle = srv.name.toLowerCase().includes('free') || srv.name.toLowerCase().includes('art') || srv.name.toLowerCase().includes('design');
                      const isPigment = srv.name.toLowerCase().includes('pigment');
                      return (
-                        <div key={srv.id} className="bg-white p-5 rounded-[28px] border border-gray-50 shadow-sm flex items-center justify-between hover:border-blue-500/20 hover:shadow-md transition-all duration-300">
-                           <div className="flex items-center space-x-4">
-                              <div className="w-12 h-12 rounded-2xl bg-blue-50/50 flex items-center justify-center text-blue-600 font-orbitron font-black shadow-inner">
+                        <div 
+                           key={srv.id} 
+                           className="min-w-[155px] w-[155px] bg-white p-5 rounded-[30px] border border-gray-50 shadow-sm flex flex-col justify-between hover:border-blue-500/20 hover:shadow-md transition-all duration-300 flex-shrink-0 text-center relative overflow-hidden group"
+                        >
+                           <div className="absolute inset-0 bg-gradient-to-b from-blue-50/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                           
+                           <div className="flex flex-col items-center">
+                              <div className="w-14 h-14 rounded-2xl bg-blue-50/50 flex items-center justify-center text-2xl font-orbitron font-black shadow-inner mb-4">
                                  {isBarba ? '🪒' : isFade ? '✂️' : isFreestyle ? '🎨' : isPigment ? '🖍️' : '💈'}
                               </div>
-                              <div className="text-left">
-                                 <p className="text-sm font-black text-blue-950 uppercase italic tracking-tight">{srv.name}</p>
-                                 <div className="flex items-center space-x-1.5 mt-1">
-                                    <Clock size={10} className="text-gray-400" />
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{srv.time || '30-40 min'}</p>
-                                 </div>
+                              <p className="text-xs font-black text-blue-950 uppercase italic tracking-tight line-clamp-1 mb-1">{srv.name}</p>
+                              <div className="flex items-center justify-center space-x-1">
+                                 <Clock size={9} className="text-gray-400" />
+                                 <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{srv.time || '35 min'}</span>
                               </div>
                            </div>
-                           <div className="text-right">
-                              <span className="text-[8px] font-black text-gray-300 uppercase block tracking-widest leading-none">Preço</span>
-                              <p className="text-base font-black text-blue-600 font-orbitron mt-1">R$ {srv.price},00</p>
+
+                           <div className="mt-5 border-t border-gray-50/80 pt-3">
+                              <span className="text-[7px] font-black text-gray-300 uppercase block tracking-widest leading-none mb-1">Preço</span>
+                              <p className="text-sm font-black text-blue-600 font-orbitron">R$ {srv.price},00</p>
                            </div>
                         </div>
                      );
