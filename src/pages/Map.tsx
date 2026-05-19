@@ -29,6 +29,40 @@ function RecenterButton({ coords }: { coords: [number, number] }) {
   );
 }
 
+const getDatesRange = () => {
+  const start = new Date(Date.UTC(2026, 4, 16)); // May 16, 2026
+  const end = new Date(Date.UTC(2026, 11, 31)); // Dec 31, 2026
+  const arr = [];
+  const dt = new Date(start);
+  while (dt <= end) {
+    arr.push(new Date(dt));
+    dt.setUTCDate(dt.getUTCDate() + 1);
+  }
+  return arr;
+};
+
+const getUTCDateString = (d: Date) => {
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getWeekRangeLabel = (d: Date) => {
+  const current = new Date(d);
+  const day = current.getUTCDay();
+  const diffToSunday = current.getUTCDate() - day;
+  const sunday = new Date(current);
+  sunday.setUTCDate(diffToSunday);
+  
+  const saturday = new Date(sunday);
+  saturday.setUTCDate(sunday.getUTCDate() + 6);
+  
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const format = (date: Date) => `${pad(date.getUTCDate())}/${pad(date.getUTCMonth() + 1)}`;
+  return `Semana de ${format(sunday)} a ${format(saturday)}`;
+};
+
 export default function MapPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -115,8 +149,9 @@ export default function MapPage() {
   const [clientMode, setClientMode] = useState<'expresso' | 'radares'>('expresso');
   const [isBookingAgenda, setIsBookingAgenda] = useState(false);
   const [bookingStep, setBookingStep] = useState<'calendar' | 'services' | 'payment'>('calendar');
-  const [bookingData, setBookingData] = useState<any>({ time: '', date: 16 });
-  const [selectedBookingDate, setSelectedBookingDate] = useState(16); // Data padrão hoje (16)
+  const [bookingData, setBookingData] = useState<any>({ time: '', date: '2026-05-16' });
+  const [selectedBookingDate, setSelectedBookingDate] = useState('2026-05-16'); // Data padrão hoje ("2026-05-16")
+  const [selectedBookingWeek, setSelectedBookingWeek] = useState(() => getWeekRangeLabel(new Date(Date.UTC(2026, 4, 16))));
   const [isRadarOpen, setIsRadarOpen] = useState(false);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [proposalPrice, setProposalPrice] = useState<number>(0);
@@ -642,7 +677,7 @@ export default function MapPage() {
 
   // PEGA SLOTS DO BARBEIRO SELECIONADO EM TEMPO REAL
   const barberSlots = useMemo(() => {
-    const today = 16;
+    const today = getUTCDateString(new Date());
     const currentHour = new Date().getHours();
     const globalAgenda = matchSession.globalAgenda || {};
     const key = `${selectedBarber?.id || 'default'}_${selectedBookingDate}`;
@@ -664,7 +699,8 @@ export default function MapPage() {
       .map(time => {
         const dbApp = selectedBarberAppointments.find((a: any) => {
           const appDate = new Date(a.date);
-          return appDate.getUTCDate() === selectedBookingDate && a.time === time && ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'].includes(a.status);
+          const appDateStr = getUTCDateString(appDate);
+          return appDateStr === selectedBookingDate && a.time === time && ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'].includes(a.status);
         });
 
         if (dbApp) {
@@ -857,42 +893,64 @@ export default function MapPage() {
                   {/* STATUS DINÂMICO INTELIGENTE COM CONTADOR DE VAGAS */}
                   {(() => {
                     const now = new Date();
-                    const todayDayNum = now.getDate();
                     const hour = now.getHours();
+                    const weekdaysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+                    const todayName = weekdaysMap[now.getDay()];
+                    const todayStr = getUTCDateString(now);
                     const barberKeyPrefix = selectedBarber.id || 'default';
-                    const key = `${barberKeyPrefix}_${todayDayNum}`;
+                    const key = `${barberKeyPrefix}_${todayStr}`;
                     const dayData = matchSession.globalAgenda?.[key] || {};
                     const slots = dayData.slots || [];
                     
+                    let isTodayWorking = true;
                     let startHour = 8;
                     let endHour = 19;
-                    if (selectedBarber.workingHours) {
-                      const parts = selectedBarber.workingHours.split(' às ');
-                      if (parts.length === 2) {
+
+                    if (selectedBarber.schedule) {
+                      try {
+                        const parsedSchedule = typeof selectedBarber.schedule === 'string'
+                          ? JSON.parse(selectedBarber.schedule)
+                          : selectedBarber.schedule;
+                        if (parsedSchedule && parsedSchedule[todayName]) {
+                          const todayConfig = parsedSchedule[todayName];
+                          isTodayWorking = todayConfig.active;
+                          if (todayConfig.start) {
+                            startHour = parseInt(todayConfig.start.split(':')[0]) || 8;
+                          }
+                          if (todayConfig.end) {
+                            endHour = parseInt(todayConfig.end.split(':')[0]) || 19;
+                          }
+                        }
+                      } catch (e) {
+                        console.error('Error parsing selectedBarber schedule:', e);
+                      }
+                    } else if (selectedBarber.workingHours) {
+                      const parts = selectedBarber.workingHours.split(/[\s-]+| às /);
+                      if (parts.length >= 2) {
                         startHour = parseInt(parts[0].split(':')[0]) || 8;
-                        endHour = parseInt(parts[1].split(':')[0]) || 19;
+                        endHour = parseInt(parts[parts.length - 1].split(':')[0]) || 19;
                       }
                     }
 
                     // Build dynamic slots merging globalAgenda config and real appointments
                     const finalSlots: any[] = [];
-                    for (let h = 0; h < 24; h++) {
-                      const configSlot = slots.find((s: any) => parseInt(s.time) === h);
-                      const hasDbApp = selectedBarberAppointments && selectedBarberAppointments.some((app: any) => {
-                        const appDate = new Date(app.date);
-                        const isToday = appDate.getDate() === todayDayNum && 
-                                        appDate.getMonth() === now.getMonth() && 
-                                        appDate.getFullYear() === now.getFullYear();
-                        const appHour = parseInt(app.time.split(':')[0]);
-                        return isToday && appHour === h && ['PENDING', 'CONFIRMED', 'ARRIVED', 'IN_SERVICE'].includes(app.status);
-                      });
+                    if (isTodayWorking) {
+                      for (let h = 0; h < 24; h++) {
+                        const configSlot = slots.find((s: any) => parseInt(s.time) === h);
+                        const hasDbApp = selectedBarberAppointments && selectedBarberAppointments.some((app: any) => {
+                          const appDate = new Date(app.date);
+                          const appDateStr = getUTCDateString(appDate);
+                          const appHour = parseInt(app.time.split(':')[0]);
+                          return appDateStr === todayStr && appHour === h && ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'ARRIVED', 'IN_SERVICE'].includes(app.status);
+                        });
 
-                      if (hasDbApp) {
-                        finalSlots.push({ time: `${String(h).padStart(2, '0')}:00`, status: 'occupied', client_name: 'Reservado' });
-                      } else if (configSlot) {
-                        finalSlots.push(configSlot);
-                      } else if (h >= startHour && h < endHour) {
-                        finalSlots.push({ time: `${String(h).padStart(2, '0')}:00`, status: 'empty' });
+                        if (hasDbApp) {
+                          finalSlots.push({ time: `${String(h).padStart(2, '0')}:00`, status: 'occupied', client_name: 'Reservado' });
+                        } else if (configSlot) {
+                          finalSlots.push(configSlot);
+                        } else if (h >= startHour && h < endHour) {
+                          finalSlots.push({ time: `${String(h).padStart(2, '0')}:00`, status: 'empty' });
+                        }
                       }
                     }
 
@@ -904,13 +962,17 @@ export default function MapPage() {
                       return h >= hour && (s.status === 'empty' || s.status === 'radar');
                     });
 
-                    const hasNoSlotsYet = finalSlots.length === 0;
+                    const hasNoSlotsYet = finalSlots.length === 0 && isTodayWorking;
                     
                     let statusLabel = 'Agenda Disponível';
                     let statusColor = '#10b981'; // Verde
                     let prediction = 'Vagas Disponíveis';
 
-                    if (availableSlots.length > 0 || hasNoSlotsYet) {
+                    if (!isTodayWorking) {
+                      statusLabel = 'Fechado Hoje';
+                      statusColor = '#ef4444'; // Vermelho
+                      prediction = 'Sem Horários';
+                    } else if (availableSlots.length > 0 || hasNoSlotsYet) {
                       const count = hasNoSlotsYet ? 8 : availableSlots.length;
                       prediction = count === 1 ? 'Só resta 1 vaga!' : `${count} vagas disponíveis`;
                       
@@ -1025,14 +1087,55 @@ export default function MapPage() {
                             <div className="w-10" />
                           </div>
 
+                          {/* SELETOR DE SEMANAS */}
+                          <div className="mb-4">
+                            <select
+                              value={selectedBookingWeek}
+                              onChange={(e) => {
+                                setSelectedBookingWeek(e.target.value);
+                                // Automatically select first day of the week
+                                const firstDayInWeek = getDatesRange().find(d => getWeekRangeLabel(d) === e.target.value);
+                                if (firstDayInWeek) {
+                                  const dayStr = getUTCDateString(firstDayInWeek);
+                                  setSelectedBookingDate(dayStr);
+                                  setBookingData((prev: any) => ({ ...prev, date: dayStr }));
+                                }
+                              }}
+                              className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 font-black text-xs text-blue-950 outline-none uppercase"
+                            >
+                              {Array.from(new Set(getDatesRange().map(d => getWeekRangeLabel(d)))).map(weekLabel => (
+                                <option key={weekLabel} value={weekLabel}>{weekLabel}</option>
+                              ))}
+                            </select>
+                          </div>
+
                           <div className="flex space-x-3 overflow-x-auto no-scrollbar pb-6 px-1">
-                            {[16, 17, 18, 19, 20, 21, 22].map(day => (
-                              <button key={day} onClick={() => setSelectedBookingDate(day)} className={`min-w-[60px] py-4 rounded-[25px] flex flex-col items-center transition-all ${selectedBookingDate === day ? 'bg-blue-600 text-white shadow-xl shadow-blue-100 scale-110' : 'bg-gray-50 text-gray-400'}`}>
-                                <span className="text-[7px] font-black uppercase mb-1">{day === 16 ? 'Hoje' : 'Maio'}</span>
-                                <span className="text-sm font-black">{day}</span>
-                                {selectedBookingDate === day && <div className="w-1.5 h-1.5 rounded-full mt-1 bg-white" />}
-                              </button>
-                            ))}
+                            {getDatesRange()
+                              .filter(d => getWeekRangeLabel(d) === selectedBookingWeek)
+                              .map(dayObj => {
+                                const dayStr = getUTCDateString(dayObj);
+                                const isToday = dayStr === getUTCDateString(new Date());
+                                const weekdaysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+                                const weekdayLabel = weekdaysMap[dayObj.getUTCDay()];
+                                const monthName = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][dayObj.getUTCMonth()];
+                                const dayNum = dayObj.getUTCDate();
+
+                                return (
+                                  <button
+                                    key={dayStr}
+                                    onClick={() => {
+                                      setSelectedBookingDate(dayStr);
+                                      setBookingData((prev: any) => ({ ...prev, date: dayStr }));
+                                    }}
+                                    className={`min-w-[60px] py-4 rounded-[25px] flex flex-col items-center transition-all ${selectedBookingDate === dayStr ? 'bg-blue-600 text-white shadow-xl shadow-blue-100 scale-110' : 'bg-gray-50 text-gray-400'}`}
+                                  >
+                                    <span className="text-[7px] font-black uppercase mb-1">{isToday ? 'Hoje' : weekdayLabel}</span>
+                                    <span className="text-sm font-black">{dayNum}</span>
+                                    <span className="text-[6px] font-bold uppercase opacity-80 mt-0.5">{monthName}</span>
+                                    {selectedBookingDate === dayStr && <div className="w-1.5 h-1.5 rounded-full mt-1 bg-white" />}
+                                  </button>
+                                );
+                              })}
                           </div>
 
                           {isPublicFila ? (
@@ -1041,7 +1144,7 @@ export default function MapPage() {
                                 <p className="text-[10px] font-black text-blue-950 uppercase mb-4 text-center">Qual horário você deseja?</p>
                                 <div className="grid grid-cols-4 gap-2">
                                   {['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'].filter(time => {
-                                    if (selectedBookingDate > 16) return true;
+                                    if (selectedBookingDate > getUTCDateString(new Date())) return true;
                                     const currentHour = new Date().getHours();
                                     const currentMin = new Date().getMinutes();
                                     // 1 hora de antecedencia arredondada: ex 16:46 + 1h = 17:46 -> 18:00
@@ -1405,8 +1508,8 @@ export default function MapPage() {
                                     key={idx}
                                     onClick={() => {
                                       setSelectedBarber(barber);
-                                      setSelectedBookingDate(16);
-                                      setBookingData({ time: slot.time, date: 16 });
+                                      setSelectedBookingDate('2026-05-16');
+                                      setBookingData({ time: slot.time, date: '2026-05-16' });
                                       setBookingStep('services');
                                       setIsBookingAgenda(true);
                                     }}

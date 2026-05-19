@@ -1,18 +1,53 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, ChevronRight, ChevronLeft, Plus, X, Zap, Bell, ShieldOff, Check, Scissors as ScissorsIcon, Star, Settings, Calendar, Clock, Navigation, Trash2 } from 'lucide-react';
+import { User, ChevronRight, ChevronLeft, Plus, X, Zap, Bell, ShieldOff, Check, Scissors as ScissorsIcon, Star, Settings, Calendar, Clock, Navigation, Trash2, Filter } from 'lucide-react';
 import { api } from '../services/api';
+
+const getDatesRange = () => {
+  const start = new Date(Date.UTC(2026, 4, 16)); // May 16, 2026
+  const end = new Date(Date.UTC(2026, 11, 31)); // Dec 31, 2026
+  const arr = [];
+  const dt = new Date(start);
+  while (dt <= end) {
+    arr.push(new Date(dt));
+    dt.setUTCDate(dt.getUTCDate() + 1);
+  }
+  return arr;
+};
+
+const getUTCDateString = (d: Date) => {
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getWeekRangeLabel = (d: Date) => {
+  const current = new Date(d);
+  const day = current.getUTCDay();
+  const diffToSunday = current.getUTCDate() - day;
+  const sunday = new Date(current);
+  sunday.setUTCDate(diffToSunday);
+  
+  const saturday = new Date(sunday);
+  saturday.setUTCDate(sunday.getUTCDate() + 6);
+  
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const format = (date: Date) => `${pad(date.getUTCDate())}/${pad(date.getUTCMonth() + 1)}`;
+  return `Semana de ${format(sunday)} a ${format(saturday)}`;
+};
 
 export default function Agenda() {
   const context = useOutletContext<{ isBarberView: boolean, matchSession: any, setMatchSession: (s: any) => void }>() || { isBarberView: true, matchSession: {}, setMatchSession: () => { } };
   const { isBarberView, matchSession, setMatchSession } = context;
   const navigate = useNavigate(); console.log(navigate);
 
-  const today = 16;
+  const today = getUTCDateString(new Date());
   const currentHour = new Date().getHours();
 
-  const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedDate, setSelectedDate] = useState("2026-05-16");
+  const [selectedWeek, setSelectedWeek] = useState(() => getWeekRangeLabel(new Date(Date.UTC(2026, 4, 16))));
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showHoursConfig, setShowHoursConfig] = useState(false);
@@ -41,6 +76,13 @@ export default function Agenda() {
   const [financeiroPage, setFinanceiroPage] = useState(1);
   const pageSizeFinanceiro = 5;
 
+  const [financeiroPeriod, setFinanceiroPeriod] = useState('ALL');
+  const [financeiroService, setFinanceiroService] = useState('ALL');
+  const [financeiroPrice, setFinanceiroPrice] = useState('ALL');
+  const [financeiroType, setFinanceiroType] = useState('ALL');
+
+  const [timelineFilter, setTimelineFilter] = useState<'ALL' | 'OCCUPIED' | 'FREE' | 'RADAR' | 'BLOCKED'>('ALL');
+
   const [clientActiveSearch, setClientActiveSearch] = useState('');
   const [clientActivePage, setClientActivePage] = useState(1);
   const pageSizeClientActive = 3;
@@ -58,6 +100,15 @@ export default function Agenda() {
       ? [...barberAppointments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       : [...appointments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [barberAppointments, appointments, isBarberView]);
+
+  // Filtros inteligentes e ordenação para a aba Financeiro
+  const uniqueServices = useMemo(() => {
+    const services = new Set<string>();
+    allApps.forEach(app => {
+      (app.services || []).forEach((s: string) => services.add(s));
+    });
+    return Array.from(services).sort();
+  }, [allApps]);
 
   // Filtros inteligentes e ordenação para a aba Financeiro
   const filteredAllApps = useMemo(() => {
@@ -83,11 +134,62 @@ export default function Agenda() {
     if (financeiroDate !== 'ALL') {
       result = result.filter(app => {
         const appDate = new Date(app.date);
-        return (appDate.getUTCDate() || 16).toString() === financeiroDate;
+        return getUTCDateString(appDate) === financeiroDate;
       });
     }
 
-    // 4. Ordenação
+    // 4. Filtro de Período (Hoje, Essa Semana, Esse Mês)
+    if (financeiroPeriod !== 'ALL') {
+      const now = new Date();
+      const todayStr = getUTCDateString(now);
+      result = result.filter(app => {
+        const appDate = new Date(app.date);
+        const appDateStr = getUTCDateString(appDate);
+        if (financeiroPeriod === 'TODAY') {
+          return appDateStr === todayStr;
+        }
+        if (financeiroPeriod === 'WEEK') {
+          return getWeekRangeLabel(appDate) === getWeekRangeLabel(now);
+        }
+        if (financeiroPeriod === 'MONTH') {
+          return appDate.getUTCMonth() === now.getUTCMonth() && appDate.getUTCFullYear() === now.getUTCFullYear();
+        }
+        return true;
+      });
+    }
+
+    // 5. Filtro de Serviço
+    if (financeiroService !== 'ALL') {
+      result = result.filter(app => {
+        const services = (app.services || []).map((s: string) => s.toLowerCase());
+        return services.includes(financeiroService.toLowerCase());
+      });
+    }
+
+    // 6. Filtro de Faixa de Preço
+    if (financeiroPrice !== 'ALL') {
+      result = result.filter(app => {
+        const price = app.price || 0;
+        if (financeiroPrice === 'UP_TO_50') return price <= 50;
+        if (financeiroPrice === '50_TO_100') return price > 50 && price <= 100;
+        if (financeiroPrice === 'ABOVE_100') return price > 100;
+        return true;
+      });
+    }
+
+    // 7. Filtro de Tipo de Chamada (Padrão, Express, Fila)
+    if (financeiroType !== 'ALL') {
+      result = result.filter(app => {
+        const isQueue = app.barber?.name === 'Arena Aberta' || app.barber?.name === 'Abrir Minha Agenda' || app.barberName === 'Arena Aberta' || app.barberName === 'Abrir Minha Agenda';
+        const isRadar = app.status === 'RADAR' || app.client_name === 'Radar Ativo';
+        if (financeiroType === 'QUEUE') return isQueue;
+        if (financeiroType === 'EXPRESS') return isRadar;
+        if (financeiroType === 'STANDARD') return !isQueue && !isRadar;
+        return true;
+      });
+    }
+
+    // 8. Ordenação
     result.sort((a, b) => {
       if (financeiroSort === 'date-desc') {
         return new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -102,7 +204,7 @@ export default function Agenda() {
     });
 
     return result;
-  }, [allApps, financeiroSearch, financeiroStatus, financeiroDate, financeiroSort]);
+  }, [allApps, financeiroSearch, financeiroStatus, financeiroDate, financeiroPeriod, financeiroService, financeiroPrice, financeiroType, financeiroSort]);
 
   const paginatedAllApps = useMemo(() => {
     const startIndex = (financeiroPage - 1) * pageSizeFinanceiro;
@@ -117,15 +219,15 @@ export default function Agenda() {
   const uniqueDates = useMemo(() => {
     const dates = allApps.map(app => {
       const appDate = new Date(app.date);
-      return appDate.getUTCDate() || 16;
+      return getUTCDateString(appDate);
     });
-    return Array.from(new Set(dates)).sort((a, b) => a - b);
+    return Array.from(new Set(dates)).sort((a, b) => a.localeCompare(b));
   }, [allApps]);
 
   // Resetar página do financeiro ao mudar os filtros
   useEffect(() => {
     setFinanceiroPage(1);
-  }, [financeiroSearch, financeiroStatus, financeiroDate, financeiroSort]);
+  }, [financeiroSearch, financeiroStatus, financeiroDate, financeiroPeriod, financeiroService, financeiroPrice, financeiroType, financeiroSort]);
 
   // Filtragem e paginação das Batalhas Próximas (Cliente)
   const clientActiveAppsFiltered = useMemo(() => {
@@ -192,7 +294,7 @@ export default function Agenda() {
 
     sourceApps.forEach((app: any) => {
       const appDate = new Date(app.date);
-      const dayStr = appDate.getUTCDate() || 16;
+      const dayStr = `${String(appDate.getUTCDate()).padStart(2, '0')}/${String(appDate.getUTCMonth() + 1).padStart(2, '0')}/${appDate.getUTCFullYear()}`;
       const timeStr = app.time;
       const targetName = isBarberView ? (app.client?.name || 'Cliente') : (app.barber?.user?.name || 'Arena Barber');
 
@@ -320,13 +422,14 @@ export default function Agenda() {
     if (notif.appointment) {
       const app = notif.appointment;
       const appDate = new Date(app.date);
-      const dayNum = appDate.getUTCDate();
+      const dayStr = getUTCDateString(appDate);
       
       // 1. Alterna para a aba de Agenda
       setActiveTab('agenda');
       
       // 2. Seleciona o dia correto
-      setSelectedDate(dayNum);
+      setSelectedDate(dayStr);
+      setSelectedWeek(getWeekRangeLabel(appDate));
       
       // 3. Se for barbeiro, abre o modal de gestão do slot imediatamente
       if (isBarberView) {
@@ -348,7 +451,7 @@ export default function Agenda() {
     }
   };
 
-  const futureDates = useMemo(() => [16, 17, 18, 19, 20, 21, 22].filter(d => d >= today), [today]);
+
 
   const loadClientAppointments = async () => {
     if (user?.id && !isBarberView) {
@@ -420,7 +523,7 @@ export default function Agenda() {
     loadBarberSchedule();
   }, [user?.id, isBarberView]);
 
-  const updateGlobalAgenda = (date: number, time: string, data: any) => {
+  const updateGlobalAgenda = (date: string, time: string, data: any) => {
     setMatchSession((prev: any) => {
       const currentAgenda = prev.globalAgenda || {};
       const key = `${barberKeyPrefix}_${date}`;
@@ -477,15 +580,17 @@ export default function Agenda() {
     const workingHours = dayData.workingHours || { start: '08:00', end: '20:00' };
     const startIdx = parseInt(workingHours.start.split(':')[0]);
     const endIdx = parseInt(workingHours.end.split(':')[0]);
+    const todayStr = getUTCDateString(new Date());
 
     return hours24.filter((_, i) => i >= startIdx && i <= endIdx).map(time => {
       const h = parseInt(time.split(':')[0]);
-      if (selectedDate === today && h < currentHour) return null;
+      if (selectedDate === todayStr && h < currentHour) return null;
 
       // Find DB Appointment matching this specific day & hour slot
       const dbApp = barberAppointments.find((a: any) => {
         const appDate = new Date(a.date);
-        return appDate.getUTCDate() === selectedDate && a.time === time && ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'].includes(a.status);
+        const appDateStr = getUTCDateString(appDate);
+        return appDateStr === selectedDate && a.time === time && ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'].includes(a.status);
       });
 
       if (dbApp) {
@@ -503,8 +608,16 @@ export default function Agenda() {
 
       const existing = slotsFromGlobal.find((s: any) => s.time === time);
       return existing || { time, status: 'empty', client_name: 'Livre' };
-    }).filter(Boolean);
-  }, [selectedDate, globalAgenda, hours24, today, currentHour, barberAppointments, user?.id]);
+    }).filter(Boolean).filter((slot: any) => {
+      if (!slot) return false;
+      if (timelineFilter === 'ALL') return true;
+      if (timelineFilter === 'OCCUPIED') return slot.status === 'occupied';
+      if (timelineFilter === 'FREE') return slot.status === 'empty';
+      if (timelineFilter === 'RADAR') return slot.status === 'radar';
+      if (timelineFilter === 'BLOCKED') return slot.status === 'blocked';
+      return true;
+    });
+  }, [selectedDate, globalAgenda, hours24, currentHour, barberAppointments, user?.id, timelineFilter]);
 
   const handleAcceptRequest = (notif: any) => {
     updateGlobalAgenda(notif.date, notif.time, { status: 'occupied', client_name: notif.client, services: notif.services, price: notif.price, isMyBooking: true });
@@ -512,7 +625,7 @@ export default function Agenda() {
     setSelectedSlot(null);
   };
 
-  const setWorkingHours = (date: number, start: string, end: string) => {
+  const setWorkingHours = (date: string, start: string, end: string) => {
     const key = `${barberKeyPrefix}_${date}`;
     setMatchSession((prev: any) => {
       const currentAgenda = prev.globalAgenda || {};
@@ -581,18 +694,70 @@ export default function Agenda() {
 
           {/* DATE PICKER SLIDER (BARBER VIEW ONLY) */}
           {isBarberView && (
-            <div className="flex items-center justify-between bg-gray-50/50 p-2 rounded-[30px] border border-gray-100 mb-6">
-              <button className="p-2 text-gray-300"><ChevronLeft size={20} /></button>
-              <div className="flex space-x-3 overflow-x-auto no-scrollbar py-1">
-                {futureDates.map(day => (
-                  <button key={day} onClick={() => setSelectedDate(day)} className={`min-w-[50px] py-4 rounded-[22px] flex flex-col items-center transition-all relative ${selectedDate === day ? 'bg-blue-600 text-white shadow-xl scale-110' : 'text-gray-400'}`}>
-                    <span className="text-[7px] font-black uppercase mb-1">{day === today ? 'Hoje' : 'Maio'}</span>
-                    <span className="text-sm font-black">{day}</span>
-                    {(globalAgenda[day]?.slots?.length > 0) && <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${selectedDate === day ? 'bg-white' : 'bg-blue-600'}`} />}
-                  </button>
-                ))}
+            <div className="flex flex-col space-y-3 mb-6">
+              {/* WEEK SELECTION DROPDOWN */}
+              <div className="flex items-center justify-between bg-gray-50/50 p-2 rounded-[25px] border border-gray-100">
+                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest pl-3">Semana</span>
+                <select
+                  value={selectedWeek}
+                  onChange={(e) => {
+                    setSelectedWeek(e.target.value);
+                    const firstDayInWeek = getDatesRange().find(d => getWeekRangeLabel(d) === e.target.value);
+                    if (firstDayInWeek) {
+                      setSelectedDate(getUTCDateString(firstDayInWeek));
+                    }
+                  }}
+                  className="bg-transparent font-black text-xs text-blue-950 outline-none uppercase text-right pr-3"
+                >
+                  {Array.from(new Set(getDatesRange().map(d => getWeekRangeLabel(d)))).map(weekLabel => (
+                    <option key={weekLabel} value={weekLabel}>{weekLabel}</option>
+                  ))}
+                </select>
               </div>
-              <button className="p-2 text-gray-300"><ChevronRight size={20} /></button>
+
+              {/* HORIZONTAL DATE SLIDER */}
+              <div className="flex items-center justify-between bg-gray-50/50 p-2 rounded-[30px] border border-gray-100">
+                <button className="p-2 text-gray-300"><ChevronLeft size={20} /></button>
+                <div className="flex space-x-3 overflow-x-auto no-scrollbar py-1">
+                  {getDatesRange()
+                    .filter(d => getWeekRangeLabel(d) === selectedWeek)
+                    .map(dayObj => {
+                      const dayStr = getUTCDateString(dayObj);
+                      const isToday = dayStr === getUTCDateString(new Date());
+                      const weekdaysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+                      const weekdayLabel = weekdaysMap[dayObj.getUTCDay()];
+                      const monthName = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][dayObj.getUTCMonth()];
+                      const dayNum = dayObj.getUTCDate();
+                      const key = `${barberKeyPrefix}_${dayStr}`;
+
+                      return (
+                        <button key={dayStr} onClick={() => setSelectedDate(dayStr)} className={`min-w-[50px] py-4 rounded-[22px] flex flex-col items-center transition-all relative ${selectedDate === dayStr ? 'bg-blue-600 text-white shadow-xl scale-110' : 'text-gray-400'}`}>
+                          <span className="text-[7px] font-black uppercase mb-1">{isToday ? 'Hoje' : weekdayLabel}</span>
+                          <span className="text-sm font-black">{dayNum}</span>
+                          <span className="text-[6px] font-bold uppercase opacity-80 mt-0.5">{monthName}</span>
+                          {(globalAgenda[key]?.slots?.length > 0) && <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${selectedDate === dayStr ? 'bg-white' : 'bg-blue-600'}`} />}
+                        </button>
+                      );
+                    })}
+                </div>
+                <button className="p-2 text-gray-300"><ChevronRight size={20} /></button>
+              </div>
+
+              {/* TIMELINE SLOTS FILTER */}
+              <div className="flex items-center justify-between bg-gray-50/50 p-2 rounded-[25px] border border-gray-100">
+                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest pl-3 flex items-center"><Filter size={10} className="mr-1.5 text-blue-500" /> Filtrar Slots</span>
+                <select
+                  value={timelineFilter}
+                  onChange={(e) => setTimelineFilter(e.target.value as any)}
+                  className="bg-transparent font-black text-xs text-blue-950 outline-none uppercase text-right pr-3"
+                >
+                  <option value="ALL">Todos os slots</option>
+                  <option value="OCCUPIED">Apenas Ocupados</option>
+                  <option value="FREE">Apenas Livres</option>
+                  <option value="RADAR">Apenas Radar</option>
+                  <option value="BLOCKED">Apenas Bloqueados</option>
+                </select>
+              </div>
             </div>
           )}
 
@@ -675,8 +840,68 @@ export default function Agenda() {
                     >
                       <option value="ALL">Todas as Datas</option>
                       {uniqueDates.map(date => (
-                        <option key={date} value={date.toString()}>Dia {date}</option>
+                        <option key={date} value={date}>
+                          {new Date(`${date}T00:00:00.000Z`).toLocaleDateString('pt-BR')}
+                        </option>
                       ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div>
+                    <label className="text-[7px] font-black text-gray-400 uppercase tracking-widest block mb-1 px-1">Período</label>
+                    <select
+                      value={financeiroPeriod}
+                      onChange={(e) => setFinanceiroPeriod(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-[9px] font-bold text-blue-950 focus:outline-none"
+                    >
+                      <option value="ALL">Qualquer Período</option>
+                      <option value="TODAY">Hoje</option>
+                      <option value="WEEK">Esta Semana</option>
+                      <option value="MONTH">Este Mês</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[7px] font-black text-gray-400 uppercase tracking-widest block mb-1 px-1">Serviço</label>
+                    <select
+                      value={financeiroService}
+                      onChange={(e) => setFinanceiroService(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-[9px] font-bold text-blue-950 focus:outline-none"
+                    >
+                      <option value="ALL">Todos os Serviços</option>
+                      {uniqueServices.map(srv => (
+                        <option key={srv} value={srv}>{srv}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div>
+                    <label className="text-[7px] font-black text-gray-400 uppercase tracking-widest block mb-1 px-1">Faixa de Preço</label>
+                    <select
+                      value={financeiroPrice}
+                      onChange={(e) => setFinanceiroPrice(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-[9px] font-bold text-blue-950 focus:outline-none"
+                    >
+                      <option value="ALL">Qualquer Preço</option>
+                      <option value="UP_TO_50">Até R$ 50</option>
+                      <option value="50_TO_100">R$ 51 a R$ 100</option>
+                      <option value="ABOVE_100">Acima de R$ 100</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[7px] font-black text-gray-400 uppercase tracking-widest block mb-1 px-1">Tipo de Chamada</label>
+                    <select
+                      value={financeiroType}
+                      onChange={(e) => setFinanceiroType(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-[9px] font-bold text-blue-950 focus:outline-none"
+                    >
+                      <option value="ALL">Todos os Tipos</option>
+                      <option value="STANDARD">Padrão (Agenda)</option>
+                      <option value="EXPRESS">Express (Radar)</option>
+                      <option value="QUEUE">Fila (Arena Aberta)</option>
                     </select>
                   </div>
                 </div>
@@ -768,7 +993,7 @@ export default function Agenda() {
                             <div>
                               <h4 className="text-xs font-black text-blue-950 uppercase italic leading-none">{displayUser?.name || 'Luis'}</h4>
                               <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1 block">
-                                Dia {appDate.getUTCDate() || 16} às {app.time}
+                                Dia {getUTCDateString(appDate).split('-').reverse().join('/')} às {app.time}
                               </span>
                             </div>
                           </div>
@@ -1443,7 +1668,7 @@ export default function Agenda() {
                   client: { name: selectedSlot.client_name || 'Cliente' },
                   services: selectedSlot.services || ['Corte Manual'],
                   price: selectedSlot.price || 50,
-                  date: new Date(2026, 4, selectedDate).toISOString(),
+                  date: new Date(`${selectedDate}T00:00:00.000Z`).toISOString(),
                   time: selectedSlot.time
                 };
 
@@ -1454,7 +1679,7 @@ export default function Agenda() {
                 return (
                   <div className="flex flex-col space-y-4 text-left">
                     <h3 className="text-xl font-black text-blue-950 uppercase italic text-center mb-1 tracking-widest">Painel do Atendimento</h3>
-                    <p className="text-[9px] text-gray-400 font-black uppercase text-center mb-3 tracking-widest">Dia {selectedDate} às {selectedSlot.time}</p>
+                    <p className="text-[9px] text-gray-400 font-black uppercase text-center mb-3 tracking-widest">Dia {new Date(`${selectedDate}T00:00:00.000Z`).toLocaleDateString('pt-BR')} às {selectedSlot.time}</p>
 
                     {/* STEPPER */}
                     <div className="flex items-center justify-between mt-2 mb-6 px-1 relative w-full">
@@ -1574,10 +1799,10 @@ export default function Agenda() {
                           onClick={async () => {
                             try {
                               const appDateObj = new Date(app.date);
-                              const todayNum = today; // Use static mock today date
+                              const appDateStr = getUTCDateString(appDateObj);
 
-                              if (appDateObj.getUTCDate() !== todayNum) {
-                                if (confirm(`Este atendimento está agendado para o Dia ${appDateObj.getUTCDate()} às ${app.time}. Tem certeza de que deseja iniciar o atendimento agora? Isso irá realocar o horário na sua agenda para hoje.`)) {
+                              if (appDateStr !== today) {
+                                if (confirm(`Este atendimento está agendado para o Dia ${appDateStr.split('-').reverse().join('/')} às ${app.time}. Tem certeza de que deseja iniciar o atendimento agora? Isso irá realocar o horário na sua agenda para hoje.`)) {
                                   const todayIso = new Date().toISOString();
                                   const currentHourStr = `${new Date().getHours().toString().padStart(2, '0')}:00`;
                                   await api.updateAppointmentStatus(app.id, 'IN_SERVICE', undefined, undefined, todayIso, currentHourStr);
@@ -1720,7 +1945,7 @@ export default function Agenda() {
                 );
               })() : (
                 <div className="flex flex-col space-y-3">
-                  <h3 className="text-xl font-black text-blue-950 uppercase italic text-center mb-10 tracking-widest">Dia {selectedDate} • {selectedSlot.time}</h3>
+                  <h3 className="text-xl font-black text-blue-950 uppercase italic text-center mb-10 tracking-widest">Dia {new Date(`${selectedDate}T00:00:00.000Z`).toLocaleDateString('pt-BR')} • {selectedSlot.time}</h3>
                   <button onClick={() => updateGlobalAgenda(selectedDate, selectedSlot.time, { status: 'radar', client_name: 'Radar Ativo' })} className="w-full py-7 bg-blue-600 text-white rounded-[30px] font-black text-sm uppercase italic shadow-xl flex items-center justify-center space-x-3"><Zap size={22} className="text-cyan-300" /> <span>Lançar no Radar</span></button>
                   <button onClick={() => updateGlobalAgenda(selectedDate, selectedSlot.time, { status: 'occupied', client_name: 'Reserva Manual', services: ['Corte Manual'], price: 50 })} className="w-full py-6 bg-gray-900 text-white rounded-[30px] font-black text-xs uppercase flex items-center justify-center space-x-3"><Plus size={20} /> <span>Agendar Manual</span></button>
                   <button onClick={() => updateGlobalAgenda(selectedDate, selectedSlot.time, { status: 'blocked', client_name: 'Bloqueado' })} className="w-full py-6 bg-gray-100 text-gray-400 rounded-[30px] font-black text-xs uppercase flex items-center justify-center space-x-3"><ShieldOff size={20} /> <span>Bloquear Agenda</span></button>
