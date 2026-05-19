@@ -1034,6 +1034,15 @@ export default function League() {
     }
   };
 
+  const getOrCreateGuestId = () => {
+    let guestId = localStorage.getItem('guest_user_id');
+    if (!guestId) {
+      guestId = 'guest-' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('guest_user_id', guestId);
+    }
+    return guestId;
+  };
+
   const handleShare = () => {
     if (!selectedChamp) return;
     const shareUrl = `${window.location.origin}/league?championshipId=${selectedChamp.id}`;
@@ -1043,14 +1052,9 @@ export default function League() {
 
   const handleLikeToggle = async () => {
     if (!selectedChamp) return;
-    if (!currentUser?.id) {
-      alert('Você precisa estar logado para dar like! Redirecionando para o login...');
-      sessionStorage.setItem('redirectAfterAuth', `/league?championshipId=${selectedChamp.id}`);
-      navigate('/auth');
-      return;
-    }
+    const userIdToUse = currentUser?.id || getOrCreateGuestId();
     try {
-      const res = await api.toggleLike(selectedChamp.id, currentUser.id);
+      const res = await api.toggleLike(selectedChamp.id, userIdToUse);
       if (res.success) {
         const updatedLikes = res.likes;
         setSelectedChamp((prev: any) => {
@@ -1079,14 +1083,9 @@ export default function League() {
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedChamp || !newCommentText.trim()) return;
-    if (!currentUser?.id) {
-      alert('Você precisa estar logado para comentar! Redirecionando para o login...');
-      sessionStorage.setItem('redirectAfterAuth', `/league?championshipId=${selectedChamp.id}`);
-      navigate('/auth');
-      return;
-    }
+    const userIdToUse = currentUser?.id || getOrCreateGuestId();
     try {
-      const res = await api.addComment(selectedChamp.id, currentUser.id, newCommentText);
+      const res = await api.addComment(selectedChamp.id, userIdToUse, newCommentText);
       if (res.success) {
         const newComment = res.comment;
         setSelectedChamp((prev: any) => {
@@ -1134,7 +1133,8 @@ export default function League() {
 
     const likesCount = match.likes?.length || 0;
     const commentsCount = match.comments?.length || 0;
-    const isLiked = currentUser?.id && match.likes?.includes(currentUser.id);
+    const guestId = localStorage.getItem('guest_user_id');
+    const isLiked = (currentUser?.id || guestId) && match.likes?.includes(currentUser?.id || guestId);
 
     return (
       <motion.div 
