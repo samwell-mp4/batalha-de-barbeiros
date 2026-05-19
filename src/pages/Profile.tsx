@@ -664,9 +664,15 @@ export default function Profile() {
                         <button
                            onClick={async () => {
                               setIsLoading(true);
-                              await api.createPost({ ...newPostData, barberId: barber.id });
+                              const newPost = await api.createPost({ ...newPostData, barberId: barber.id });
                               setIsLoading(false);
                               setShowNewPost(false);
+                              if (newPost && !newPost.error) {
+                                 setBarber((prev: any) => ({
+                                    ...prev,
+                                    posts: [newPost, ...(prev.posts || [])]
+                                 }));
+                              }
                               alert('Postagem realizada com sucesso na Arena!');
                            }}
                            disabled={isLoading || !newPostData.imageUrl}

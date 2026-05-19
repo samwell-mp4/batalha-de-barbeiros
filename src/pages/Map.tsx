@@ -165,15 +165,21 @@ export default function MapPage() {
       if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta' && selectedBarber.name !== 'Abrir Minha Agenda') {
         try {
           const barberData = await api.getBarber(selectedBarber.id);
-          if (barberData && barberData.schedule) {
-            const parsedSchedule = JSON.parse(barberData.schedule);
-            setMatchSession((prev: any) => ({
-              ...prev,
-              globalAgenda: {
-                ...(prev.globalAgenda || {}),
-                ...parsedSchedule
-              }
-            }));
+          if (barberData) {
+            setSelectedBarber((prev: any) => {
+              if (!prev || prev.id !== barberData.id) return prev;
+              return { ...prev, ...barberData };
+            });
+            if (barberData.schedule) {
+              const parsedSchedule = JSON.parse(barberData.schedule);
+              setMatchSession((prev: any) => ({
+                ...prev,
+                globalAgenda: {
+                  ...(prev.globalAgenda || {}),
+                  ...parsedSchedule
+                }
+              }));
+            }
           }
           const appointmentsData = await api.getBarberAppointments(selectedBarber.id);
           setSelectedBarberAppointments(appointmentsData);
@@ -195,107 +201,6 @@ export default function MapPage() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [selectedBarber?.id]);
-
-  useEffect(() => {
-    async function loadSelectedBarberData() {
-      if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta' && selectedBarber.name !== 'Abrir Minha Agenda') {
-        try {
-          const barberData = await api.getBarber(selectedBarber.id);
-          if (barberData && barberData.schedule) {
-            const parsedSchedule = JSON.parse(barberData.schedule);
-            setMatchSession((prev: any) => ({
-              ...prev,
-              globalAgenda: {
-                ...(prev.globalAgenda || {}),
-                ...parsedSchedule
-              }
-            }));
-          }
-          const appointmentsData = await api.getBarberAppointments(selectedBarber.id);
-          setSelectedBarberAppointments(appointmentsData);
-        } catch (e) {
-          console.error('Failed to load selected barber data:', e);
-        }
-      } else {
-        setSelectedBarberAppointments([]);
-      }
-    }
-
-    loadSelectedBarberData();
-
-    let interval: any;
-    if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta' && selectedBarber.name !== 'Abrir Minha Agenda') {
-      interval = setInterval(loadSelectedBarberData, 5000);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [selectedBarber?.id]);
-
-  useEffect(() => {
-    async function loadSelectedBarberData() {
-      if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta' && selectedBarber.name !== 'Abrir Minha Agenda') {
-        try {
-          const barberData = await api.getBarber(selectedBarber.id);
-          if (barberData && barberData.schedule) {
-            const parsedSchedule = JSON.parse(barberData.schedule);
-            setMatchSession((prev: any) => ({
-              ...prev,
-              globalAgenda: {
-                ...(prev.globalAgenda || {}),
-                ...parsedSchedule
-              }
-            }));
-          }
-          const appointmentsData = await api.getBarberAppointments(selectedBarber.id);
-          setSelectedBarberAppointments(appointmentsData);
-        } catch (e) {
-          console.error('Failed to load selected barber data:', e);
-        }
-      } else {
-        setSelectedBarberAppointments([]);
-      }
-    }
-
-    loadSelectedBarberData();
-
-    let interval: any;
-    if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta' && selectedBarber.name !== 'Abrir Minha Agenda') {
-      interval = setInterval(loadSelectedBarberData, 5000);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [selectedBarber?.id]);
-
-  useEffect(() => {
-    async function loadSelectedBarberData() {
-      if (selectedBarber?.id && selectedBarber.name !== 'Arena Aberta' && selectedBarber.name !== 'Abrir Minha Agenda') {
-        try {
-          const barberData = await api.getBarber(selectedBarber.id);
-          if (barberData && barberData.schedule) {
-            const parsedSchedule = JSON.parse(barberData.schedule);
-            setMatchSession((prev: any) => ({
-              ...prev,
-              globalAgenda: {
-                ...(prev.globalAgenda || {}),
-                ...parsedSchedule
-              }
-            }));
-          }
-          const appointmentsData = await api.getBarberAppointments(selectedBarber.id);
-          setSelectedBarberAppointments(appointmentsData);
-        } catch (e) {
-          console.error('Failed to load selected barber data:', e);
-        }
-      } else {
-        setSelectedBarberAppointments([]);
-      }
-    }
-    loadSelectedBarberData();
   }, [selectedBarber?.id]);
 
   const calculatePriceForServices = (servicesList: string[], configStr: string | null) => {
@@ -949,25 +854,57 @@ export default function MapPage() {
             <div className="px-8 mt-6">
               {!isBookingAgenda ? (
                 <>
-                  {/* STATUS DINÃ‚MICO INTELIGENTE COM CONTADOR DE VAGAS */}
+                  {/* STATUS DINÂMICO INTELIGENTE COM CONTADOR DE VAGAS */}
                   {(() => {
-                    const today = 16;
                     const now = new Date();
+                    const todayDayNum = now.getDate();
                     const hour = now.getHours();
-                    const dayData = matchSession.globalAgenda?.[today] || {};
+                    const barberKeyPrefix = selectedBarber.id || 'default';
+                    const key = `${barberKeyPrefix}_${todayDayNum}`;
+                    const dayData = matchSession.globalAgenda?.[key] || {};
                     const slots = dayData.slots || [];
-                    const workingHours = dayData.workingHours || { start: '08:00', end: '19:00' };
+                    
+                    let startHour = 8;
+                    let endHour = 19;
+                    if (selectedBarber.workingHours) {
+                      const parts = selectedBarber.workingHours.split(' às ');
+                      if (parts.length === 2) {
+                        startHour = parseInt(parts[0].split(':')[0]) || 8;
+                        endHour = parseInt(parts[1].split(':')[0]) || 19;
+                      }
+                    }
 
-                    const currentSlot = slots.find((s: any) => parseInt(s.time) === hour);
+                    // Build dynamic slots merging globalAgenda config and real appointments
+                    const finalSlots: any[] = [];
+                    for (let h = 0; h < 24; h++) {
+                      const configSlot = slots.find((s: any) => parseInt(s.time) === h);
+                      const hasDbApp = selectedBarberAppointments && selectedBarberAppointments.some((app: any) => {
+                        const appDate = new Date(app.date);
+                        const isToday = appDate.getDate() === todayDayNum && 
+                                        appDate.getMonth() === now.getMonth() && 
+                                        appDate.getFullYear() === now.getFullYear();
+                        const appHour = parseInt(app.time.split(':')[0]);
+                        return isToday && appHour === h && ['PENDING', 'CONFIRMED', 'ARRIVED', 'IN_SERVICE'].includes(app.status);
+                      });
+
+                      if (hasDbApp) {
+                        finalSlots.push({ time: `${String(h).padStart(2, '0')}:00`, status: 'occupied', client_name: 'Reservado' });
+                      } else if (configSlot) {
+                        finalSlots.push(configSlot);
+                      } else if (h >= startHour && h < endHour) {
+                        finalSlots.push({ time: `${String(h).padStart(2, '0')}:00`, status: 'empty' });
+                      }
+                    }
+
+                    const currentSlot = finalSlots.find((s: any) => parseInt(s.time) === hour);
 
                     // CONTAGEM DE VAGAS RESTANTES NO DIA (DA HORA ATUAL EM DIANTE)
-                    const availableSlots = slots.filter((s: any) => {
+                    const availableSlots = finalSlots.filter((s: any) => {
                       const h = parseInt(s.time);
                       return h >= hour && (s.status === 'empty' || s.status === 'radar');
                     });
 
-                    // Se não houver slots definidos na agenda global ainda, vamos considerar como livre
-                    const hasNoSlotsYet = slots.length === 0;
+                    const hasNoSlotsYet = finalSlots.length === 0;
                     
                     let statusLabel = 'Agenda Disponível';
                     let statusColor = '#10b981'; // Verde
@@ -977,9 +914,13 @@ export default function MapPage() {
                       const count = hasNoSlotsYet ? 8 : availableSlots.length;
                       prediction = count === 1 ? 'Só resta 1 vaga!' : `${count} vagas disponíveis`;
                       
-                      if (hour < parseInt(workingHours.start)) {
-                        statusLabel = `Abre às ${workingHours.start}`;
+                      if (hour < startHour) {
+                        statusLabel = `Abre às ${String(startHour).padStart(2, '0')}:00`;
                         statusColor = '#10b981'; // Verde
+                      } else if (hour >= endHour) {
+                        statusLabel = 'Fechado';
+                        statusColor = '#ef4444'; // Vermelho
+                        prediction = 'Sem Horários';
                       } else if (currentSlot?.status === 'radar') {
                         statusLabel = 'Disponível no Radar';
                         statusColor = '#06b6d4'; // Ciano
@@ -1000,7 +941,7 @@ export default function MapPage() {
                     return (
                       <div className="bg-gray-50 p-6 rounded-[35px] border border-gray-100 mb-8 flex items-center justify-between">
                         <div>
-                          <p className="text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest">Status da Arena</p>
+                          <p className="text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest">STATUS</p>
                           <div className="flex items-center space-x-2">
                             <div className="w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: statusColor }}></div>
                             <span className="text-sm font-black text-blue-950 uppercase italic">{statusLabel}</span>
@@ -1023,11 +964,19 @@ export default function MapPage() {
                       <span className="text-[10px] font-black text-blue-500 uppercase">Ver todos</span>
                     </div>
                     <div className="flex space-x-3 overflow-x-auto no-scrollbar pb-2">
-                      {[1, 2, 3, 4, 5].map(i => (
-                        <div key={i} className="min-w-[130px] h-44 rounded-[30px] bg-gray-100 overflow-hidden shadow-sm flex-shrink-0 border border-gray-100">
-                          <img src={`https://picsum.photos/400/600?random=${i + 20}`} className="w-full h-full object-cover" />
-                        </div>
-                      ))}
+                      {selectedBarber.posts && selectedBarber.posts.length > 0 ? (
+                        selectedBarber.posts.map((post: any) => (
+                          <div key={post.id} className="min-w-[130px] h-44 rounded-[30px] bg-gray-100 overflow-hidden shadow-sm flex-shrink-0 border border-gray-100">
+                            <img src={post.imageUrl} className="w-full h-full object-cover" />
+                          </div>
+                        ))
+                      ) : (
+                        [1, 2, 3].map(i => (
+                          <div key={i} className="min-w-[130px] h-44 rounded-[30px] bg-gray-100 overflow-hidden shadow-sm flex-shrink-0 border border-gray-100">
+                            <img src={`https://picsum.photos/400/600?random=${i + 20}`} className="w-full h-full object-cover" />
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
 
