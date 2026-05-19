@@ -136,6 +136,14 @@ function matchesWhere(item: any, where: any): boolean {
       continue;
     }
 
+    // Compound key postId_userId support
+    if (key === 'postId_userId' && filter && typeof filter === 'object') {
+      if (item.postId !== filter.postId || item.userId !== filter.userId) {
+        return false;
+      }
+      continue;
+    }
+
     const val = item[key];
 
     if (filter && typeof filter === 'object' && !Array.isArray(filter)) {

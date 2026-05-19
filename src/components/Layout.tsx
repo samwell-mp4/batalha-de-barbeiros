@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Swords, MapPin, Trophy, User, Calendar } from 'lucide-react';
+import { Globe, MapPin, Trophy, User, Calendar } from 'lucide-react';
 
 export default function Layout() {
   const navigate = useNavigate();
@@ -80,8 +80,8 @@ export default function Layout() {
             >
               {({ isActive }) => (
                 <>
-                  <Swords size={20} strokeWidth={isActive ? 2.5 : 2} />
-                  <span className="text-[9px] font-black uppercase tracking-widest font-orbitron">Arena</span>
+                  <Globe size={20} strokeWidth={isActive ? 2.5 : 2} />
+                  <span className="text-[9px] font-black uppercase tracking-widest font-orbitron">World</span>
                 </>
               )}
             </NavLink>

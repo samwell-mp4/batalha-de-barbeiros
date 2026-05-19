@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
-import Battle from './pages/Battle';
+import World from './pages/World';
 import MapPage from './pages/Map';
 import League from './pages/League';
 import Agenda from './pages/Agenda';
@@ -13,7 +13,7 @@ function App() {
       <Routes>
         <Route path="/auth" element={<Auth />} />
         <Route path="/" element={<Layout />}>
-          <Route index element={<Battle />} />
+          <Route index element={<World />} />
           <Route path="map" element={<MapPage />} />
           <Route path="league" element={<League />} />
           <Route path="agenda" element={<Agenda />} />

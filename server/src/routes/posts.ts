@@ -11,32 +11,65 @@ router.get('/', async (req, res) => {
         barber: {
           include: { user: true }
         },
-        _count: {
-          select: { likes: true, comments: true }
+        likes: true,
+        comments: {
+          include: {
+            user: true
+          },
+          orderBy: {
+            createdAt: 'asc'
+          }
         }
       },
       orderBy: { createdAt: 'desc' },
       take: 20
     });
     res.json(posts);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[API ERROR] Failed to fetch feed:', error.message);
     res.status(500).json({ error: 'Failed to fetch feed' });
   }
 });
 
-// Like a post
+// Like a post (toggle)
 router.post('/:id/like', async (req, res) => {
   try {
     const { userId } = req.body;
-    const like = await prisma.like.create({
-      data: {
-        postId: req.params.id,
-        userId
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    const existingLike = await prisma.like.findUnique({
+      where: {
+        postId_userId: {
+          postId: req.params.id,
+          userId: userId
+        }
       }
     });
-    res.json(like);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to like post' });
+
+    if (existingLike) {
+      await prisma.like.delete({
+        where: {
+          postId_userId: {
+            postId: req.params.id,
+            userId: userId
+          }
+        }
+      });
+      return res.json({ liked: false });
+    } else {
+      const like = await prisma.like.create({
+        data: {
+          postId: req.params.id,
+          userId
+        }
+      });
+      return res.json({ liked: true, like });
+    }
+  } catch (error: any) {
+    console.error('[API ERROR] Failed to toggle like:', error.message);
+    res.status(500).json({ error: 'Failed to toggle like' });
   }
 });
 
@@ -44,15 +77,23 @@ router.post('/:id/like', async (req, res) => {
 router.post('/:id/comment', async (req, res) => {
   try {
     const { userId, content } = req.body;
+    if (!userId || !content) {
+      return res.status(400).json({ error: 'User ID and Content are required' });
+    }
+
     const comment = await prisma.comment.create({
       data: {
         postId: req.params.id,
         userId,
         content
+      },
+      include: {
+        user: true
       }
     });
     res.json(comment);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[API ERROR] Failed to comment:', error.message);
     res.status(500).json({ error: 'Failed to comment' });
   }
 });
