@@ -148,4 +148,24 @@ export const api = {
     });
     return res.json();
   },
+  acceptChallenge: async (id: string, photo2: string) => {
+    const res = await fetch(`${API_URL}/championships/${id}/accept`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photo2 }),
+    });
+    return res.json();
+  },
+  startBattleNow: async (id: string) => {
+    const res = await fetch(`${API_URL}/championships/${id}/start-now`, {
+      method: 'POST',
+    });
+    return res.json();
+  },
+  startBattleScheduled: async (id: string) => {
+    const res = await fetch(`${API_URL}/championships/${id}/start-scheduled`, {
+      method: 'POST',
+    });
+    return res.json();
+  },
 };

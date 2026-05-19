@@ -28,13 +28,15 @@ export default function League() {
     opponentId: '',
     theme: '',
     startDate: '',
-    startTime: ''
+    startTime: '',
+    photo1: ''
   });
   const [selectedChamp, setSelectedChamp] = useState<any>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [newlyCreated, setNewlyCreated] = useState<any>(null);
   const [dbChampionships, setDbChampionships] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [photo2Input, setPhoto2Input] = useState('');
 
   const [currentUser] = useState<any>(() => {
     const saved = localStorage.getItem('user');
@@ -214,26 +216,61 @@ export default function League() {
                 </div>
               </div>
               <div className="space-y-4">
-                {(activeTab as any) === 'my_tournaments' && newlyCreated && (
-                  <div onClick={() => { setSelectedChamp(newlyCreated); setView('detail'); }} className="bg-white p-6 rounded-[35px] border-2 border-blue-600 shadow-xl relative overflow-hidden cursor-pointer active:scale-95 transition-all animate-in fade-in slide-in-from-bottom-4">
-                    <div className="absolute top-0 right-0 h-full w-1.5 bg-blue-600" />
-                    <div className="flex justify-between items-start mb-4">
-                      <div><span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[7px] font-black uppercase tracking-widest mr-2">{newlyCreated.type}</span><span className="text-[7px] font-black text-gray-400 uppercase tracking-widest italic uppercase">Seu Campeonato</span></div>
-                      <p className="text-[9px] font-black text-blue-600 uppercase tracking-tighter">0% COMPLETO</p>
-                    </div>
-                    <h4 className="text-blue-950 text-lg font-black font-orbitron italic mb-4">{newlyCreated.name.toUpperCase()}</h4>
-                    <div className="flex items-center justify-between">
-                       <div className="text-[10px] font-black text-blue-600 uppercase">Aguardando Inscrições</div>
-                       <button className="bg-gray-900 text-white px-4 py-2.5 rounded-xl text-[9px] font-black uppercase italic shadow-lg">Gerenciar</button>
-                    </div>
-                  </div>
-                )}
-                {(activeTab as any) === 'my_tournaments' && !newlyCreated && (
-                  <div className="text-center py-20 border-2 border-dashed border-gray-200 rounded-[40px] bg-gray-50/50">
-                    <Trophy size={40} className="mx-auto mb-4 text-gray-300" />
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Você ainda não criou nenhum campeonato.</p>
-                  </div>
-                )}
+                {(() => {
+                  if ((activeTab as any) !== 'my_tournaments') return null;
+                  
+                  const myChampionships = dbChampionships.filter(c => {
+                    const currentBarberId = currentUser?.barberProfile?.id;
+                    const currentUserId = currentUser?.id;
+                    const isCreator = c.creatorId === currentBarberId || c.creatorId === currentUserId;
+                    const isParticipant = c.participants?.some((p: any) => p.id === currentBarberId || p.userId === currentUserId);
+                    return isCreator || isParticipant;
+                  });
+
+                  if (myChampionships.length === 0) {
+                    return (
+                      <div className="text-center py-20 border-2 border-dashed border-gray-200 rounded-[40px] bg-gray-50/50">
+                        <Trophy size={40} className="mx-auto mb-4 text-gray-300" />
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Você ainda não criou ou foi convidado para nenhum campeonato.</p>
+                      </div>
+                    );
+                  }
+
+                  return myChampionships.map(t => {
+                    const currentBarberId = currentUser?.barberProfile?.id;
+                    const isCreator = t.creatorId === currentBarberId || t.creatorId === currentUser?.id;
+                    const match = t.matches?.[0];
+                    const isAccepted = match?.photo2 !== null && match?.photo2 !== undefined;
+
+                    // Calculate if expired
+                    let isExpired = false;
+                    if (t.status === 'FINISHED' && match && match.status === 'FINISHED' && !match.winnerId) {
+                      isExpired = true;
+                    }
+
+                    return (
+                      <div key={t.id} onClick={() => { setSelectedChamp(t); setView('detail'); }} className="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm relative group overflow-hidden cursor-pointer active:scale-95 transition-all">
+                        <div className={`absolute top-0 right-0 h-full w-1.5 ${isExpired ? 'bg-red-500' : isCreator ? 'bg-blue-600' : 'bg-green-500'}`} />
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[7px] font-black uppercase tracking-widest mr-2">{t.modality || '1x1'}</span>
+                            <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest italic uppercase">
+                              {isExpired ? 'EXPIRADO' : t.status === 'FINISHED' ? 'FINALIZADO' : !isAccepted ? 'AGUARDANDO ACEITAR' : t.status === 'ONGOING' ? 'EM ANDAMENTO' : 'AGUARDANDO INÍCIO'}
+                            </span>
+                          </div>
+                          {isCreator && <p className="text-[7px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded">Meu Desafio</p>}
+                        </div>
+                        <h4 className="text-blue-950 text-lg font-black font-orbitron italic mb-4">{t.name.toUpperCase()}</h4>
+                        <div className="flex items-center justify-between">
+                          <div className="text-[10px] font-black text-blue-950/60 uppercase">
+                            {isExpired ? 'Expirou sem aceitação' : !isAccepted ? 'Aguardando oponente confirmar' : 'Pronto para o Combate'}
+                          </div>
+                          <button className="bg-gray-900 text-white px-4 py-2.5 rounded-xl text-[9px] font-black uppercase italic shadow-lg">Ver Painel</button>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
                 {activeTab === 'tournaments' && [...dbChampionships, ...ACTIVE_TOURNAMENTS.filter(at => !dbChampionships.find(db => db.name === at.name))].map(t => (
                   <div key={t.id} onClick={() => { setSelectedChamp(t); setView('detail'); }} className="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm relative group overflow-hidden cursor-pointer active:scale-95 transition-all">
                     <div className="absolute top-0 right-0 h-full w-1.5 bg-blue-600" />
@@ -285,6 +322,10 @@ export default function League() {
   );
 
   const handleCreateFinish = async () => {
+    if (!form.photo1 && form.liga === 1) {
+      alert('É obrigatório enviar uma foto do seu trabalho para lançar o desafio!');
+      return;
+    }
     setLoading(true);
     try {
       const data = await api.createChampionship({
@@ -299,7 +340,8 @@ export default function League() {
         startTime: form.startTime,
         creatorId: currentUser?.barberProfile?.id || null,
         opponentId: form.opponentId || null,
-        opponentNick: form.opponentNick
+        opponentNick: form.opponentNick,
+        photo1: form.photo1
       });
       setNewlyCreated(data);
       setShowSuccess(true);
@@ -436,6 +478,37 @@ export default function League() {
                 </div>
               </div>
 
+              {form.liga === 1 && (
+                <div className="bg-white p-6 rounded-[30px] border-2 border-gray-100 shadow-inner">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Foto do seu corte/trabalho</p>
+                  <div className="flex flex-col space-y-3">
+                    {form.photo1 ? (
+                      <div className="relative rounded-2xl overflow-hidden border border-gray-200 aspect-video group">
+                        <img src={form.photo1} className="w-full h-full object-cover" />
+                        <button type="button" onClick={() => setForm({...form, photo1: ''})} className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full shadow-lg transition-all"><X size={16} /></button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col space-y-2">
+                        <div className="grid grid-cols-3 gap-2">
+                          {['https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500', 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=500', 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=500'].map((mockUrl) => (
+                            <button key={mockUrl} type="button" onClick={() => setForm({...form, photo1: mockUrl})} className="relative rounded-xl overflow-hidden border border-gray-200 aspect-square group">
+                              <img src={mockUrl} className="w-full h-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                        <input 
+                          type="text" 
+                          placeholder="Ou cole a URL de uma foto..." 
+                          value={form.photo1} 
+                          onChange={e=>setForm({...form, photo1: e.target.value})} 
+                          className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-xs font-black outline-none focus:border-blue-600 transition-all !text-blue-950 placeholder:text-gray-400 shadow-sm" 
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="bg-white p-6 rounded-[30px] border-2 border-gray-100 shadow-inner">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Duração da Votação</p>
                 <div className="grid grid-cols-4 gap-2">
@@ -484,14 +557,115 @@ export default function League() {
     const votes1 = match ? (selectedChamp.matches[0].votes?.filter((v: any) => v.choiceId === p1?.id)?.length || match.score1 || 0) : 0;
     const votes2 = match ? (selectedChamp.matches[0].votes?.filter((v: any) => v.choiceId === p2?.id)?.length || match.score2 || 0) : 0;
 
+    const currentBarberId = currentUser?.barberProfile?.id;
+    const isCreator = currentUser && (selectedChamp?.creatorId === currentBarberId || selectedChamp?.creatorId === currentUser.id);
+    const isOpponent = currentUser && selectedChamp?.participants?.some((p: any) => p.id === currentBarberId && p.id !== selectedChamp.creatorId);
+
+    const hasPhoto2 = match && match.photo2 !== null && match.photo2 !== undefined;
+    const isX1 = selectedChamp?.modality === 'x1' || selectedChamp?.ligaId === 1;
+
+    // Check expiration status
+    let isExpired = false;
+    let scheduledStart: Date | null = null;
+    if (selectedChamp?.startDate) {
+      const datePart = new Date(selectedChamp.startDate).toISOString().split('T')[0];
+      const timePart = selectedChamp.startTime || '00:00';
+      scheduledStart = new Date(`${datePart}T${timePart}:00`);
+      if (new Date() > scheduledStart && !hasPhoto2 && selectedChamp.status === 'WAITING') {
+        isExpired = true;
+      }
+    }
+
+    // Accept handling
+    const handleAccept = async () => {
+      if (!photo2Input) {
+        alert('Por favor, escolha ou insira uma foto do seu trabalho para aceitar o desafio.');
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await api.acceptChallenge(selectedChamp.id, photo2Input);
+        if (res.error) {
+          alert(res.error);
+        } else {
+          alert('Desafio aceito com sucesso!');
+          setPhoto2Input('');
+          await fetchChampionshipDetails(selectedChamp.id);
+          fetchChampionships();
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Erro ao aceitar desafio.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Start now handling
+    const handleStartNow = async () => {
+      setLoading(true);
+      try {
+        const res = await api.startBattleNow(selectedChamp.id);
+        if (res.error) {
+          alert(res.error);
+        } else {
+          alert('Batalha iniciada agora! Votações abertas.');
+          await fetchChampionshipDetails(selectedChamp.id);
+          fetchChampionships();
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Erro ao iniciar batalha.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Start scheduled handling
+    const handleStartScheduled = async () => {
+      setLoading(true);
+      try {
+        const res = await api.startBattleScheduled(selectedChamp.id);
+        if (res.error) {
+          alert(res.error);
+        } else {
+          alert('Confirmado! A batalha iniciará no horário agendado automaticamente.');
+          await fetchChampionshipDetails(selectedChamp.id);
+          fetchChampionships();
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Erro ao agendar batalha.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Time calculations
+    let votingTimeLeftLabel = '';
+    if (selectedChamp?.status === 'ONGOING' && match?.startedAt) {
+      const startedTime = new Date(match.startedAt).getTime();
+      const votingDurationMs = (selectedChamp.votingTime || 24) * 60 * 60 * 1000;
+      const expireTime = startedTime + votingDurationMs;
+      const diffMs = expireTime - new Date().getTime();
+      if (diffMs > 0) {
+        const diffHours = Math.floor(diffMs / (60 * 60 * 1000));
+        const diffMins = Math.floor((diffMs % (60 * 60 * 1000)) / (60 * 1000));
+        votingTimeLeftLabel = `${diffHours}h ${diffMins}m restantes`;
+      } else {
+        votingTimeLeftLabel = 'Votação Encerrada';
+      }
+    }
+
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[5500] bg-[#F8FAFC] flex flex-col shadow-2xl">
+        {loading && <div className="fixed inset-0 bg-white/50 backdrop-blur-sm z-[999] flex items-center justify-center"><div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" /></div>}
         <div className="px-6 py-6 flex items-center justify-between bg-white border-b border-gray-100">
           <button onClick={() => setView('home')} className="p-3 bg-gray-50 rounded-2xl text-blue-950"><ChevronLeft size={24} /></button>
           <div className="text-center">
             <span className="text-[8px] font-black text-red-500 uppercase flex items-center justify-center">
               <div className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1 animate-pulse" /> 
-              {selectedChamp?.status === 'waiting' ? 'INSCRIÇÕES ABERTAS' : 'BATTLE LIVE NOW'}
+              {isExpired ? 'EXPIRADO' : selectedChamp?.status === 'WAITING' ? 'AGUARDANDO' : selectedChamp?.status === 'ONGOING' ? 'LIVE NOW' : 'FINALIZADO'}
             </span>
             <h2 className="text-sm font-black text-blue-950 font-orbitron italic uppercase">{selectedChamp?.name}</h2>
           </div>
@@ -527,18 +701,131 @@ export default function League() {
           </div>
 
           <div className="p-6 space-y-8">
+             {/* Expired Alert */}
+             {isExpired && (
+               <div className="bg-red-50 text-red-800 p-6 rounded-[30px] border-2 border-red-200">
+                 <p className="text-xs font-black uppercase italic mb-1">Desafio Expirado</p>
+                 <p className="text-[10px] font-bold">O oponente não aceitou o desafio a tempo. Esta liga está fechada.</p>
+               </div>
+             )}
+
+             {/* Accept workflow for Opponent */}
+             {isX1 && selectedChamp?.status === 'WAITING' && !hasPhoto2 && !isExpired && (
+               <div className="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm space-y-6">
+                 {isOpponent ? (
+                   <div className="space-y-4">
+                     <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Você foi desafiado! Envie uma foto do seu corte para aceitar</p>
+                     
+                     {photo2Input ? (
+                       <div className="relative rounded-2xl overflow-hidden border border-gray-200 aspect-video">
+                         <img src={photo2Input} className="w-full h-full object-cover" />
+                         <button type="button" onClick={() => setPhoto2Input('')} className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full shadow-lg"><X size={16} /></button>
+                       </div>
+                     ) : (
+                       <div className="flex flex-col space-y-2">
+                         <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Selecione uma foto modelo:</p>
+                         <div className="grid grid-cols-3 gap-2">
+                           {['https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500', 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=500', 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=500'].map((mockUrl) => (
+                             <button key={mockUrl} type="button" onClick={() => setPhoto2Input(mockUrl)} className="rounded-xl overflow-hidden border border-gray-200 aspect-square">
+                               <img src={mockUrl} className="w-full h-full object-cover" />
+                             </button>
+                           ))}
+                         </div>
+                         <input 
+                           type="text" 
+                           placeholder="Ou cole a URL da sua foto..." 
+                           value={photo2Input} 
+                           onChange={e => setPhoto2Input(e.target.value)} 
+                           className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-xs font-black outline-none focus:border-blue-600 transition-all !text-blue-950 placeholder:text-gray-400" 
+                         />
+                       </div>
+                     )}
+
+                     <button onClick={handleAccept} className="w-full py-4 bg-green-500 hover:bg-green-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg">Confirmar e Aceitar Desafio</button>
+                   </div>
+                 ) : (
+                   <div className="text-center py-4">
+                     <p className="text-[10px] font-bold text-gray-400 uppercase">Aguardando o oponente enviar a foto e aceitar o desafio.</p>
+                     {scheduledStart && (
+                       <p className="text-[8px] font-black text-red-500 uppercase mt-2">Prazo máximo: {scheduledStart.toLocaleString()}</p>
+                     )}
+                   </div>
+                 )}
+               </div>
+             )}
+
+             {/* Creator Start Options */}
+             {isX1 && selectedChamp?.status === 'WAITING' && hasPhoto2 && match?.status === 'PENDING' && !isExpired && (
+               <div className="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm space-y-6">
+                 {isCreator ? (
+                   <div className="space-y-4">
+                     <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest text-center">Desafio Aceito! Escolha como começar:</p>
+                     <div className="grid grid-cols-2 gap-3">
+                       <button onClick={handleStartNow} className="p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl flex flex-col items-center justify-center space-y-2 shadow-lg">
+                         <Swords size={20} />
+                         <span className="text-[9px] font-black uppercase tracking-widest">Começar Agora</span>
+                       </button>
+                       <button onClick={handleStartScheduled} className="p-4 bg-gray-900 hover:bg-gray-800 text-white rounded-2xl flex flex-col items-center justify-center space-y-2 shadow-lg">
+                         <MapPin size={20} className="text-cyan-400" />
+                         <span className="text-[9px] font-black uppercase tracking-widest">Esperar Horário</span>
+                       </button>
+                     </div>
+                   </div>
+                 ) : (
+                   <div className="text-center py-4">
+                     <p className="text-[10px] font-bold text-gray-400 uppercase">Desafio confirmado! Aguardando o criador iniciar a batalha.</p>
+                   </div>
+                 )}
+               </div>
+             )}
+
+             {/* Photo comparison */}
+             {match && (match.photo1 || match.photo2) && (
+               <div>
+                 <div className="flex items-center justify-between mb-4"><p className="text-[10px] font-black text-blue-950 uppercase tracking-widest italic">Trabalhos do Desafio</p></div>
+                 <div className="grid grid-cols-2 gap-4">
+                   <div className="bg-white p-3 rounded-3xl border border-gray-100 shadow-sm text-center">
+                     <div className="rounded-2xl overflow-hidden aspect-square bg-gray-100 mb-2 border border-gray-100">
+                       {match.photo1 ? (
+                         <img src={match.photo1} className="w-full h-full object-cover" />
+                       ) : (
+                         <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-gray-300 uppercase">Sem foto</div>
+                       )}
+                     </div>
+                     <span className="text-[8px] font-black text-blue-950 uppercase">{p1?.user?.name}</span>
+                   </div>
+                   <div className="bg-white p-3 rounded-3xl border border-gray-100 shadow-sm text-center">
+                     <div className="rounded-2xl overflow-hidden aspect-square bg-gray-100 mb-2 border border-gray-100">
+                       {match.photo2 ? (
+                         <img src={match.photo2} className="w-full h-full object-cover" />
+                       ) : (
+                         <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-gray-300 uppercase">Aguardando...</div>
+                       )}
+                     </div>
+                     <span className="text-[8px] font-black text-blue-950 uppercase">{p2 ? p2.user?.name : 'Convidado'}</span>
+                   </div>
+                 </div>
+               </div>
+             )}
+
              <div className="bg-blue-950 rounded-[30px] p-6 text-white">
                 <div className="flex justify-between items-center mb-4"><p className="text-[10px] font-black text-blue-400 uppercase tracking-widest italic">Informações da Arena</p><ShieldCheck size={16} className="text-blue-400" /></div>
                 <div className="grid grid-cols-2 gap-4">
                    <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Premiação</p><p className="text-sm font-black italic">{selectedChamp?.prize || 'Respeito'}</p></div>
                    <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Vagas</p><p className="text-sm font-black italic">{selectedChamp?.maxParticipants || 2} BARBEIROS</p></div>
-                   <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Arbitragem</p><p className="text-sm font-black italic uppercase">{selectedChamp?.arbitration || 'hybrid'}</p></div>
+                   <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Duração da Votação</p><p className="text-sm font-black italic uppercase">{selectedChamp?.votingTime || 24} HORAS</p></div>
                    <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Tema</p><p className="text-sm font-black italic uppercase">{selectedChamp?.theme || 'Livre'}</p></div>
                 </div>
+                {votingTimeLeftLabel && (
+                  <div className="mt-4 pt-4 border-t border-blue-900 flex items-center justify-between">
+                    <span className="text-[8px] font-black text-blue-400 uppercase">Tempo de Voto</span>
+                    <span className="text-xs font-black text-yellow-400 uppercase font-orbitron">{votingTimeLeftLabel}</span>
+                  </div>
+                )}
              </div>
 
              <div>
-                <div className="flex items-center justify-between mb-4"><p className="text-[10px] font-black text-blue-950 uppercase tracking-widest italic">Chaveamento Oficial</p><p className="text-[8px] font-black text-blue-600 uppercase">Ver Chave Completa</p></div>
+                <div className="flex items-center justify-between mb-4"><p className="text-[10px] font-black text-blue-950 uppercase tracking-widest italic">Chaveamento Oficial</p></div>
                 <div className="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm space-y-6">
                    {selectedChamp?.status === 'WAITING' || !p1 ? (
                      <div className="text-center py-4"><p className="text-[10px] font-bold text-gray-400 uppercase">Chaveamento será gerado assim que as vagas forem preenchidas.</p></div>
@@ -562,8 +849,8 @@ export default function League() {
           </div>
         </div>
         <div className="p-6 bg-white border-t border-gray-100 flex space-x-3">
-           <button onClick={() => setView('voting')} className={`flex-[2] py-5 rounded-[20px] font-black uppercase italic tracking-widest shadow-xl transition-all ${selectedChamp?.status === 'WAITING' || !p2 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white'}`} disabled={selectedChamp?.status === 'WAITING' || !p2}>Votar Agora</button>
-           <button onClick={() => setView('referee')} className="flex-1 py-5 bg-gray-900 text-white rounded-[20px] font-black uppercase italic tracking-widest shadow-xl flex items-center justify-center"><BrainCircuit size={20} /></button>
+           <button onClick={() => setView('voting')} className={`flex-[2] py-5 rounded-[20px] font-black uppercase italic tracking-widest shadow-xl transition-all ${selectedChamp?.status !== 'ONGOING' || !p2 || isExpired || votingTimeLeftLabel === 'Votação Encerrada' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white'}`} disabled={selectedChamp?.status !== 'ONGOING' || !p2 || isExpired || votingTimeLeftLabel === 'Votação Encerrada'}>Votar Agora</button>
+           <button onClick={() => setView('referee')} className={`flex-1 py-5 rounded-[20px] font-black uppercase italic tracking-widest shadow-xl flex items-center justify-center transition-all ${selectedChamp?.status !== 'ONGOING' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-900 text-white'}`} disabled={selectedChamp?.status !== 'ONGOING'}><BrainCircuit size={20} /></button>
         </div>
       </motion.div>
     );
@@ -637,6 +924,7 @@ export default function League() {
   const renderReferee = () => {
     const p1 = selectedChamp?.participants?.[0];
     const p2 = selectedChamp?.participants?.[1];
+    const match = selectedChamp?.matches?.[0];
 
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[7000] bg-black flex flex-col">
@@ -648,11 +936,11 @@ export default function League() {
          <div className="flex-1 p-6 space-y-6 overflow-y-auto">
             <div className="grid grid-cols-2 gap-4 h-[300px]">
                <div className="bg-gray-900 rounded-[30px] overflow-hidden relative border-2 border-white/10">
-                 <img src={p1?.user?.avatar || "https://picsum.photos/400/600?random=1"} className="w-full h-full object-cover opacity-60" />
+                 <img src={match?.photo1 || p1?.user?.avatar || "https://picsum.photos/400/600?random=1"} className="w-full h-full object-cover opacity-60" />
                  <div className="absolute inset-0 flex items-center justify-center font-black text-white italic truncate px-2 text-center text-xs uppercase">{p1?.user?.name || 'PLAYER 1'}</div>
                </div>
                <div className="bg-gray-900 rounded-[30px] overflow-hidden relative border-2 border-blue-600">
-                 <img src={p2?.user?.avatar || "https://picsum.photos/400/600?random=2"} className="w-full h-full object-cover" />
+                 <img src={match?.photo2 || p2?.user?.avatar || "https://picsum.photos/400/600?random=2"} className="w-full h-full object-cover" />
                  <div className="absolute top-4 right-4 bg-blue-600 p-2 rounded-lg text-[10px] font-black font-orbitron">AI 89%</div>
                  <div className="absolute inset-0 flex items-center justify-center font-black text-white italic truncate px-2 text-center text-xs uppercase">{p2?.user?.name || 'PLAYER 2'}</div>
                </div>
@@ -680,6 +968,7 @@ export default function League() {
   const renderVoting = () => {
     const p1 = selectedChamp?.participants?.[0];
     const p2 = selectedChamp?.participants?.[1];
+    const match = selectedChamp?.matches?.[0];
 
     return (
       <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[7000] bg-white flex flex-col shadow-2xl">
@@ -692,14 +981,14 @@ export default function League() {
             <div className="flex-1 grid grid-rows-2 gap-4">
                {p1 && (
                  <div onClick={() => handleVoteSubmit(p1.id)} className="rounded-[40px] overflow-hidden relative group border-4 border-transparent hover:border-blue-600 transition-all cursor-pointer">
-                    <img src={p1.user?.avatar || `https://picsum.photos/800/600?random=11`} className="w-full h-full object-cover" />
+                    <img src={match?.photo1 || p1.user?.avatar || `https://picsum.photos/800/600?random=11`} className="w-full h-full object-cover" />
                     <div className="absolute bottom-6 left-6 flex items-center space-x-3 bg-black/60 backdrop-blur-md p-3 rounded-2xl"><p className="text-[12px] font-black text-white uppercase italic">{p1.user?.name}</p></div>
                     <div className="absolute inset-0 bg-blue-600/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Check size={80} className="text-white" /></div>
                  </div>
                )}
                {p2 && (
                  <div onClick={() => handleVoteSubmit(p2.id)} className="rounded-[40px] overflow-hidden relative group border-4 border-transparent hover:border-blue-600 transition-all cursor-pointer">
-                    <img src={p2.user?.avatar || `https://picsum.photos/800/600?random=12`} className="w-full h-full object-cover" />
+                    <img src={match?.photo2 || p2.user?.avatar || `https://picsum.photos/800/600?random=12`} className="w-full h-full object-cover" />
                     <div className="absolute bottom-6 left-6 flex items-center space-x-3 bg-black/60 backdrop-blur-md p-3 rounded-2xl"><p className="text-[12px] font-black text-white uppercase italic">{p2.user?.name}</p></div>
                     <div className="absolute inset-0 bg-blue-600/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Check size={80} className="text-white" /></div>
                  </div>
@@ -775,7 +1064,7 @@ export default function League() {
                   Ver Detalhes Agora
                 </button>
                 <button 
-                  onClick={() => { setShowSuccess(false); setView('home'); setCreateStep(0); setForm({ name: '', modality: 'x1', arbitration: 'hybrid', maxParticipants: 16, prize: '', votingTime: 24, judges: [] as string[], liga: 1, opponentNick: '', opponentId: '', theme: '', startDate: '', startTime: '' }); }} 
+                  onClick={() => { setShowSuccess(false); setView('home'); setCreateStep(0); setForm({ name: '', modality: 'x1', arbitration: 'hybrid', maxParticipants: 16, prize: '', votingTime: 24, judges: [] as string[], liga: 1, opponentNick: '', opponentId: '', theme: '', startDate: '', startTime: '', photo1: '' }); }} 
                   className="w-full py-4 text-blue-950 font-black uppercase text-[10px] tracking-widest"
                 >
                   Voltar para Home

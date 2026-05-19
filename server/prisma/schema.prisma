@@ -191,10 +191,13 @@ model Match {
   round          Int      @default(1)
   player1Id      String?
   player2Id      String?
+  photo1         String?
+  photo2         String?
   score1         Float    @default(0)
   score2         Float    @default(0)
   winnerId       String?
   status         MatchStatus @default(PENDING)
+  startedAt      DateTime?
   createdAt      DateTime @default(now())
 
   // Relations

@@ -3,6 +3,88 @@ import { prisma } from '../lib/prisma';
 
 const router = Router();
 
+// Helper to sync and self-heal championship states
+async function checkAndSyncChampionship(id: string, nowOverride?: Date) {
+  const championship = await prisma.championship.findUnique({
+    where: { id },
+    include: {
+      participants: { include: { user: true } },
+      matches: { include: { votes: true, refereeLogs: true } }
+    }
+  });
+
+  if (!championship) return null;
+  const isX1 = championship.modality === 'x1' || championship.ligaId === 1;
+  if (!isX1 || championship.matches.length === 0) return championship;
+
+  const match = championship.matches[0];
+  const now = nowOverride || new Date();
+
+  // Helper to parse scheduled start
+  let scheduledStart: Date | null = null;
+  if (championship.startDate) {
+    const datePart = new Date(championship.startDate).toISOString().split('T')[0];
+    const timePart = championship.startTime || '00:00';
+    scheduledStart = new Date(`${datePart}T${timePart}:00`);
+  }
+
+  // 1. Check if Expired (not accepted past scheduled time)
+  if (championship.status === 'WAITING' && match.status === 'PENDING' && !match.photo2 && scheduledStart && now > scheduledStart) {
+    await prisma.match.update({
+      where: { id: match.id },
+      data: { status: 'FINISHED' }
+    });
+    return await prisma.championship.update({
+      where: { id },
+      data: { status: 'FINISHED' },
+      include: {
+        participants: { include: { user: true } },
+        matches: { include: { votes: true, refereeLogs: true } }
+      }
+    });
+  }
+
+  // 2. Check if Auto-Start Scheduled (accepted and past scheduled time, status is WAITING)
+  if (championship.status === 'WAITING' && match.status === 'PENDING' && match.photo2 && scheduledStart && now > scheduledStart) {
+    await prisma.match.update({
+      where: { id: match.id },
+      data: { status: 'LIVE', startedAt: scheduledStart }
+    });
+    return await prisma.championship.update({
+      where: { id },
+      data: { status: 'ONGOING' },
+      include: {
+        participants: { include: { user: true } },
+        matches: { include: { votes: true, refereeLogs: true } }
+      }
+    });
+  }
+
+  // 3. Check if Voting Duration has expired
+  if (championship.status === 'ONGOING' && match.status === 'LIVE' && match.startedAt) {
+    const startedAtDate = new Date(match.startedAt);
+    const votingTimeHours = championship.votingTime || 24;
+    const expireTime = new Date(startedAtDate.getTime() + votingTimeHours * 60 * 60 * 1000);
+    if (now > expireTime) {
+      const winnerId = match.score1 >= match.score2 ? match.player1Id : match.player2Id;
+      await prisma.match.update({
+        where: { id: match.id },
+        data: { status: 'FINISHED', winnerId }
+      });
+      return await prisma.championship.update({
+        where: { id },
+        data: { status: 'FINISHED' },
+        include: {
+          participants: { include: { user: true } },
+          matches: { include: { votes: true, refereeLogs: true } }
+        }
+      });
+    }
+  }
+
+  return championship;
+}
+
 // Get all championships
 router.get('/', async (req, res) => {
   try {
@@ -12,21 +94,39 @@ router.get('/', async (req, res) => {
           include: {
             user: true
           }
+        },
+        matches: {
+          include: {
+            votes: true,
+            refereeLogs: true
+          }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
-    res.json(championships);
+
+    const simulatedNow = req.headers['x-test-current-time'] ? new Date(req.headers['x-test-current-time'] as string) : undefined;
+    const syncedList = [];
+    for (const c of championships) {
+      if (c.status === 'WAITING' || c.status === 'ONGOING') {
+        const synced = await checkAndSyncChampionship(c.id, simulatedNow);
+        if (synced) syncedList.push(synced);
+      } else {
+        syncedList.push(c);
+      }
+    }
+
+    res.json(syncedList);
   } catch (error: any) {
     console.error('[API ERROR] Failed to fetch championships:', error.message);
-    res.json([]); // Return empty array to keep frontend alive
+    res.json([]);
   }
 });
 
 // Create a new championship
 router.post('/', async (req, res) => {
   try {
-    const { name, ligaId, modality, theme, prize, votingTime, maxParticipants, startDate, startTime, creatorId, opponentId } = req.body;
+    const { name, ligaId, modality, theme, prize, votingTime, maxParticipants, startDate, startTime, creatorId, opponentId, photo1 } = req.body;
     
     const participantIds: string[] = [];
     if (creatorId) participantIds.push(creatorId);
@@ -46,7 +146,7 @@ router.post('/', async (req, res) => {
         startDate: startDate ? new Date(startDate) : null,
         startTime,
         creatorId,
-        status: isX1 ? 'ONGOING' : 'OPEN',
+        status: isX1 ? 'WAITING' : 'OPEN', // WAITING for accept if X1
         participants: {
           connect: participantIds.map(id => ({ id }))
         }
@@ -60,7 +160,7 @@ router.post('/', async (req, res) => {
       }
     });
 
-    // If it's a 1x1 match, create the Match automatically and set it to LIVE
+    // If it's a 1x1 match, create the Match automatically and set it to PENDING (waiting for accept)
     if (isX1) {
       await prisma.match.create({
         data: {
@@ -68,7 +168,9 @@ router.post('/', async (req, res) => {
           round: 1,
           player1Id: creatorId || null,
           player2Id: opponentId || null,
-          status: 'LIVE',
+          photo1: photo1 || null,
+          photo2: null,
+          status: 'PENDING',
           score1: 0,
           score2: 0,
         }
@@ -82,6 +184,142 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Accept a 1x1 Challenge invitation
+router.post('/:id/accept', async (req, res) => {
+  try {
+    const { id } = req.params; // championshipId
+    const { photo2 } = req.body;
+
+    if (!photo2) {
+      return res.status(400).json({ error: 'A foto do seu trabalho é obrigatória para aceitar o desafio.' });
+    }
+
+    const championship = await prisma.championship.findUnique({
+      where: { id },
+      include: { matches: true }
+    });
+
+    if (!championship) {
+      return res.status(404).json({ error: 'Campeonato não encontrado' });
+    }
+
+    if (championship.matches.length === 0) {
+      return res.status(400).json({ error: 'Partida não encontrada para este desafio' });
+    }
+
+    const match = championship.matches[0];
+
+    // Check expiration before accepting
+    let scheduledStart: Date | null = null;
+    if (championship.startDate) {
+      const datePart = new Date(championship.startDate).toISOString().split('T')[0];
+      const timePart = championship.startTime || '00:00';
+      scheduledStart = new Date(`${datePart}T${timePart}:00`);
+    }
+
+    const now = req.headers['x-test-current-time'] ? new Date(req.headers['x-test-current-time'] as string) : new Date();
+
+    if (scheduledStart && now > scheduledStart) {
+      await prisma.match.update({
+        where: { id: match.id },
+        data: { status: 'FINISHED' }
+      });
+      await prisma.championship.update({
+        where: { id },
+        data: { status: 'FINISHED' }
+      });
+      return res.status(400).json({ error: 'Este desafio expirou pois passou do horário de confirmação.' });
+    }
+
+    // Update match with player 2 photo
+    await prisma.match.update({
+      where: { id: match.id },
+      data: { photo2 }
+    });
+
+    const updated = await checkAndSyncChampionship(id, now);
+    res.json({ success: true, championship: updated });
+  } catch (error: any) {
+    console.error('[API ERROR] Failed to accept challenge:', error.message);
+    res.status(500).json({ error: 'Failed to accept challenge' });
+  }
+});
+
+// Start the 1x1 Battle now (Creator choice)
+router.post('/:id/start-now', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const championship = await prisma.championship.findUnique({
+      where: { id },
+      include: { matches: true }
+    });
+
+    if (!championship || championship.matches.length === 0) {
+      return res.status(404).json({ error: 'Desafio ou partida não encontrados' });
+    }
+
+    const match = championship.matches[0];
+
+    await prisma.match.update({
+      where: { id: match.id },
+      data: { status: 'LIVE', startedAt: new Date() }
+    });
+
+    const updated = await prisma.championship.update({
+      where: { id },
+      data: { status: 'ONGOING' },
+      include: {
+        participants: { include: { user: true } },
+        matches: { include: { votes: true, refereeLogs: true } }
+      }
+    });
+
+    res.json({ success: true, championship: updated });
+  } catch (error: any) {
+    console.error('[API ERROR] Failed to start battle:', error.message);
+    res.status(500).json({ error: 'Failed to start battle' });
+  }
+});
+
+// Start the 1x1 Battle scheduled (Creator choice)
+router.post('/:id/start-scheduled', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const championship = await prisma.championship.findUnique({
+      where: { id },
+      include: { matches: true }
+    });
+
+    if (!championship || championship.matches.length === 0) {
+      return res.status(404).json({ error: 'Desafio ou partida não encontrados' });
+    }
+
+    const match = championship.matches[0];
+
+    // Keep it PENDING so it auto-starts when schedule passes
+    await prisma.match.update({
+      where: { id: match.id },
+      data: { status: 'PENDING' }
+    });
+
+    const updated = await prisma.championship.update({
+      where: { id },
+      data: { status: 'WAITING' },
+      include: {
+        participants: { include: { user: true } },
+        matches: { include: { votes: true, refereeLogs: true } }
+      }
+    });
+
+    res.json({ success: true, championship: updated });
+  } catch (error: any) {
+    console.error('[API ERROR] Failed to schedule battle:', error.message);
+    res.status(500).json({ error: 'Failed to schedule battle' });
+  }
+});
+
 // Vote for a player in a match of a championship
 router.post('/:id/vote', async (req, res) => {
   try {
@@ -92,16 +330,24 @@ router.post('/:id/vote', async (req, res) => {
       return res.status(400).json({ error: 'userId and choiceId are required' });
     }
 
-    // Find the match
+    const simulatedNow = req.headers['x-test-current-time'] ? new Date(req.headers['x-test-current-time'] as string) : undefined;
+    const champ = await checkAndSyncChampionship(id, simulatedNow);
+    if (!champ) {
+      return res.status(404).json({ error: 'Championship not found' });
+    }
+
     let targetMatchId = matchId;
     if (!targetMatchId) {
-      const match = await prisma.match.findFirst({
-        where: { championshipId: id, status: 'LIVE' }
-      });
+      const match = champ.matches.find(m => m.status === 'LIVE');
       if (!match) {
-        return res.status(404).json({ error: 'No live match found for this championship' });
+        return res.status(404).json({ error: 'A votação para esta partida não está ativa no momento.' });
       }
       targetMatchId = match.id;
+    }
+
+    const match = champ.matches.find(m => m.id === targetMatchId);
+    if (!match || match.status !== 'LIVE') {
+      return res.status(400).json({ error: 'A votação para esta partida não está ativa no momento.' });
     }
 
     // Check if user already voted in this match
@@ -128,22 +374,16 @@ router.post('/:id/vote', async (req, res) => {
     });
 
     // Update match score (public vote count)
-    const match = await prisma.match.findUnique({
-      where: { id: targetMatchId }
-    });
-
-    if (match) {
-      if (choiceId === match.player1Id) {
-        await prisma.match.update({
-          where: { id: targetMatchId },
-          data: { score1: { increment: 1 } }
-        });
-      } else if (choiceId === match.player2Id) {
-        await prisma.match.update({
-          where: { id: targetMatchId },
-          data: { score2: { increment: 1 } }
-        });
-      }
+    if (choiceId === match.player1Id) {
+      await prisma.match.update({
+        where: { id: targetMatchId },
+        data: { score1: { increment: 1 } }
+      });
+    } else if (choiceId === match.player2Id) {
+      await prisma.match.update({
+        where: { id: targetMatchId },
+        data: { score2: { increment: 1 } }
+      });
     }
 
     res.json({ success: true, vote });
@@ -180,7 +420,6 @@ router.post('/:id/referee', async (req, res) => {
       }
     });
 
-    // Optional: Update match final status if referee sets score
     res.json({ success: true, log });
   } catch (error: any) {
     console.error('[API ERROR] Failed to submit referee log:', error.message);
@@ -191,18 +430,11 @@ router.post('/:id/referee', async (req, res) => {
 // Get single championship details
 router.get('/:id', async (req, res) => {
   try {
-    const championship = await prisma.championship.findUnique({
-      where: { id: req.params.id },
-      include: {
-        participants: { include: { user: true } },
-        matches: {
-          include: {
-            votes: true,
-            refereeLogs: true
-          }
-        }
-      }
-    });
+    const simulatedNow = req.headers['x-test-current-time'] ? new Date(req.headers['x-test-current-time'] as string) : undefined;
+    const championship = await checkAndSyncChampionship(req.params.id, simulatedNow);
+    if (!championship) {
+      return res.status(404).json({ error: 'Failed to fetch championship details' });
+    }
     res.json(championship);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch championship details' });
