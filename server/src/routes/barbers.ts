@@ -68,7 +68,18 @@ router.get('/:id', async (req, res) => {
       },
       include: {
         user: true,
-        posts: { take: 10, orderBy: { createdAt: 'desc' } },
+        posts: { 
+          take: 10, 
+          orderBy: { createdAt: 'desc' },
+          include: {
+            likes: true,
+            comments: {
+              include: {
+                user: true
+              }
+            }
+          }
+        },
         _count: { select: { appointments: true, posts: true } }
       }
     });

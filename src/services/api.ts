@@ -177,4 +177,42 @@ export const api = {
     });
     return res.json();
   },
+
+  // POST SOCIAL INTERACTIONS
+  likePost: async (postId: string, userId: string) => {
+    const res = await fetch(`${API_URL}/posts/${postId}/like`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId })
+    });
+    return res.json();
+  },
+  commentPost: async (postId: string, userId: string, content: string) => {
+    const res = await fetch(`${API_URL}/posts/${postId}/comment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, content })
+    });
+    return res.json();
+  },
+
+  // MESSAGES / CHAT
+  getMessages: async (userId1: string, userId2: string) => {
+    const res = await fetch(`${API_URL}/messages/${userId1}/${userId2}`);
+    if (!res.ok) return [];
+    return res.json();
+  },
+  sendMessage: async (senderId: string, receiverId: string, content: string) => {
+    const res = await fetch(`${API_URL}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senderId, receiverId, content })
+    });
+    return res.json();
+  },
+  getConversations: async (userId: string) => {
+    const res = await fetch(`${API_URL}/messages/conversations/${userId}`);
+    if (!res.ok) return [];
+    return res.json();
+  },
 };

@@ -4,7 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
    Settings, Play, ChevronDown, CheckCircle2, Zap, Flame, Clock, Heart,
    Star, MapPin, Calendar, ChevronRight, X, Shield,
-   Navigation, UserPlus, Bookmark, Target, Plus, Camera, Send
+   Navigation, UserPlus, Bookmark, Target, Plus, Camera, Send,
+   MessageSquare, MessageCircle, Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { calculateLevel } from '@/constants/xpSystem';
@@ -113,6 +114,271 @@ export default function Profile() {
    const [showServicesConfig, setShowServicesConfig] = useState(false);
    const [editableServices, setEditableServices] = useState<any[]>([]);
 
+   // Premium Social Interactions
+   const [selectedPost, setSelectedPost] = useState<any>(null);
+   const [commentText, setCommentText] = useState('');
+   const [doubleTapHeart, setDoubleTapHeart] = useState(false);
+
+   // Messenger State
+   const [showMessenger, setShowMessenger] = useState(false);
+   const [conversations, setConversations] = useState<any[]>([]);
+   const [activeChatUser, setActiveChatUser] = useState<any>(null);
+   const [chatMessages, setChatMessages] = useState<any[]>([]);
+   const [chatMessageText, setChatMessageText] = useState('');
+   const [searchUserText, setSearchUserText] = useState('');
+   const [allBarbers, setAllBarbers] = useState<any[]>([]);
+
+   // Booking State
+   const [bookingDate, setBookingDate] = useState<string>(() => {
+      const today = new Date();
+      return today.toISOString().split('T')[0];
+   });
+   const [selectedBookingServices, setSelectedBookingServices] = useState<any[]>([]);
+   const [bookingTime, setBookingTime] = useState<string>('');
+   const [barberAppointments, setBarberAppointments] = useState<any[]>([]);
+
+   // Fetch appointments of the barber to block occupied slots
+   useEffect(() => {
+      if (barber?.id && !isOwnProfile) {
+         api.getBarberAppointments(barber.id.toString())
+            .then(res => {
+               setBarberAppointments(res || []);
+            })
+            .catch(err => console.error('Error fetching barber appointments:', err));
+      }
+   }, [barber?.id, isOwnProfile]);
+
+   // Fetch all barbers for chat search
+   useEffect(() => {
+      api.getBarbers()
+         .then(res => {
+            setAllBarbers(res || []);
+         })
+         .catch(err => console.error('Error fetching barbers for search list:', err));
+   }, []);
+
+   const bookingDates = useMemo(() => {
+      const arr = [];
+      const today = new Date();
+      for (let i = 0; i < 14; i++) {
+         const d = new Date(today);
+         d.setDate(today.getDate() + i);
+         arr.push(d);
+      }
+      return arr;
+   }, []);
+
+   const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+
+   const getSlotStatus = (time: string) => {
+      const app = barberAppointments.find(a => {
+         const appDate = new Date(a.date).toISOString().split('T')[0];
+         return appDate === bookingDate && a.time === time && a.status !== 'CANCELLED';
+      });
+      return app ? 'occupied' : 'free';
+   };
+
+   const handleCreateBooking = async () => {
+      if (!loggedUser) {
+         alert('Você precisa estar logado para agendar!');
+         navigate('/auth');
+         return;
+      }
+      if (selectedBookingServices.length === 0) {
+         alert('Selecione pelo menos um serviço!');
+         return;
+      }
+      if (!bookingTime) {
+         alert('Selecione um horário!');
+         return;
+      }
+      try {
+         setIsLoading(true);
+         const total = selectedBookingServices.reduce((acc, s) => acc + s.price, 0);
+         const sNames = selectedBookingServices.map(s => s.name);
+         
+         const newBooking = await api.createAppointment({
+            clientId: loggedUser.id,
+            barberId: barber.id,
+            date: bookingDate,
+            time: bookingTime,
+            services: sNames,
+            price: total,
+            paymentMethod: 'Pix'
+         });
+
+         if (newBooking && !newBooking.error) {
+            alert('Agendamento solicitado com sucesso! Aguarde a confirmação do barbeiro.');
+            const updatedApps = await api.getBarberAppointments(barber.id.toString());
+            setBarberAppointments(updatedApps || []);
+            setBookingTime('');
+            setSelectedBookingServices([]);
+         } else {
+            alert('Erro ao agendar: ' + (newBooking?.error || 'Erro desconhecido'));
+         }
+      } catch (e: any) {
+         alert('Erro na solicitação: ' + e.message);
+      } finally {
+         setIsLoading(false);
+      }
+   };
+
+   // Chat Handlers
+   const loadConversations = async () => {
+      if (!loggedUser) return;
+      try {
+         const res = await api.getConversations(loggedUser.id);
+         setConversations(res || []);
+      } catch (err) {
+         console.error('Error loading conversations:', err);
+      }
+   };
+
+   const loadMessages = async (otherUserId: string) => {
+      if (!loggedUser) return;
+      try {
+         const res = await api.getMessages(loggedUser.id, otherUserId);
+         setChatMessages(res || []);
+      } catch (err) {
+         console.error('Error loading messages:', err);
+      }
+   };
+
+   const handleSendMessage = async () => {
+      if (!loggedUser || !activeChatUser || !chatMessageText.trim()) return;
+      try {
+         const content = chatMessageText;
+         setChatMessageText('');
+         await api.sendMessage(loggedUser.id, activeChatUser.id, content);
+         await loadMessages(activeChatUser.id);
+         await loadConversations();
+      } catch (err) {
+         console.error('Error sending message:', err);
+      }
+   };
+
+   const handleStartChatFromProfile = () => {
+      if (!loggedUser) {
+         alert('Faça login para enviar mensagens!');
+         navigate('/auth');
+         return;
+      }
+      if (isOwnProfile) return;
+      
+      const otherUser = barber.user || { id: barber.id, name: barber.name, avatar: barber.avatar };
+      setActiveChatUser(otherUser);
+      setShowMessenger(true);
+   };
+
+   const handleOpenMessenger = () => {
+      if (!loggedUser) {
+         alert('Faça login para acessar o mensageiro!');
+         navigate('/auth');
+         return;
+      }
+      setShowMessenger(true);
+      loadConversations();
+   };
+
+   // Polling active chat messages
+   useEffect(() => {
+      let interval: any;
+      if (showMessenger && activeChatUser) {
+         loadMessages(activeChatUser.id);
+         interval = setInterval(() => {
+            loadMessages(activeChatUser.id);
+         }, 3000);
+      }
+      return () => {
+         if (interval) clearInterval(interval);
+      };
+   }, [showMessenger, activeChatUser]);
+
+   // Polling conversations list
+   useEffect(() => {
+      let interval: any;
+      if (showMessenger && !activeChatUser) {
+         loadConversations();
+         interval = setInterval(loadConversations, 5000);
+      }
+      return () => {
+         if (interval) clearInterval(interval);
+      };
+   }, [showMessenger, activeChatUser]);
+
+   const filteredSearchResults = useMemo(() => {
+      if (!searchUserText.trim()) return [];
+      const query = searchUserText.toLowerCase();
+      return allBarbers
+         .filter(b => b.user?.id !== loggedUser?.id && (
+            b.user?.name?.toLowerCase().includes(query) ||
+            b.barberShop?.toLowerCase().includes(query)
+         ))
+         .map(b => b.user);
+   }, [searchUserText, allBarbers, loggedUser?.id]);
+
+   const handleLikePost = async (postId: string) => {
+      if (!loggedUser) {
+         alert('Faça login para interagir com as postagens!');
+         navigate('/auth');
+         return;
+      }
+      try {
+         setDoubleTapHeart(true);
+         setTimeout(() => setDoubleTapHeart(false), 800);
+
+         await api.likePost(postId, loggedUser.id);
+         
+         const targetId = id || loggedUser?.id;
+         if (targetId) {
+            const fresh = await api.getBarber(targetId.toString());
+            if (fresh) {
+               setBarber((prev: any) => ({ ...prev, posts: fresh.posts || [] }));
+               if (selectedPost && selectedPost.id === postId) {
+                  const updatedPost = fresh.posts?.find((p: any) => p.id === postId);
+                  if (updatedPost) setSelectedPost(updatedPost);
+               }
+            }
+         }
+      } catch (err) {
+         console.error('Failed to like post:', err);
+      }
+   };
+
+   const hasLikedPost = (post: any) => {
+      if (!loggedUser || !post?.likes) return false;
+      return post.likes.some((l: any) => l.userId === loggedUser.id);
+   };
+
+   const handleCommentPost = async (postId: string) => {
+      if (!loggedUser) {
+         alert('Faça login para comentar!');
+         navigate('/auth');
+         return;
+      }
+      if (!commentText.trim()) return;
+
+      try {
+         const content = commentText;
+         setCommentText('');
+         await api.commentPost(postId, loggedUser.id, content);
+         
+         const targetId = id || loggedUser?.id;
+         if (targetId) {
+            const fresh = await api.getBarber(targetId.toString());
+            if (fresh) {
+               setBarber((prev: any) => ({ ...prev, posts: fresh.posts || [] }));
+               if (selectedPost && selectedPost.id === postId) {
+                  const updatedPost = fresh.posts?.find((p: any) => p.id === postId);
+                  if (updatedPost) setSelectedPost(updatedPost);
+               }
+            }
+         }
+      } catch (err) {
+         console.error('Failed to comment on post:', err);
+      }
+   };
+
    const currentServices = useMemo(() => {
       if (!barber?.servicesConfig) {
          return [
@@ -219,7 +485,6 @@ export default function Profile() {
 
    return (
       <div className="flex flex-col bg-[#fcfcfd] min-h-full font-inter text-blue-950 overflow-y-auto no-scrollbar pb-32">
-         {/* HEADER SUPERIOR */}
          <div className="px-6 py-4 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-50 border-b border-gray-50">
             <button onClick={() => navigate(-1)} className="p-2 bg-gray-50 rounded-2xl text-blue-950 transition-transform active:scale-90"><ChevronDown size={24} className="rotate-90" /></button>
             <div className="flex flex-col items-center">
@@ -231,11 +496,14 @@ export default function Profile() {
             </div>
             <div className="flex items-center space-x-3">
                {isOwnProfile && (
-                  <button onClick={() => setShowNewPost(true)} className="p-2 bg-blue-600 rounded-2xl text-white shadow-lg active:scale-90 flex items-center space-x-1 px-3">
+                  <button onClick={() => setShowNewPost(true)} className="p-2 bg-blue-600 rounded-2xl text-white shadow-lg active:scale-95 flex items-center space-x-1 px-3">
                      <Plus size={18} />
                      <span className="text-[10px] font-black uppercase italic">Postar</span>
                   </button>
                )}
+               <button onClick={handleOpenMessenger} className="p-2 bg-gray-50 rounded-2xl text-blue-950 transition-transform active:scale-95 relative" title="Mensagens">
+                  <MessageSquare size={20} />
+               </button>
                <button onClick={() => setIsFavorited(!isFavorited)} className={`p-2 rounded-2xl transition-all ${isFavorited ? 'bg-red-50 text-red-500 shadow-sm' : 'bg-gray-50 text-blue-950'}`}>
                   <Heart size={20} className={isFavorited ? 'fill-red-500' : ''} />
                </button>
@@ -370,7 +638,12 @@ export default function Profile() {
                >
                   {isFollowing ? 'Seguindo' : 'Seguir'}
                </button>
-               <button className="flex-1 py-3.5 bg-white text-blue-950 border border-gray-100 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-colors">Mensagem</button>
+               <button 
+                  onClick={handleStartChatFromProfile}
+                  className="flex-1 py-3.5 bg-white text-blue-950 border border-gray-100 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-colors"
+               >
+                  Mensagem
+               </button>
             </div>
          </div>
 
@@ -409,19 +682,134 @@ export default function Profile() {
                   )}
                </div>
 
-               <div className="bg-white p-5 rounded-[35px] border border-gray-50 shadow-sm divide-y divide-gray-50">
-                  {currentServices.map((srv: any) => (
-                     <div key={srv.id} className="py-4 first:pt-0 last:pb-0 flex items-center justify-between">
-                        <div>
-                           <p className="text-sm font-black text-blue-950">{srv.name}</p>
-                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{srv.time || '30-40 min'}</p>
+               <div className="grid grid-cols-1 gap-3">
+                  {currentServices.map((srv: any) => {
+                     const isBarba = srv.name.toLowerCase().includes('barba');
+                     const isFade = srv.name.toLowerCase().includes('fade') || srv.name.toLowerCase().includes('degradê') || srv.name.toLowerCase().includes('degrade');
+                     const isFreestyle = srv.name.toLowerCase().includes('free') || srv.name.toLowerCase().includes('art') || srv.name.toLowerCase().includes('design');
+                     const isPigment = srv.name.toLowerCase().includes('pigment');
+                     return (
+                        <div key={srv.id} className="bg-white p-5 rounded-[28px] border border-gray-50 shadow-sm flex items-center justify-between hover:border-blue-500/20 hover:shadow-md transition-all duration-300">
+                           <div className="flex items-center space-x-4">
+                              <div className="w-12 h-12 rounded-2xl bg-blue-50/50 flex items-center justify-center text-blue-600 font-orbitron font-black shadow-inner">
+                                 {isBarba ? '🪒' : isFade ? '✂️' : isFreestyle ? '🎨' : isPigment ? '🖍️' : '💈'}
+                              </div>
+                              <div className="text-left">
+                                 <p className="text-sm font-black text-blue-950 uppercase italic tracking-tight">{srv.name}</p>
+                                 <div className="flex items-center space-x-1.5 mt-1">
+                                    <Clock size={10} className="text-gray-400" />
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{srv.time || '30-40 min'}</p>
+                                 </div>
+                              </div>
+                           </div>
+                           <div className="text-right">
+                              <span className="text-[8px] font-black text-gray-300 uppercase block tracking-widest leading-none">Preço</span>
+                              <p className="text-base font-black text-blue-600 font-orbitron mt-1">R$ {srv.price},00</p>
+                           </div>
                         </div>
-                        <div className="text-right">
-                           <p className="text-base font-black text-blue-600">R$ {srv.price},00</p>
-                        </div>
-                     </div>
-                  ))}
+                     );
+                  })}
                </div>
+
+               {/* INLINE AGENDA SCHEDULER */}
+               {!isOwnProfile && (
+                  <div className="mt-8 bg-white p-6 rounded-[35px] border border-gray-50 shadow-sm text-left">
+                     <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] mb-4">Escolha a Data do Desafio</h3>
+                     
+                     <div className="flex space-x-3 overflow-x-auto no-scrollbar py-2 mb-6">
+                        {bookingDates.map((date) => {
+                           const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+                           const dayNum = date.getDate();
+                           const dateISO = date.toISOString().split('T')[0];
+                           const isSelected = bookingDate === dateISO;
+
+                           return (
+                              <button
+                                 key={dateISO}
+                                 type="button"
+                                 onClick={() => {
+                                    setBookingDate(dateISO);
+                                    setBookingTime('');
+                                 }}
+                                 className={`flex flex-col items-center min-w-[65px] p-4 rounded-[24px] border transition-all ${isSelected ? 'bg-gradient-to-br from-blue-600 to-blue-800 border-none text-white shadow-lg shadow-blue-200' : 'bg-gray-50 border-gray-100 text-blue-950 hover:bg-gray-100/50'}`}
+                              >
+                                 <span className={`text-[8px] font-black uppercase tracking-widest ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>{dayName}</span>
+                                 <span className="text-base font-black font-orbitron mt-1">{dayNum}</span>
+                              </button>
+                           );
+                        })}
+                     </div>
+
+                     <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] mb-4">Selecione os Serviços</h3>
+                     <div className="grid grid-cols-1 gap-2 mb-6">
+                        {currentServices.map((srv: any) => {
+                           const isSelected = selectedBookingServices.some(s => s.id === srv.id);
+                           return (
+                              <button
+                                 key={srv.id}
+                                 type="button"
+                                 onClick={() => {
+                                    if (isSelected) {
+                                       setSelectedBookingServices(prev => prev.filter(s => s.id !== srv.id));
+                                    } else {
+                                       setSelectedBookingServices(prev => [...prev, srv]);
+                                    }
+                                 }}
+                                 className={`p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${isSelected ? 'border-blue-600 bg-blue-50/30' : 'border-gray-100 bg-white hover:bg-gray-50'}`}
+                              >
+                                 <div className="flex items-center space-x-3">
+                                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center ${isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-200'}`}>
+                                       {isSelected && <Check size={12} strokeWidth={3} />}
+                                    </div>
+                                    <span className="text-xs font-bold text-blue-950 uppercase tracking-tight">{srv.name}</span>
+                                 </div>
+                                 <span className="text-xs font-black text-blue-600 font-orbitron">R$ {srv.price},00</span>
+                              </button>
+                           );
+                        })}
+                     </div>
+
+                     <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] mb-4">Horários Disponíveis</h3>
+                     <div className="grid grid-cols-4 gap-2 mb-6">
+                        {timeSlots.map((time) => {
+                           const status = getSlotStatus(time);
+                           const isSelected = bookingTime === time;
+                           const isOccupied = status === 'occupied';
+
+                           return (
+                              <button
+                                 key={time}
+                                 type="button"
+                                 disabled={isOccupied}
+                                 onClick={() => setBookingTime(time)}
+                                 className={`py-3 rounded-xl font-orbitron text-xs font-black transition-all ${isOccupied ? 'bg-gray-150 text-gray-300 line-through cursor-not-allowed border border-dashed border-gray-200' : isSelected ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-50 text-blue-950 border border-gray-100 hover:bg-gray-100'}`}
+                              >
+                                 {time}
+                              </button>
+                           );
+                        })}
+                     </div>
+
+                     {selectedBookingServices.length > 0 && (
+                        <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/20 mb-6 flex justify-between items-center">
+                           <div>
+                              <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Total do Desafio</span>
+                              <p className="text-xs font-bold text-blue-950 uppercase mt-0.5">{selectedBookingServices.length} {selectedBookingServices.length === 1 ? 'Serviço' : 'Serviços'}</p>
+                           </div>
+                           <p className="text-xl font-black text-blue-600 font-orbitron">R$ {selectedBookingServices.reduce((acc, s) => acc + s.price, 0)},00</p>
+                        </div>
+                     )}
+
+                     <button
+                        type="button"
+                        onClick={handleCreateBooking}
+                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center justify-center space-x-2 active:scale-95 transition-all animate-pulse"
+                     >
+                        <Calendar size={14} />
+                        <span>Confirmar Agendamento</span>
+                     </button>
+                  </div>
+               )}
             </div>
          )}
 
@@ -459,24 +847,22 @@ export default function Profile() {
                <motion.div
                   key={img.id}
                   whileTap={{ scale: 0.98 }}
-                  className="aspect-square rounded-[22px] overflow-hidden bg-gray-100 relative group"
+                  onClick={() => setSelectedPost(img)}
+                  className="aspect-square rounded-[22px] overflow-hidden bg-gray-100 relative group cursor-pointer"
                >
-                  <img src={img.url} className="w-full h-full object-cover" />
-                  <button
-                     onClick={(e) => { e.stopPropagation(); toggleLike(img.id); }}
-                     className="absolute bottom-2 right-2 p-2 bg-white/90 backdrop-blur-md rounded-full text-blue-950 shadow-md transition-all active:scale-150"
-                  >
-                     <Heart size={14} className={likedItems.has(img.id) ? 'fill-red-500 text-red-500' : 'text-gray-400'} />
-                  </button>
+                  <img src={img.imageUrl || img.url} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4 text-white">
+                     <span className="flex items-center space-x-1 font-bold text-xs">
+                        <Heart size={14} className="fill-white" />
+                        <span>{img.likes?.length || img.likesCount || 0}</span>
+                     </span>
+                     <span className="flex items-center space-x-1 font-bold text-xs">
+                        <MessageSquare size={14} className="fill-white" />
+                        <span>{img.comments?.length || 0}</span>
+                     </span>
+                  </div>
                </motion.div>
             ))}
-         </div>
-
-         {/* BOTÃO AGENDAR (MOBILE OPTIMIZED) */}
-         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-md z-[100] px-2">
-            <button className="w-full py-5 bg-blue-600 text-white rounded-[30px] font-black text-xs uppercase italic tracking-widest shadow-[0_20px_50px_rgba(37,99,235,0.3)] flex items-center justify-center space-x-3 active:scale-95 transition-all">
-               <Calendar size={18} /> <span>Agendar Atendimento</span>
-            </button>
          </div>
 
          {/* STORY VIEWER (MULTI-SLIDE & TOQUE) */}
@@ -763,6 +1149,259 @@ export default function Profile() {
                      >
                         <span>Salvar Tabela</span>
                      </button>
+                  </motion.div>
+               </motion.div>
+            )}
+         </AnimatePresence>
+
+         {/* INSTAGRAM POST DETAILS MODAL */}
+         <AnimatePresence>
+            {selectedPost && (
+               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6500] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+                  <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white w-full max-w-md rounded-[35px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+                     {/* Header */}
+                     <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                        <div className="flex items-center space-x-3 text-left">
+                           <img src={barber.avatar} className="w-9 h-9 rounded-xl object-cover border border-gray-100" />
+                           <div>
+                              <h4 className="text-xs font-black text-blue-950 uppercase italic leading-none">{barber.name}</h4>
+                              <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{selectedPost.category || 'Trabalho de Elite'}</p>
+                           </div>
+                        </div>
+                        <button onClick={() => setSelectedPost(null)} className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:bg-gray-100 transition-colors"><X size={18} /></button>
+                     </div>
+
+                     {/* Image Body with Double Tap Area */}
+                     <div className="relative aspect-square bg-black overflow-hidden flex items-center justify-center">
+                        <img 
+                           src={selectedPost.imageUrl || selectedPost.url} 
+                           className="w-full h-full object-cover select-none" 
+                           onDoubleClick={() => handleLikePost(selectedPost.id)}
+                        />
+                        <AnimatePresence>
+                           {doubleTapHeart && (
+                              <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: [1, 1.2, 1], opacity: [1, 1, 0] }} exit={{ scale: 0, opacity: 0 }} transition={{ duration: 0.8 }} className="absolute text-white pointer-events-none">
+                                 <Heart size={80} className="fill-red-500 text-red-500 drop-shadow-2xl" />
+                              </motion.div>
+                           )}
+                        </AnimatePresence>
+                     </div>
+
+                     {/* Actions & Caption */}
+                     <div className="p-5 flex-1 flex flex-col overflow-y-auto no-scrollbar text-left">
+                        <div className="flex items-center justify-between mb-4">
+                           <div className="flex space-x-4">
+                              <button onClick={() => handleLikePost(selectedPost.id)} className="transition-transform active:scale-125">
+                                 <Heart size={22} className={hasLikedPost(selectedPost) ? 'fill-red-500 text-red-500' : 'text-blue-950'} />
+                              </button>
+                              <button className="transition-transform active:scale-125">
+                                 <MessageCircle size={22} className="text-blue-950" />
+                              </button>
+                           </div>
+                           <span className="text-[10px] font-black text-blue-950 uppercase tracking-widest">
+                              {selectedPost.likes?.length || selectedPost.likesCount || 0} Likes
+                           </span>
+                        </div>
+
+                        {selectedPost.description && (
+                           <div className="mb-4">
+                              <p className="text-xs text-blue-950 leading-relaxed">
+                                 <span className="font-black mr-2 uppercase italic">{barber.username}</span>
+                                 {selectedPost.description}
+                              </p>
+                           </div>
+                        )}
+
+                        {/* Comments List */}
+                        <div className="border-t border-gray-50 pt-4 flex-1">
+                           <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-3">Comentários ({selectedPost.comments?.length || 0})</p>
+                           <div className="space-y-3 max-h-[150px] overflow-y-auto no-scrollbar">
+                              {(selectedPost.comments || []).map((c: any) => (
+                                 <div key={c.id} className="flex items-start space-x-2 text-xs">
+                                    <img src={c.user?.avatar || `https://i.pravatar.cc/100?u=${c.userId}`} className="w-6 h-6 rounded-lg object-cover" />
+                                    <div className="bg-gray-50 p-2.5 rounded-2xl flex-1 text-left">
+                                       <span className="font-black uppercase tracking-wider text-[9px] text-blue-950 block mb-0.5">{c.user?.name || 'Cliente'}</span>
+                                       <p className="text-[11px] text-blue-900 leading-normal">{c.content}</p>
+                                    </div>
+                                 </div>
+                              ))}
+                              {(!selectedPost.comments || selectedPost.comments.length === 0) && (
+                                 <p className="text-[10px] text-gray-300 italic text-center py-4">Seja o primeiro a comentar!</p>
+                              )}
+                           </div>
+                        </div>
+                     </div>
+
+                     {/* Comment Input */}
+                     <div className="p-4 border-t border-gray-150 bg-gray-50 flex items-center space-x-2">
+                        <input
+                           type="text"
+                           placeholder="Deixe um comentário..."
+                           value={commentText}
+                           onChange={e => setCommentText(e.target.value)}
+                           onKeyDown={e => { if (e.key === 'Enter') handleCommentPost(selectedPost.id); }}
+                           className="flex-1 bg-white border border-gray-150 rounded-2xl py-3 px-4 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-blue-950"
+                        />
+                        <button onClick={() => handleCommentPost(selectedPost.id)} className="p-3 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 active:scale-95 transition-all">
+                           <Send size={14} />
+                        </button>
+                     </div>
+                  </motion.div>
+               </motion.div>
+            )}
+         </AnimatePresence>
+
+         {/* MODAL MENSAGEIRO (CHAT) */}
+         <AnimatePresence>
+            {showMessenger && (
+               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[7500] bg-blue-950/60 backdrop-blur-md flex items-end justify-center">
+                  <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[45px] h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+                     <div className="w-12 h-1.5 bg-gray-150 rounded-full mx-auto my-4" />
+
+                     {activeChatUser ? (
+                        /* TELA DE CHAT ATIVO */
+                        <div className="flex-1 flex flex-col overflow-hidden h-full">
+                           {/* Chat Header */}
+                           <div className="px-6 pb-4 border-b border-gray-150 flex items-center justify-between">
+                              <div className="flex items-center space-x-3 text-left">
+                                 <button 
+                                    onClick={() => {
+                                       setActiveChatUser(null);
+                                       setChatMessages([]);
+                                    }} 
+                                    className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:bg-gray-100 transition-colors"
+                                 >
+                                    <ChevronDown size={20} className="rotate-90" />
+                                 </button>
+                                 <img src={activeChatUser.avatar || `https://i.pravatar.cc/100?u=${activeChatUser.id}`} className="w-10 h-10 rounded-xl object-cover" />
+                                 <div>
+                                    <h4 className="text-xs font-black text-blue-950 uppercase italic leading-none">{activeChatUser.name}</h4>
+                                    <span className="text-[7px] font-black text-green-500 uppercase tracking-widest block mt-1 animate-pulse">Online</span>
+                                 </div>
+                              </div>
+                              <button onClick={() => setShowMessenger(false)} className="p-2 bg-gray-50 rounded-xl text-gray-400"><X size={20} /></button>
+                           </div>
+
+                           {/* Messages List */}
+                           <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar bg-gray-50/30">
+                              {chatMessages.map((msg: any) => {
+                                 const isMe = msg.senderId === loggedUser?.id;
+                                 return (
+                                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                       <div className={`max-w-[75%] p-4 rounded-[24px] text-xs leading-relaxed text-left ${isMe ? 'bg-blue-600 text-white rounded-tr-sm shadow-md' : 'bg-white border border-gray-150 text-blue-950 rounded-tl-sm shadow-sm'}`}>
+                                          <p>{msg.content}</p>
+                                          <span className={`block text-[6px] font-black uppercase mt-1.5 ${isMe ? 'text-blue-100 text-right' : 'text-gray-300'}`}>
+                                             {new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                          </span>
+                                       </div>
+                                    </div>
+                                 );
+                              })}
+                              {chatMessages.length === 0 && (
+                                 <div className="h-full flex flex-col items-center justify-center opacity-30 py-20">
+                                    <MessageSquare size={36} className="mb-3 text-blue-950" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-950">Nenhuma mensagem. Comece a conversa!</p>
+                                 </div>
+                              )}
+                           </div>
+
+                           {/* Chat Input */}
+                           <div className="p-4 border-t border-gray-150 bg-white flex items-center space-x-2">
+                              <input
+                                 type="text"
+                                 placeholder="Digite sua mensagem..."
+                                 value={chatMessageText}
+                                 onChange={e => setChatMessageText(e.target.value)}
+                                 onKeyDown={e => { if (e.key === 'Enter') handleSendMessage(); }}
+                                 className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl py-3.5 px-4 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-blue-950"
+                              />
+                              <button onClick={handleSendMessage} className="p-3.5 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 active:scale-95 transition-all">
+                                 <Send size={14} />
+                              </button>
+                           </div>
+                        </div>
+                     ) : (
+                        /* LISTA DE CONVERSAS ATIVAS */
+                        <div className="flex-1 flex flex-col overflow-hidden h-full">
+                           <div className="px-6 pb-4 border-b border-gray-150 flex items-center justify-between">
+                              <h3 className="text-xl font-black text-blue-950 uppercase italic tracking-tighter">Minhas Conversas</h3>
+                              <button onClick={() => setShowMessenger(false)} className="p-2 bg-gray-50 rounded-xl text-gray-400"><X size={20} /></button>
+                           </div>
+
+                           {/* Search Box */}
+                           <div className="p-4 border-b border-gray-50 bg-gray-50/50">
+                              <input
+                                 type="text"
+                                 placeholder="Buscar barbeiro ou usuário para conversar..."
+                                 value={searchUserText}
+                                 onChange={e => setSearchUserText(e.target.value)}
+                                 className="w-full bg-white border border-gray-150 rounded-2xl py-3 px-4 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-blue-950"
+                              />
+                           </div>
+
+                           {/* List Container */}
+                           <div className="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
+                              {searchUserText.trim() ? (
+                                 /* SEARCH RESULTS */
+                                 <div>
+                                    <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest px-2 mb-3">Resultados da busca ({filteredSearchResults.length})</p>
+                                    {filteredSearchResults.map((usr: any) => (
+                                       <button
+                                          key={usr.id}
+                                          onClick={() => {
+                                             setActiveChatUser(usr);
+                                             setSearchUserText('');
+                                          }}
+                                          className="w-full bg-white p-3 rounded-2xl border border-gray-100 flex items-center space-x-3 hover:bg-blue-50/30 transition-colors"
+                                       >
+                                          <img src={usr.avatar || `https://i.pravatar.cc/100?u=${usr.id}`} className="w-10 h-10 rounded-xl object-cover" />
+                                          <div className="text-left flex-1">
+                                             <h4 className="text-xs font-black text-blue-950 uppercase italic leading-none">{usr.name}</h4>
+                                             <span className="text-[8px] font-bold text-gray-400 mt-1 block">Clique para iniciar conversa</span>
+                                          </div>
+                                       </button>
+                                    ))}
+                                    {filteredSearchResults.length === 0 && (
+                                       <p className="text-center py-6 text-xs text-gray-300">Nenhum barbeiro ou usuário encontrado</p>
+                                    )}
+                                 </div>
+                              ) : (
+                                 /* ACTIVE CONVERSATIONS LIST */
+                                 <div>
+                                    {conversations.map((conv: any) => (
+                                       <button
+                                          key={conv.otherUser.id}
+                                          onClick={() => setActiveChatUser(conv.otherUser)}
+                                          className="w-full bg-white p-4 rounded-3xl border border-gray-50 flex items-center justify-between hover:bg-blue-50/20 transition-all duration-300 shadow-sm mb-2"
+                                       >
+                                          <div className="flex items-center space-x-3 text-left">
+                                             <img src={conv.otherUser.avatar || `https://i.pravatar.cc/100?u=${conv.otherUser.id}`} className="w-11 h-11 rounded-2xl object-cover" />
+                                             <div>
+                                                <h4 className="text-xs font-black text-blue-950 uppercase italic leading-none">{conv.otherUser.name}</h4>
+                                                <p className="text-[10px] text-gray-400 font-bold truncate max-w-[200px] mt-1.5">
+                                                   {conv.lastMessage.senderId === loggedUser?.id ? 'Você: ' : ''}
+                                                   {conv.lastMessage.content}
+                                                </p>
+                                             </div>
+                                          </div>
+                                          <div className="text-right">
+                                             <span className="text-[6px] font-black text-gray-300 uppercase">
+                                                {new Date(conv.lastMessage.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                             </span>
+                                          </div>
+                                       </button>
+                                    ))}
+                                    {conversations.length === 0 && (
+                                       <div className="py-20 text-center opacity-30">
+                                          <MessageSquare size={36} className="mx-auto mb-3 text-blue-950" />
+                                          <p className="text-[10px] font-black uppercase tracking-widest text-blue-950">Nenhuma conversa ativa</p>
+                                       </div>
+                                    )}
+                                 </div>
+                              )}
+                           </div>
+                        </div>
+                     )}
                   </motion.div>
                </motion.div>
             )}

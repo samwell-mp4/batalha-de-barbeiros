@@ -96,7 +96,10 @@ const db: Record<string, any[]> = {
       updatedAt: new Date()
     }
   ],
-  vote: []
+  vote: [],
+  post: [],
+  like: [],
+  comment: []
 };
 
 // Check if database is reachable on startup
@@ -152,8 +155,15 @@ function resolveRelations(modelName: string, item: any, include: any): any {
   if (!item) return item;
   const copy = { ...item };
   
-  if (modelName === 'barber' && include?.user) {
-    copy.user = db.user.find(u => u.id === copy.userId);
+  if (modelName === 'barber') {
+    if (include?.user) {
+      copy.user = db.user.find(u => u.id === copy.userId);
+    }
+    if (include?.posts) {
+      copy.posts = (db.post || [])
+        .filter(p => p.barberId === copy.id)
+        .map(p => resolveRelations('post', p, include.posts.include));
+    }
   }
   if (modelName === 'user' && include?.barberProfile) {
     const barber = db.barber.find(b => b.userId === copy.id);
@@ -194,6 +204,21 @@ function resolveRelations(modelName: string, item: any, include: any): any {
   if (modelName === 'match') {
     if (include?.votes) {
       copy.votes = db.vote.filter(v => v.matchId === item.id);
+    }
+  }
+  if (modelName === 'post') {
+    if (include?.likes) {
+      copy.likes = (db.like || []).filter(l => l.postId === copy.id);
+    }
+    if (include?.comments) {
+      copy.comments = (db.comment || [])
+        .filter(c => c.postId === copy.id)
+        .map(c => resolveRelations('comment', c, include.comments.include));
+    }
+  }
+  if (modelName === 'comment') {
+    if (include?.user) {
+      copy.user = db.user.find(u => u.id === copy.userId);
     }
   }
   return copy;
