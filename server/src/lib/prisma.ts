@@ -156,6 +156,15 @@ function resolveRelations(modelName: string, item: any, include: any): any {
   if (modelName === 'barber' && include?.user) {
     copy.user = db.user.find(u => u.id === copy.userId);
   }
+  if (modelName === 'user' && include?.barberProfile) {
+    const barber = db.barber.find(b => b.userId === copy.id);
+    if (barber) {
+      copy.barberProfile = {
+        ...barber,
+        user: db.user.find(u => u.id === barber.userId)
+      };
+    }
+  }
   if (modelName === 'appointment') {
     if (include?.client) {
       copy.client = db.user.find(u => u.id === copy.clientId);
@@ -222,6 +231,21 @@ const mockPrisma = new Proxy({}, {
           if (modelName === 'championship' && args.data.participants?.connect) {
             participantIds = args.data.participants.connect.map((c: any) => c.id);
             delete parsedData.participants;
+          }
+
+          if (modelName === 'user' && args.data.barberProfile?.create) {
+            const barberData = args.data.barberProfile.create;
+            const newBarberId = 'barber-' + Math.random().toString(36).substr(2, 9);
+            const newBarber = {
+              id: newBarberId,
+              userId: newId,
+              rating: 5.0,
+              isOnline: true,
+              gallery: [],
+              ...barberData
+            };
+            db.barber.push(newBarber);
+            delete parsedData.barberProfile;
           }
 
           const newItem = {

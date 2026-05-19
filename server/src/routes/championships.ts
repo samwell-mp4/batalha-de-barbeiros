@@ -3,6 +3,30 @@ import { prisma } from '../lib/prisma';
 
 const router = Router();
 
+// In-memory likes and comments store to guarantee 100% stability and persistence for the current process
+const matchLikesStore: Record<string, string[]> = {}; // matchId -> array of userIds
+const matchCommentsStore: Record<string, Array<{ id: string, userId: string, userName: string, userAvatar: string, content: string, createdAt: Date }>> = {}; // matchId -> comments
+
+function injectLikesAndComments(championship: any) {
+  if (!championship) return championship;
+  
+  // Clean up refereeLogs from the response object as requested
+  if (championship.matches && championship.matches.length > 0) {
+    championship.matches = championship.matches.map((m: any) => {
+      const { refereeLogs, ...rest } = m;
+      const likes = matchLikesStore[m.id] || [];
+      const comments = matchCommentsStore[m.id] || [];
+      return {
+        ...rest,
+        likes,
+        comments
+      };
+    });
+  }
+  return championship;
+}
+
+
 // Helper to sync and self-heal championship states
 async function checkAndSyncChampionship(id: string, nowOverride?: Date) {
   const championship = await prisma.championship.findUnique({
@@ -28,8 +52,16 @@ async function checkAndSyncChampionship(id: string, nowOverride?: Date) {
     scheduledStart = new Date(`${datePart}T${timePart}:00`);
   }
 
+  const createdAtTime = new Date(championship.createdAt).getTime();
+  const gracePeriodMs = 30 * 60 * 1000;
+  const isPastScheduled = scheduledStart && now > scheduledStart;
+  const hasExpired = scheduledStart && isPastScheduled && (
+    (now.getTime() - createdAtTime > gracePeriodMs) ||
+    (createdAtTime - scheduledStart.getTime() > gracePeriodMs)
+  );
+
   // 1. Check if Expired (not accepted past scheduled time)
-  if (championship.status === 'WAITING' && match.status === 'PENDING' && !match.photo2 && scheduledStart && now > scheduledStart) {
+  if (championship.status === 'WAITING' && match.status === 'PENDING' && !match.photo2 && hasExpired) {
     await prisma.match.update({
       where: { id: match.id },
       data: { status: 'FINISHED' }
@@ -110,9 +142,9 @@ router.get('/', async (req, res) => {
     for (const c of championships) {
       if (c.status === 'WAITING' || c.status === 'ONGOING') {
         const synced = await checkAndSyncChampionship(c.id, simulatedNow);
-        if (synced) syncedList.push(synced);
+        if (synced) syncedList.push(injectLikesAndComments(synced));
       } else {
-        syncedList.push(c);
+        syncedList.push(injectLikesAndComments(c));
       }
     }
 
@@ -219,7 +251,15 @@ router.post('/:id/accept', async (req, res) => {
 
     const now = req.headers['x-test-current-time'] ? new Date(req.headers['x-test-current-time'] as string) : new Date();
 
-    if (scheduledStart && now > scheduledStart) {
+    const createdAtTime = new Date(championship.createdAt).getTime();
+    const gracePeriodMs = 30 * 60 * 1000;
+    const isPastScheduled = scheduledStart && now > scheduledStart;
+    const hasExpired = scheduledStart && isPastScheduled && (
+      (now.getTime() - createdAtTime > gracePeriodMs) ||
+      (createdAtTime - scheduledStart.getTime() > gracePeriodMs)
+    );
+
+    if (hasExpired) {
       await prisma.match.update({
         where: { id: match.id },
         data: { status: 'FINISHED' }
@@ -393,37 +433,86 @@ router.post('/:id/vote', async (req, res) => {
   }
 });
 
-// Submit referee evaluation
-router.post('/:id/referee', async (req, res) => {
+
+// Like / unlike a match
+router.post('/:id/like', async (req, res) => {
   try {
     const { id } = req.params; // championshipId
-    const { refereeId, matchId, criteria, score, notes } = req.body;
-
-    let targetMatchId = matchId;
-    if (!targetMatchId) {
-      const match = await prisma.match.findFirst({
-        where: { championshipId: id, status: 'LIVE' }
-      });
-      if (!match) {
-        return res.status(404).json({ error: 'No live match found for this championship' });
-      }
-      targetMatchId = match.id;
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
     }
 
-    const log = await prisma.refereeLog.create({
-      data: {
-        matchId: targetMatchId,
-        refereeId: refereeId || 'ia-referee',
-        criteria: criteria || 'General Technical',
-        score: parseFloat(score || 0),
-        notes: notes || ''
-      }
+    const championship = await prisma.championship.findUnique({
+      where: { id },
+      include: { matches: true }
     });
 
-    res.json({ success: true, log });
+    if (!championship || championship.matches.length === 0) {
+      return res.status(404).json({ error: 'Championship or match not found' });
+    }
+
+    const matchId = championship.matches[0].id;
+    if (!matchLikesStore[matchId]) {
+      matchLikesStore[matchId] = [];
+    }
+
+    const index = matchLikesStore[matchId].indexOf(userId);
+    if (index > -1) {
+      // Unlike
+      matchLikesStore[matchId].splice(index, 1);
+    } else {
+      // Like
+      matchLikesStore[matchId].push(userId);
+    }
+
+    res.json({ success: true, likes: matchLikesStore[matchId] });
   } catch (error: any) {
-    console.error('[API ERROR] Failed to submit referee log:', error.message);
-    res.status(500).json({ error: 'Failed to submit referee log' });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add comment to a match
+router.post('/:id/comment', async (req, res) => {
+  try {
+    const { id } = req.params; // championshipId
+    const { userId, content } = req.body;
+    if (!userId || !content) {
+      return res.status(400).json({ error: 'userId and content are required' });
+    }
+
+    const championship = await prisma.championship.findUnique({
+      where: { id },
+      include: { matches: true }
+    });
+
+    if (!championship || championship.matches.length === 0) {
+      return res.status(404).json({ error: 'Championship or match not found' });
+    }
+
+    const matchId = championship.matches[0].id;
+    if (!matchCommentsStore[matchId]) {
+      matchCommentsStore[matchId] = [];
+    }
+
+    // Get user details for comment
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    const newComment = {
+      id: `comment-${Math.random().toString(36).substr(2, 9)}`,
+      userId,
+      userName: user?.name || 'Anônimo',
+      userAvatar: user?.avatar || `https://i.pravatar.cc/150?u=${userId}`,
+      content,
+      createdAt: new Date()
+    };
+
+    matchCommentsStore[matchId].push(newComment);
+    res.json({ success: true, comment: newComment });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -435,7 +524,7 @@ router.get('/:id', async (req, res) => {
     if (!championship) {
       return res.status(404).json({ error: 'Failed to fetch championship details' });
     }
-    res.json(championship);
+    res.json(injectLikesAndComments(championship));
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch championship details' });
   }

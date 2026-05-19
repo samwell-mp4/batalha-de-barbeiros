@@ -202,7 +202,6 @@ model Match {
 
   // Relations
   votes          Vote[]
-  refereeLogs    RefereeLog[]
 }
 
 enum MatchStatus {
@@ -223,15 +222,4 @@ model Vote {
   createdAt DateTime @default(now())
 
   @@unique([matchId, userId])
-}
-
-model RefereeLog {
-  id          String   @id @default(uuid())
-  matchId     String
-  match       Match    @relation(fields: [matchId], references: [id])
-  refereeId   String
-  criteria    String   // e.g., "Symmetry", "Fade Quality", "Finish"
-  score       Float
-  notes       String?
-  createdAt   DateTime @default(now())
 }

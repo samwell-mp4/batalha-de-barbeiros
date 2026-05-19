@@ -327,7 +327,13 @@ export default function Auth() {
         localStorage.setItem('user', JSON.stringify(response));
         // Pequeno delay para garantir que o storage foi gravado antes do refresh
         setTimeout(() => {
-          navigate('/');
+          const redir = sessionStorage.getItem('redirectAfterAuth');
+          if (redir) {
+            sessionStorage.removeItem('redirectAfterAuth');
+            navigate(redir);
+          } else {
+            navigate('/');
+          }
           window.location.reload();
         }, 100);
       } else {
@@ -360,7 +366,13 @@ export default function Auth() {
         localStorage.setItem('justRegistered', 'true');
 
         // Vai direto para o mapa/home após o sucesso
-        navigate('/');
+        const redir = sessionStorage.getItem('redirectAfterAuth');
+        if (redir) {
+          sessionStorage.removeItem('redirectAfterAuth');
+          navigate(redir);
+        } else {
+          navigate('/');
+        }
         window.location.reload(); // Garante que o estado global seja limpo
       } else {
         throw new Error(response?.error || 'Resposta do servidor inválida');

@@ -140,14 +140,7 @@ export const api = {
     });
     return res.json();
   },
-  addRefereeLog: async (championshipId: string, data: any) => {
-    const res = await fetch(`${API_URL}/championships/${championshipId}/referee`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    return res.json();
-  },
+
   acceptChallenge: async (id: string, photo2: string) => {
     const res = await fetch(`${API_URL}/championships/${id}/accept`, {
       method: 'POST',
@@ -165,6 +158,22 @@ export const api = {
   startBattleScheduled: async (id: string) => {
     const res = await fetch(`${API_URL}/championships/${id}/start-scheduled`, {
       method: 'POST',
+    });
+    return res.json();
+  },
+  toggleLike: async (id: string, userId: string) => {
+    const res = await fetch(`${API_URL}/championships/${id}/like`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId })
+    });
+    return res.json();
+  },
+  addComment: async (id: string, userId: string, content: string) => {
+    const res = await fetch(`${API_URL}/championships/${id}/comment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, content })
     });
     return res.json();
   },

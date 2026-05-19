@@ -4,8 +4,9 @@ import {
   Trophy, Swords, Users, MapPin, Globe, ShieldCheck,
   Info, Search, Filter, BarChart3, BrainCircuit,
   LayoutGrid, X, ChevronLeft,
-  Check, Star, Plus, Heart, MessageCircle, Share2
+  Check, Star, Plus, Heart, MessageCircle, Share2, Send
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 
 type View = 'home' | 'create' | 'detail' | 'referee' | 'voting' | 'final';
@@ -37,6 +38,10 @@ export default function League() {
   const [dbChampionships, setDbChampionships] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [photo2Input, setPhoto2Input] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterModality, setFilterModality] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 5;
 
   const [currentUser] = useState<any>(() => {
     const saved = localStorage.getItem('user');
@@ -52,16 +57,33 @@ export default function League() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOpponent, setSelectedOpponent] = useState<any>(null);
 
-  const [refereeScores, setRefereeScores] = useState<Record<string, number>>({
-    'Acabamento': 9,
-    'Simetria': 9,
-    'Transicao': 9,
-    'Originalidade': 9
-  });
+
+
+  const navigate = useNavigate();
+  const [storyIndex, setStoryIndex] = useState(0);
+  const [showCommentsPanel, setShowCommentsPanel] = useState(false);
+  const [newCommentText, setNewCommentText] = useState('');
 
   useEffect(() => {
     fetchChampionships();
     fetchBarbers();
+
+    // Deep link detection
+    const params = new URLSearchParams(window.location.search);
+    const championshipId = params.get('championshipId') || params.get('id');
+    const autoVote = params.get('autoVote');
+    if (championshipId) {
+      fetchChampionshipDetails(championshipId);
+      setView('detail');
+
+      if (autoVote && currentUser?.id) {
+        setTimeout(() => {
+          handleVoteSubmit(autoVote, championshipId);
+        }, 800);
+        // Clear query param
+        window.history.replaceState({}, '', `/league?championshipId=${championshipId}`);
+      }
+    }
   }, []);
 
   const fetchBarbers = async () => {
@@ -215,6 +237,51 @@ export default function League() {
                   <span className="text-[8px] font-black text-red-500 uppercase">LIVE</span>
                 </div>
               </div>
+
+              {activeTab === 'tournaments' && (
+                <div className="mb-6 space-y-3 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
+                  <div>
+                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 px-1">Filtrar Status</p>
+                    <div className="flex space-x-1.5 overflow-x-auto no-scrollbar pb-1">
+                      {[
+                        { id: 'all', label: 'Todos' },
+                        { id: 'ongoing', label: 'Em Andamento' },
+                        { id: 'waiting', label: 'Inscrições' },
+                        { id: 'finished', label: 'Finalizados' }
+                      ].map(f => (
+                        <button 
+                          key={f.id} 
+                          onClick={() => { setFilterStatus(f.id); setCurrentPage(1); }} 
+                          className={`px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${filterStatus === f.id ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 px-1">Filtrar Categoria</p>
+                    <div className="flex space-x-1.5 overflow-x-auto no-scrollbar pb-1">
+                      {[
+                        { id: 'all', label: 'Todas' },
+                        { id: 'x1', label: '1x1' },
+                        { id: 'free', label: 'Freestyle' },
+                        { id: 'deg', label: 'Degradê' },
+                        { id: 'nav', label: 'Navalhado' }
+                      ].map(f => (
+                        <button 
+                          key={f.id} 
+                          onClick={() => { setFilterModality(f.id); setCurrentPage(1); }} 
+                          className={`px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${filterModality === f.id ? 'bg-gray-800 text-white shadow-md' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-4">
                 {(() => {
                   if ((activeTab as any) !== 'my_tournaments') return null;
@@ -271,20 +338,89 @@ export default function League() {
                     );
                   });
                 })()}
-                {activeTab === 'tournaments' && [...dbChampionships, ...ACTIVE_TOURNAMENTS.filter(at => !dbChampionships.find(db => db.name === at.name))].map(t => (
-                  <div key={t.id} onClick={() => { setSelectedChamp(t); setView('detail'); }} className="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm relative group overflow-hidden cursor-pointer active:scale-95 transition-all">
-                    <div className="absolute top-0 right-0 h-full w-1.5 bg-blue-600" />
-                    <div className="flex justify-between items-start mb-4">
-                      <div><span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[7px] font-black uppercase tracking-widest mr-2">{t.type || 'Torneio'}</span><span className="text-[7px] font-black text-gray-400 uppercase tracking-widest italic">{t.status==='finished'?'FINALIZADO':t.status==='waiting'?'INSCRIÇÕES':'EM ANDAMENTO'}</span></div>
-                      <p className="text-[9px] font-black text-blue-600 uppercase tracking-tighter">{t.progress || 0}% COMPLETO</p>
+
+                {activeTab === 'tournaments' && (() => {
+                  const combined = [...dbChampionships, ...ACTIVE_TOURNAMENTS.filter(at => !dbChampionships.find(db => db.name === at.name))];
+                  
+                  const filtered = combined.filter(t => {
+                    // Status matching
+                    if (filterStatus !== 'all') {
+                      const statusVal = (t.status || '').toLowerCase();
+                      if (filterStatus === 'ongoing' && statusVal !== 'ongoing' && statusVal !== 'live') return false;
+                      if (filterStatus === 'waiting' && statusVal !== 'waiting' && statusVal !== 'open') return false;
+                      if (filterStatus === 'finished' && statusVal !== 'finished') return false;
+                    }
+                    // Modality matching
+                    if (filterModality !== 'all') {
+                      const modVal = (t.modality || t.type || '').toLowerCase();
+                      if (filterModality === 'x1' && !modVal.includes('x1') && !modVal.includes('classic')) return false;
+                      if (filterModality === 'free' && !modVal.includes('free')) return false;
+                      if (filterModality === 'deg' && !modVal.includes('deg') && !modVal.includes('fade')) return false;
+                      if (filterModality === 'nav' && !modVal.includes('nav')) return false;
+                    }
+                    return true;
+                  });
+
+                  const totalItems = filtered.length;
+                  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+                  const startIndex = (currentPage - 1) * itemsPerPage;
+                  const paginated = filtered.slice(startIndex, startIndex + itemsPerPage);
+
+                  if (paginated.length === 0) {
+                    return (
+                      <p className="text-center text-[10px] font-black text-gray-400 uppercase py-10 bg-white rounded-3xl border border-gray-100">
+                        Nenhum campeonato ativo nesta categoria
+                      </p>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      {paginated.map(t => {
+                        const statusVal = (t.status || '').toLowerCase();
+                        const isFinished = statusVal === 'finished';
+                        const isWaiting = statusVal === 'waiting' || statusVal === 'open';
+                        
+                        return (
+                          <div key={t.id} onClick={() => { setSelectedChamp(t); setView('detail'); }} className="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm relative group overflow-hidden cursor-pointer active:scale-95 transition-all">
+                            <div className="absolute top-0 right-0 h-full w-1.5 bg-blue-600" />
+                            <div className="flex justify-between items-start mb-4">
+                              <div><span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[7px] font-black uppercase tracking-widest mr-2">{t.modality || t.type || 'Torneio'}</span><span className="text-[7px] font-black text-gray-400 uppercase tracking-widest italic">{isFinished ? 'FINALIZADO' : isWaiting ? 'INSCRIÇÕES' : 'EM ANDAMENTO'}</span></div>
+                              <p className="text-[9px] font-black text-blue-600 uppercase tracking-tighter">{t.progress || (isFinished ? 100 : isWaiting ? 0 : 50)}% COMPLETO</p>
+                            </div>
+                            <h4 className="text-blue-950 text-lg font-black font-orbitron italic mb-4">{t.name.toUpperCase()}</h4>
+                            <div className="flex items-center justify-between">
+                              <div className="flex -space-x-2">{[1,2,3,4].map(i=>(<img key={i} src={`https://i.pravatar.cc/150?u=${t.id}${i}`} className="w-8 h-8 rounded-full border-2 border-white shadow-sm object-cover" />))}<div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[8px] font-black text-gray-400">+{ (t.participants?.length || t.participants || 16) - 4}</div></div>
+                              <button className="bg-gray-900 text-white px-4 py-2.5 rounded-xl text-[9px] font-black uppercase italic shadow-lg">{isFinished ? 'Ver Resultado' : 'Assistir Live'}</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-between pt-4 px-2">
+                          <button 
+                            disabled={currentPage === 1} 
+                            onClick={(e) => { e.stopPropagation(); setCurrentPage(p => Math.max(1, p - 1)); }} 
+                            className={`px-4 py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all ${currentPage === 1 ? 'opacity-40 cursor-not-allowed bg-gray-50 text-gray-300' : 'bg-white text-blue-950 border-gray-200'}`}
+                          >
+                            Anterior
+                          </button>
+                          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                            Página {currentPage} de {totalPages}
+                          </span>
+                          <button 
+                            disabled={currentPage === totalPages} 
+                            onClick={(e) => { e.stopPropagation(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} 
+                            className={`px-4 py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all ${currentPage === totalPages ? 'opacity-40 cursor-not-allowed bg-gray-50 text-gray-300' : 'bg-white text-blue-950 border-gray-200'}`}
+                          >
+                            Próximo
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <h4 className="text-blue-950 text-lg font-black font-orbitron italic mb-4">{t.name.toUpperCase()}</h4>
-                    <div className="flex items-center justify-between">
-                      <div className="flex -space-x-2">{[1,2,3,4].map(i=>(<img key={i} src={`https://i.pravatar.cc/150?u=${t.id}${i}`} className="w-8 h-8 rounded-full border-2 border-white shadow-sm object-cover" />))}<div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[8px] font-black text-gray-400">+{ (t.participants || 16) - 4}</div></div>
-                      <button className="bg-gray-900 text-white px-4 py-2.5 rounded-xl text-[9px] font-black uppercase italic shadow-lg">{t.status === 'finished' ? 'Ver Resultado' : 'Assistir Live'}</button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -543,8 +679,16 @@ export default function League() {
         )}
       </div>
       <div className="p-6 border-t border-gray-100">
-        <button onClick={() => { if(createStep < 3) setCreateStep(s=>s+1); else handleCreateFinish(); }} className="w-full py-6 bg-blue-600 text-white rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all">
-          {createStep === 3 ? 'Publicar Campeonato' : 'Próximo Passo'}
+        <button 
+          disabled={loading}
+          onClick={() => { if(createStep < 3) setCreateStep(s=>s+1); else handleCreateFinish(); }} 
+          className="w-full py-6 bg-blue-600 disabled:bg-gray-400 text-white rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center space-x-2"
+        >
+          {loading ? (
+            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <span>{createStep === 3 ? 'Publicar Campeonato' : 'Próximo Passo'}</span>
+          )}
         </button>
       </div>
     </motion.div>
@@ -839,45 +983,56 @@ export default function League() {
                           <div className="h-full bg-blue-600" style={{width: ((votes1 + votes2) > 0 ? (votes1 / (votes1 + votes2) * 100) : 50)+'%'}} />
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] font-black text-blue-950 uppercase">{p2 ? p2.user?.name : 'Vaga Aberta'}</span>
-                          <span className="text-[12px] font-black text-blue-600">{votes2} votos</span>
+                           <span className="text-[10px] font-black text-blue-950 uppercase">{p2 ? p2.user?.name : 'Vaga Aberta'}</span>
+                           <span className="text-[12px] font-black text-blue-600">{votes2} votos</span>
                         </div>
                      </div>
                    )}
-                </div>
-             </div>
-          </div>
+                 </div>
+              </div>
+           </div>
         </div>
-        <div className="p-6 bg-white border-t border-gray-100 flex space-x-3">
-           <button onClick={() => setView('voting')} className={`flex-[2] py-5 rounded-[20px] font-black uppercase italic tracking-widest shadow-xl transition-all ${selectedChamp?.status !== 'ONGOING' || !p2 || isExpired || votingTimeLeftLabel === 'Votação Encerrada' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white'}`} disabled={selectedChamp?.status !== 'ONGOING' || !p2 || isExpired || votingTimeLeftLabel === 'Votação Encerrada'}>Votar Agora</button>
-           <button onClick={() => setView('referee')} className={`flex-1 py-5 rounded-[20px] font-black uppercase italic tracking-widest shadow-xl flex items-center justify-center transition-all ${selectedChamp?.status !== 'ONGOING' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-900 text-white'}`} disabled={selectedChamp?.status !== 'ONGOING'}><BrainCircuit size={20} /></button>
+        <div className="p-6 bg-white border-t border-gray-100">
+           <button onClick={() => { setStoryIndex(0); setView('voting'); }} className={`w-full py-5 rounded-[20px] font-black uppercase italic tracking-widest shadow-xl transition-all ${selectedChamp?.status !== 'ONGOING' || !p2 || isExpired || votingTimeLeftLabel === 'Votação Encerrada' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white'}`} disabled={selectedChamp?.status !== 'ONGOING' || !p2 || isExpired || votingTimeLeftLabel === 'Votação Encerrada'}>Votar na Arena (Story)</button>
         </div>
       </motion.div>
     );
   };
 
-  const handleVoteSubmit = async (choiceId: string) => {
+  const handleVoteSubmit = async (choiceId: string, champIdOverride?: string) => {
+    const targetChampId = champIdOverride || selectedChamp?.id;
     if (!currentUser?.id) {
-      alert('Você precisa estar logado para votar!');
+      alert('Você precisa estar logado para votar! Redirecionando para a página de login.');
+      sessionStorage.setItem('redirectAfterAuth', `/league?championshipId=${targetChampId}&autoVote=${choiceId}`);
+      navigate('/auth');
       return;
     }
     const match = selectedChamp?.matches?.[0];
-    if (!match) {
+    let targetMatchId = match?.id;
+    if (!targetMatchId && targetChampId) {
+      try {
+        const details = await api.getChampionshipDetails(targetChampId);
+        targetMatchId = details?.matches?.[0]?.id;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    if (!targetMatchId) {
       alert('Nenhuma batalha disponível para votar!');
       return;
     }
     setLoading(true);
     try {
-      const res = await api.voteMatch(selectedChamp.id, {
+      const res = await api.voteMatch(targetChampId, {
         userId: currentUser.id,
-        matchId: match.id,
+        matchId: targetMatchId,
         choiceId: choiceId
       });
       if (res.error) {
         alert(res.error);
       } else {
         alert('Voto computado com sucesso!');
-        await fetchChampionshipDetails(selectedChamp.id);
+        await fetchChampionshipDetails(targetChampId);
         setView('detail');
       }
     } catch (e: any) {
@@ -888,118 +1043,318 @@ export default function League() {
     }
   };
 
-  const handleRefereeSubmit = async () => {
-    const match = selectedChamp?.matches?.[0];
-    if (!match) {
-      alert('Nenhuma batalha ativa para avaliar!');
+  const handleShare = () => {
+    if (!selectedChamp) return;
+    const shareUrl = `${window.location.origin}/league?championshipId=${selectedChamp.id}`;
+    navigator.clipboard.writeText(shareUrl);
+    alert('Link de votação copiado! Compartilhe com seus amigos.');
+  };
+
+  const handleLikeToggle = async () => {
+    if (!selectedChamp) return;
+    if (!currentUser?.id) {
+      alert('Você precisa estar logado para dar like! Redirecionando para o login...');
+      sessionStorage.setItem('redirectAfterAuth', `/league?championshipId=${selectedChamp.id}`);
+      navigate('/auth');
       return;
     }
-    setLoading(true);
     try {
-      const avgScore = Object.values(refereeScores).reduce((a, b) => a + b, 0) / Object.keys(refereeScores).length;
-      
-      const res = await api.addRefereeLog(selectedChamp.id, {
-        refereeId: currentUser?.id || 'ia-referee',
-        matchId: match.id,
-        criteria: 'Acabamento, Simetria, Transição, Originalidade',
-        score: avgScore,
-        notes: `Scores: ${JSON.stringify(refereeScores)}`
-      });
-      
-      if (res.error) {
-        alert(res.error);
-      } else {
-        alert('Avaliação do árbitro registrada com sucesso!');
-        await fetchChampionshipDetails(selectedChamp.id);
-        setView('final');
+      const res = await api.toggleLike(selectedChamp.id, currentUser.id);
+      if (res.success) {
+        const updatedLikes = res.likes;
+        setSelectedChamp((prev: any) => {
+          if (!prev || !prev.matches || prev.matches.length === 0) return prev;
+          const match = prev.matches[0];
+          return {
+            ...prev,
+            matches: [{ ...match, likes: updatedLikes }, ...prev.matches.slice(1)]
+          };
+        });
+        setDbChampionships((prevList: any[]) => prevList.map(c => {
+          if (c.id !== selectedChamp.id || !c.matches || c.matches.length === 0) return c;
+          const match = c.matches[0];
+          return {
+            ...c,
+            matches: [{ ...match, likes: updatedLikes }, ...c.matches.slice(1)]
+          };
+        }));
       }
     } catch (e) {
       console.error(e);
-      alert('Falha ao enviar avaliação do árbitro.');
-    } finally {
-      setLoading(false);
+      alert('Erro ao processar like.');
     }
   };
 
-  const renderReferee = () => {
-    const p1 = selectedChamp?.participants?.[0];
-    const p2 = selectedChamp?.participants?.[1];
-    const match = selectedChamp?.matches?.[0];
-
-    return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[7000] bg-black flex flex-col">
-         <div className="px-6 py-8 flex items-center justify-between border-b border-white/10">
-            <button onClick={() => setView('detail')} className="p-3 bg-white/10 rounded-2xl text-white"><ChevronLeft size={24} /></button>
-            <div className="text-center"><p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">Sala do Árbitro</p><h2 className="text-sm font-black text-white font-orbitron italic uppercase">Avaliação Técnica</h2></div>
-            <div className="w-12" />
-         </div>
-         <div className="flex-1 p-6 space-y-6 overflow-y-auto">
-            <div className="grid grid-cols-2 gap-4 h-[300px]">
-               <div className="bg-gray-900 rounded-[30px] overflow-hidden relative border-2 border-white/10">
-                 <img src={match?.photo1 || p1?.user?.avatar || "https://picsum.photos/400/600?random=1"} className="w-full h-full object-cover opacity-60" />
-                 <div className="absolute inset-0 flex items-center justify-center font-black text-white italic truncate px-2 text-center text-xs uppercase">{p1?.user?.name || 'PLAYER 1'}</div>
-               </div>
-               <div className="bg-gray-900 rounded-[30px] overflow-hidden relative border-2 border-blue-600">
-                 <img src={match?.photo2 || p2?.user?.avatar || "https://picsum.photos/400/600?random=2"} className="w-full h-full object-cover" />
-                 <div className="absolute top-4 right-4 bg-blue-600 p-2 rounded-lg text-[10px] font-black font-orbitron">AI 89%</div>
-                 <div className="absolute inset-0 flex items-center justify-center font-black text-white italic truncate px-2 text-center text-xs uppercase">{p2?.user?.name || 'PLAYER 2'}</div>
-               </div>
-            </div>
-            <div className="bg-gray-900 rounded-[40px] p-8 space-y-8 border border-white/5">
-               {['Acabamento','Simetria','Transicao','Originalidade'].map(c=>(
-                  <div key={c} className="space-y-4">
-                     <div className="flex justify-between items-center"><p className="text-[10px] font-black text-white uppercase">{c}</p><span className="text-cyan-400 font-black font-orbitron">{refereeScores[c]}</span></div>
-                     <div className="flex justify-between space-x-1">
-                       {[1,2,3,4,5,6,7,8,9,10].map(n=>(
-                         <button key={n} type="button" onClick={() => setRefereeScores(prev => ({ ...prev, [c]: n }))} className={`flex-1 h-8 rounded-md font-black text-[10px] ${n===refereeScores[c]?'bg-cyan-500 text-black':'bg-white/5 text-white/20'}`}>{n}</button>
-                       ))}
-                     </div>
-                  </div>
-               ))}
-            </div>
-         </div>
-         <div className="p-6 bg-black border-t border-white/10">
-            <button onClick={handleRefereeSubmit} className="w-full py-6 bg-cyan-500 text-black rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl">Publicar Notas</button>
-         </div>
-      </motion.div>
-    );
+  const handleCommentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedChamp || !newCommentText.trim()) return;
+    if (!currentUser?.id) {
+      alert('Você precisa estar logado para comentar! Redirecionando para o login...');
+      sessionStorage.setItem('redirectAfterAuth', `/league?championshipId=${selectedChamp.id}`);
+      navigate('/auth');
+      return;
+    }
+    try {
+      const res = await api.addComment(selectedChamp.id, currentUser.id, newCommentText);
+      if (res.success) {
+        const newComment = res.comment;
+        setSelectedChamp((prev: any) => {
+          if (!prev || !prev.matches || prev.matches.length === 0) return prev;
+          const match = prev.matches[0];
+          return {
+            ...prev,
+            matches: [{ ...match, comments: [...(match.comments || []), newComment] }, ...prev.matches.slice(1)]
+          };
+        });
+        setDbChampionships((prevList: any[]) => prevList.map(c => {
+          if (c.id !== selectedChamp.id || !c.matches || c.matches.length === 0) return c;
+          const match = c.matches[0];
+          return {
+            ...c,
+            matches: [{ ...match, comments: [...(match.comments || []), newComment] }, ...c.matches.slice(1)]
+          };
+        }));
+        setNewCommentText('');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erro ao enviar comentário.');
+    }
   };
 
   const renderVoting = () => {
     const p1 = selectedChamp?.participants?.[0];
     const p2 = selectedChamp?.participants?.[1];
     const match = selectedChamp?.matches?.[0];
+    if (!match) return null;
+
+    const activePlayer = storyIndex === 0 ? p1 : p2;
+    const activePhoto = storyIndex === 0 ? match.photo1 : match.photo2;
+    
+    const hasVoted = currentUser?.id && match.votes?.some((v: any) => v.userId === currentUser.id);
+    const voteChoice = currentUser?.id && match.votes?.find((v: any) => v.userId === currentUser.id)?.choiceId;
+
+    const votes1 = match.votes?.filter((v: any) => v.choiceId === p1?.id)?.length || match.score1 || 0;
+    const votes2 = match.votes?.filter((v: any) => v.choiceId === p2?.id)?.length || match.score2 || 0;
+    const totalVotes = votes1 + votes2;
+    
+    const pct1 = totalVotes > 0 ? Math.round((votes1 / totalVotes) * 100) : 50;
+    const pct2 = totalVotes > 0 ? Math.round((votes2 / totalVotes) * 100) : 50;
+
+    const likesCount = match.likes?.length || 0;
+    const commentsCount = match.comments?.length || 0;
+    const isLiked = currentUser?.id && match.likes?.includes(currentUser.id);
 
     return (
-      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[7000] bg-white flex flex-col shadow-2xl">
-         <div className="px-6 py-8 flex items-center justify-between border-b border-gray-100">
-            <button onClick={() => setView('detail')} className="p-3 bg-gray-50 rounded-2xl text-blue-950"><ChevronLeft size={24} /></button>
-            <div className="text-center"><p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Arena de Votação</p><h2 className="text-sm font-black text-blue-950 font-orbitron italic uppercase">Quem vence essa?</h2></div>
-            <div className="w-12" />
-         </div>
-         <div className="flex-1 flex flex-col p-6 space-y-6">
-            <div className="flex-1 grid grid-rows-2 gap-4">
-               {p1 && (
-                 <div onClick={() => handleVoteSubmit(p1.id)} className="rounded-[40px] overflow-hidden relative group border-4 border-transparent hover:border-blue-600 transition-all cursor-pointer">
-                    <img src={match?.photo1 || p1.user?.avatar || `https://picsum.photos/800/600?random=11`} className="w-full h-full object-cover" />
-                    <div className="absolute bottom-6 left-6 flex items-center space-x-3 bg-black/60 backdrop-blur-md p-3 rounded-2xl"><p className="text-[12px] font-black text-white uppercase italic">{p1.user?.name}</p></div>
-                    <div className="absolute inset-0 bg-blue-600/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Check size={80} className="text-white" /></div>
-                 </div>
-               )}
-               {p2 && (
-                 <div onClick={() => handleVoteSubmit(p2.id)} className="rounded-[40px] overflow-hidden relative group border-4 border-transparent hover:border-blue-600 transition-all cursor-pointer">
-                    <img src={match?.photo2 || p2.user?.avatar || `https://picsum.photos/800/600?random=12`} className="w-full h-full object-cover" />
-                    <div className="absolute bottom-6 left-6 flex items-center space-x-3 bg-black/60 backdrop-blur-md p-3 rounded-2xl"><p className="text-[12px] font-black text-white uppercase italic">{p2.user?.name}</p></div>
-                    <div className="absolute inset-0 bg-blue-600/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Check size={80} className="text-white" /></div>
-                 </div>
-               )}
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        exit={{ opacity: 0 }} 
+        className="fixed inset-0 w-full max-w-md mx-auto z-[7000] bg-black flex flex-col overflow-hidden text-white"
+      >
+        {/* Story Progress Bars */}
+        <div className="absolute top-4 inset-x-4 flex space-x-1.5 z-50">
+          <div className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
+            <div className={`h-full bg-white transition-all duration-300 ${storyIndex >= 0 ? 'w-full' : 'w-0'}`} />
+          </div>
+          <div className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
+            <div className={`h-full bg-white transition-all duration-300 ${storyIndex >= 1 ? 'w-full' : 'w-0'}`} />
+          </div>
+        </div>
+
+        {/* Story Header */}
+        <div className="absolute top-8 inset-x-0 px-6 flex items-center justify-between z-50">
+          <div className="flex items-center space-x-3">
+            <button 
+              onClick={() => { setView('detail'); setShowCommentsPanel(false); }} 
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md transition-all active:scale-95"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <div className="flex items-center space-x-2">
+              <img 
+                src={activePlayer?.user?.avatar || `https://i.pravatar.cc/100?u=${activePlayer?.id}`} 
+                className="w-8 h-8 rounded-full border border-white/20 object-cover" 
+              />
+              <div className="text-left">
+                <p className="text-[10px] font-black text-white uppercase tracking-wider">{activePlayer?.user?.name || 'Carregando...'}</p>
+                <p className="text-[7px] font-bold text-white/60 uppercase">Corte de Competição</p>
+              </div>
             </div>
-            <div className="flex items-center justify-center space-x-8 py-4">
-               <button className="w-16 h-16 bg-pink-50 text-pink-600 rounded-full flex items-center justify-center shadow-lg"><Heart size={32} /></button>
-               <button className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center shadow-lg"><MessageCircle size={32} /></button>
-               <button className="w-16 h-16 bg-gray-50 text-gray-400 rounded-full flex items-center justify-center shadow-lg"><Share2 size={32} /></button>
+          </div>
+          <span className="text-[8px] font-black bg-blue-600 px-3 py-1 rounded-full uppercase tracking-wider italic font-orbitron">
+            {storyIndex === 0 ? 'Trabalho 1/2' : 'Trabalho 2/2'}
+          </span>
+        </div>
+
+        {/* Click Areas to navigate between slides */}
+        <div className="absolute inset-x-0 top-20 bottom-32 z-10 flex">
+          <div 
+            onClick={() => setStoryIndex(0)} 
+            className="flex-1 cursor-w-resize" 
+          />
+          <div 
+            onClick={() => setStoryIndex(1)} 
+            className="flex-1 cursor-e-resize" 
+          />
+        </div>
+
+        {/* Background Cut Photo */}
+        <div className="flex-1 relative bg-gray-950 flex items-center justify-center">
+          {activePhoto ? (
+            <img 
+              src={activePhoto} 
+              className="w-full h-full object-cover select-none" 
+              alt={`Corte de ${activePlayer?.user?.name}`}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center p-8 text-center text-gray-500 space-y-4">
+              <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center text-gray-400">
+                <Swords size={32} />
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-wider">Aguardando envio da foto deste barbeiro</p>
             </div>
-         </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40 pointer-events-none" />
+        </div>
+
+        {/* Interaction Sidebar */}
+        <div className="absolute right-4 bottom-32 z-30 flex flex-col space-y-4 items-center">
+          <div className="flex flex-col items-center">
+            <button 
+              onClick={handleLikeToggle}
+              className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-90 ${isLiked ? 'bg-pink-600 text-white' : 'bg-black/40 text-white hover:bg-black/60'}`}
+            >
+              <Heart size={20} fill={isLiked ? 'currentColor' : 'none'} />
+            </button>
+            <span className="text-[8px] font-black uppercase tracking-wider text-white mt-1 shadow-sm">{likesCount} Likes</span>
+          </div>
+
+          <div className="flex flex-col items-center">
+            <button 
+              onClick={() => setShowCommentsPanel(true)}
+              className="w-12 h-12 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-md transition-all active:scale-90"
+            >
+              <MessageCircle size={20} />
+            </button>
+            <span className="text-[8px] font-black uppercase tracking-wider text-white mt-1 shadow-sm">{commentsCount} Comentários</span>
+          </div>
+
+          <div className="flex flex-col items-center">
+            <button 
+              onClick={handleShare}
+              className="w-12 h-12 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-md transition-all active:scale-90"
+            >
+              <Share2 size={20} />
+            </button>
+            <span className="text-[8px] font-black uppercase tracking-wider text-white mt-1 shadow-sm">Compartilhar</span>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div className="p-6 bg-black/85 backdrop-blur-md border-t border-white/10 relative z-30 flex flex-col space-y-3">
+          {hasVoted ? (
+            <div className="space-y-3">
+              <p className="text-[9px] font-black text-green-400 uppercase tracking-widest text-center">
+                ✓ Seu Voto foi Computado!
+              </p>
+              <div className="grid grid-cols-2 gap-3 text-center">
+                <div className={`p-3 rounded-2xl border ${voteChoice === p1?.id ? 'bg-blue-600/20 border-blue-500' : 'bg-white/5 border-white/10'}`}>
+                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-wider">{p1?.user?.name}</p>
+                  <p className="text-sm font-black font-orbitron text-white">{pct1}%</p>
+                </div>
+                <div className={`p-3 rounded-2xl border ${voteChoice === p2?.id ? 'bg-blue-600/20 border-blue-500' : 'bg-white/5 border-white/10'}`}>
+                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-wider">{p2?.user?.name}</p>
+                  <p className="text-sm font-black font-orbitron text-white">{pct2}%</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button 
+              onClick={() => handleVoteSubmit(activePlayer.id)}
+              className="w-full py-5 bg-blue-600 text-white rounded-[20px] font-black uppercase italic tracking-widest shadow-xl transition-all hover:bg-blue-700 active:scale-95 text-xs"
+            >
+              VOTAR NO CORTE DE {activePlayer?.user?.name}
+            </button>
+          )}
+        </div>
+
+        {/* Comments Sliding Drawer Panel */}
+        <AnimatePresence>
+          {showCommentsPanel && (
+            <>
+              <div 
+                className="absolute inset-0 bg-black/50 z-[80]" 
+                onClick={() => setShowCommentsPanel(false)}
+              />
+              <motion.div 
+                initial={{ y: '100%' }} 
+                animate={{ y: 0 }} 
+                exit={{ y: '100%' }} 
+                transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+                className="absolute inset-x-0 bottom-0 h-[60%] bg-zinc-900 rounded-t-[30px] border-t border-white/10 z-[90] flex flex-col text-white"
+              >
+                <div className="px-6 py-4 flex items-center justify-between border-b border-white/5">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Comentários ({commentsCount})</span>
+                  <button 
+                    onClick={() => setShowCommentsPanel(false)} 
+                    className="p-1 text-gray-400 hover:text-white"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar">
+                  {match.comments && match.comments.length > 0 ? (
+                    match.comments.map((cmt: any) => (
+                      <div key={cmt.id} className="flex space-x-3 text-left">
+                        <img 
+                          src={cmt.userAvatar} 
+                          className="w-8 h-8 rounded-full object-cover border border-white/10" 
+                        />
+                        <div className="flex-1 bg-white/5 p-3 rounded-2xl border border-white/5">
+                          <div className="flex justify-between items-baseline mb-1">
+                            <span className="text-[9px] font-black text-blue-400 uppercase">{cmt.userName}</span>
+                            <span className="text-[7px] text-gray-500">
+                              {new Date(cmt.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-[10px] font-medium text-gray-200 uppercase tracking-wide leading-relaxed">
+                            {cmt.content}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-12 text-gray-500">
+                      <p className="text-[9px] font-black uppercase tracking-wider">Sem comentários ainda.</p>
+                      <p className="text-[7px] font-bold uppercase tracking-wider text-gray-600 mt-1">Seja o primeiro a mandar a braba!</p>
+                    </div>
+                  )}
+                </div>
+
+                <form 
+                  onSubmit={handleCommentSubmit}
+                  className="p-4 bg-zinc-950 border-t border-white/5 flex items-center space-x-3"
+                >
+                  <input 
+                    type="text" 
+                    placeholder="ESCREVA SEU COMENTÁRIO..." 
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                    className="flex-1 bg-zinc-900 border border-white/10 rounded-2xl py-3 px-4 text-[10px] font-black uppercase tracking-wider text-white placeholder-zinc-500 focus:outline-none focus:border-blue-600 transition-colors"
+                  />
+                  <button 
+                    type="submit"
+                    className="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all active:scale-95"
+                  >
+                    <Send size={14} />
+                  </button>
+                </form>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </motion.div>
     );
   };
@@ -1013,7 +1368,6 @@ export default function League() {
     
     const winner = votes1 >= votes2 ? p1 : p2;
     const winnerVotes = votes1 >= votes2 ? votes1 : votes2;
-    const avgScore = match?.refereeLogs?.[0]?.score || 9.5;
 
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[8000] bg-blue-950 flex flex-col items-center justify-center text-center p-8 overflow-hidden shadow-2xl">
@@ -1025,8 +1379,6 @@ export default function League() {
             <p className="text-cyan-400 font-black font-orbitron tracking-[0.4em] uppercase text-[12px] mb-4">Vencedor do Combate</p>
             <h2 className="text-4xl font-black text-white font-orbitron italic uppercase tracking-tighter mb-4">{winner?.user?.name || 'Sem Vencedor'}</h2>
             <div className="flex items-center justify-center space-x-3 mb-12">
-              <span className="text-[14px] font-black text-blue-200 uppercase tracking-widest italic">Nota Técnica: {avgScore.toFixed(1)}</span>
-              <div className="w-2 h-2 rounded-full bg-blue-300" />
               <span className="text-[14px] font-black text-blue-200 uppercase tracking-widest italic">{winnerVotes} Votos</span>
             </div>
             <button onClick={() => setView('home')} className="px-12 py-6 bg-white text-blue-950 rounded-[30px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all">Sair da Arena</button>
@@ -1042,7 +1394,6 @@ export default function League() {
         {view === 'home' && renderHome()}
         {view === 'create' && renderCreate()}
         {view === 'detail' && renderDetail()}
-        {view === 'referee' && renderReferee()}
         {view === 'voting' && renderVoting()}
         {view === 'final' && renderFinal()}
       </AnimatePresence>
@@ -1058,13 +1409,26 @@ export default function League() {
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-8">Sua arena está ativa e pronta para os combates.</p>
               <div className="space-y-3">
                 <button 
-                  onClick={() => { setShowSuccess(false); setView('detail'); setSelectedChamp(newlyCreated); }} 
+                  onClick={() => { 
+                    setShowSuccess(false); 
+                    setView('detail'); 
+                    setSelectedChamp(newlyCreated); 
+                    setCreateStep(0); 
+                    setForm({ name: '', modality: 'x1', arbitration: 'hybrid', maxParticipants: 16, prize: '', votingTime: 24, judges: [] as string[], liga: 1, opponentNick: '', opponentId: '', theme: '', startDate: '', startTime: '', photo1: '' });
+                    setSelectedOpponent(null);
+                  }} 
                   className="w-full py-5 bg-blue-600 text-white rounded-[20px] font-black uppercase italic tracking-widest shadow-xl"
                 >
                   Ver Detalhes Agora
                 </button>
                 <button 
-                  onClick={() => { setShowSuccess(false); setView('home'); setCreateStep(0); setForm({ name: '', modality: 'x1', arbitration: 'hybrid', maxParticipants: 16, prize: '', votingTime: 24, judges: [] as string[], liga: 1, opponentNick: '', opponentId: '', theme: '', startDate: '', startTime: '', photo1: '' }); }} 
+                  onClick={() => { 
+                    setShowSuccess(false); 
+                    setView('home'); 
+                    setCreateStep(0); 
+                    setForm({ name: '', modality: 'x1', arbitration: 'hybrid', maxParticipants: 16, prize: '', votingTime: 24, judges: [] as string[], liga: 1, opponentNick: '', opponentId: '', theme: '', startDate: '', startTime: '', photo1: '' }); 
+                    setSelectedOpponent(null);
+                  }} 
                   className="w-full py-4 text-blue-950 font-black uppercase text-[10px] tracking-widest"
                 >
                   Voltar para Home

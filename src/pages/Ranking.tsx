@@ -20,10 +20,11 @@ export default function Ranking() {
   ];
 
   const tickerItems = [
-    { text: "HENRIQUE VENCEU GUSTAVO", change: "+45 XP", type: "win" },
-    { text: "VITOR SUBIU 3 POSIÇÕES", change: "RANK #4", type: "rank" },
-    { text: "BRASILEIRÃO: INSCRIÇÕES ABERTAS", change: "ELITE", type: "info" },
-    { text: "CAIO ATINGIU STREAK DE 5", change: "FIRE ON!", type: "streak" },
+    { text: "$GUST (GUSTAVO)", change: "R$ 150.20 (+12.4%)", type: "up" },
+    { text: "$HENR (HENRIQUE)", change: "R$ 98.50 (-4.2%)", type: "down" },
+    { text: "$VITO (VITOR)", change: "R$ 112.10 (+8.7%)", type: "up" },
+    { text: "$CAIO (CAIO)", change: "R$ 75.40 (-1.5%)", type: "down" },
+    { text: "$LUIS (LUIS)", change: "R$ 52.00 (+3.1%)", type: "up" },
   ];
 
   return (
@@ -39,7 +40,7 @@ export default function Ranking() {
             <div key={i} className="flex items-center space-x-3">
               <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               <span className="text-[9px] font-black font-orbitron text-white tracking-widest">{item.text}</span>
-              <span className="text-[8px] font-black font-orbitron text-cyan-200">{item.change}</span>
+              <span className={`text-[8px] font-black font-orbitron ${item.type === 'up' ? 'text-cyan-200' : 'text-red-200'}`}>{item.change}</span>
             </div>
           ))}
         </motion.div>
@@ -55,7 +56,7 @@ export default function Ranking() {
               </div>
               <h1 className="text-blue-950 text-2xl font-black font-orbitron italic tracking-widest uppercase">Elite League</h1>
             </div>
-            <p className="text-blue-600/40 text-[10px] font-black font-orbitron mt-2 tracking-[0.3em]">RANKING DA TEMPORADA 01</p>
+            <p className="text-blue-600/40 text-[10px] font-black font-orbitron mt-2 tracking-[0.3em]">BOLSA DE VALORES DE BARBEIROS</p>
           </div>
           <div className="flex space-x-2">
             <button className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-950/20 hover:text-blue-600 transition-colors border border-gray-100 shadow-sm"><Search size={18} /></button>
@@ -145,7 +146,7 @@ export default function Ranking() {
                 <div className="absolute -bottom-2 -right-1 bg-white w-6 h-6 rounded-md flex items-center justify-center border border-gray-100 shadow-md z-20 font-orbitron font-black text-[10px] text-gray-400 italic">2</div>
               </div>
               <h3 className="text-blue-950 font-black mt-4 text-[10px] font-orbitron truncate w-20 text-center uppercase tracking-tighter">{sortedBarbers[1].name.split(' ')[0]}</h3>
-              <p className="text-blue-600 font-black text-[9px] font-orbitron tracking-widest">{sortedBarbers[1].xp} XP</p>
+              <p className="text-blue-600 font-black text-[9px] font-orbitron tracking-widest">R$ {(sortedBarbers[1].xp * 0.15 + 10).toFixed(2)} (+5.2%)</p>
             </motion.div>
           )}
 
@@ -159,7 +160,7 @@ export default function Ranking() {
               <h3 className="text-blue-950 font-black mt-8 text-sm font-orbitron italic tracking-widest uppercase">{sortedBarbers[0].name.toUpperCase()}</h3>
               <div className="flex items-center space-x-1 mt-1">
                 <Zap size={12} className="text-blue-600 fill-blue-600" />
-                <p className="text-blue-600 font-black font-orbitron text-sm">{sortedBarbers[0].xp} XP</p>
+                <p className="text-blue-600 font-black font-orbitron text-sm">R$ {(sortedBarbers[0].xp * 0.15 + 10).toFixed(2)} (+12.4%)</p>
               </div>
             </motion.div>
           )}
@@ -172,48 +173,58 @@ export default function Ranking() {
                 <div className="absolute -bottom-2 -left-1 bg-white w-6 h-6 rounded-md flex items-center justify-center border border-gray-100 shadow-md z-20 font-orbitron font-black text-[10px] text-orange-400 italic">3</div>
               </div>
               <h3 className="text-blue-950 font-black mt-4 text-[10px] font-orbitron truncate w-20 text-center uppercase tracking-tighter">{sortedBarbers[2].name.split(' ')[0]}</h3>
-              <p className="text-orange-500 font-black text-[9px] font-orbitron tracking-widest">{sortedBarbers[2].xp} XP</p>
+              <p className="text-orange-500 font-black text-[9px] font-orbitron tracking-widest">R$ {(sortedBarbers[2].xp * 0.15 + 10).toFixed(2)} (-2.1%)</p>
             </motion.div>
           )}
         </div>
 
-        {/* LISTAGEM CLEAN */}
+        {/* LISTAGEM CLEAN - BOLSA DE VALORES */}
         <div className="px-4 space-y-3 pb-8">
-          {sortedBarbers.slice(3).map((barber, index) => (
-            <motion.div 
-              onClick={() => navigate(`/profile/${barber.id}`)}
-              initial={{ opacity: 0, y: 10 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              transition={{ delay: index * 0.05 }}
-              key={barber.id} 
-              className="bg-white border border-gray-100 p-4 rounded-3xl flex items-center hover:border-blue-200 transition-all group cursor-pointer active:scale-[0.98] shadow-sm shadow-gray-200/20"
-            >
-              <div className="flex flex-col items-center min-w-[30px]">
-                <span className="text-gray-300 font-black font-orbitron text-[10px] italic">#{index + 4}</span>
-                {index % 2 === 0 ? <TrendingUp size={12} className="text-green-500 mt-1" /> : <TrendingDown size={12} className="text-red-400 mt-1" />}
-              </div>
-              
-              <div className="mx-4">
-                <img src={barber.avatar} className="w-11 h-11 rounded-2xl object-cover border border-gray-50 shadow-sm" />
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <h4 className="text-blue-950 font-black font-orbitron text-[10px] italic truncate group-hover:text-blue-600 transition-colors uppercase tracking-widest">{barber.name}</h4>
-                <div className="flex items-center space-x-2 mt-1">
-                  <span className="text-[7px] font-black text-gray-400 uppercase tracking-[0.2em]">{barber.guild.name}</span>
+          {sortedBarbers.slice(3).map((barber, index) => {
+            const stockCode = barber.name.split(' ')[0].substring(0, 4).toUpperCase();
+            const shareValue = (barber.xp * 0.15 + 10).toFixed(2);
+            const isUp = index % 2 === 0;
+            const variation = (isUp ? '+' : '-') + (Math.random() * 8 + 1).toFixed(1) + '%';
+            
+            return (
+              <motion.div 
+                onClick={() => navigate(`/profile/${barber.id}`)}
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                transition={{ delay: index * 0.05 }}
+                key={barber.id} 
+                className="bg-white border border-gray-100 p-4 rounded-3xl flex items-center hover:border-blue-200 transition-all group cursor-pointer active:scale-[0.98] shadow-sm shadow-gray-200/20"
+              >
+                <div className="flex flex-col items-center min-w-[30px]">
+                  <span className="text-gray-300 font-black font-orbitron text-[10px] italic">#{index + 4}</span>
+                  {isUp ? <TrendingUp size={12} className="text-green-500 mt-1" /> : <TrendingDown size={12} className="text-red-400 mt-1" />}
                 </div>
-              </div>
+                
+                <div className="mx-4">
+                  <img src={barber.avatar} className="w-11 h-11 rounded-2xl object-cover border border-gray-50 shadow-sm" />
+                </div>
 
-              <div className="text-right">
-                <p className="text-blue-950 font-black font-orbitron text-xs italic tracking-tighter">{barber.xp.toLocaleString()}</p>
-                <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest">PONTOS</p>
-              </div>
-              
-              <div className="ml-4 opacity-10 group-hover:opacity-100 transition-opacity">
-                <ChevronRight size={14} className="text-blue-600" />
-              </div>
-            </motion.div>
-          ))}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-1.5">
+                    <h4 className="text-blue-950 font-black font-orbitron text-[10px] italic truncate group-hover:text-blue-600 transition-colors uppercase tracking-widest">{barber.name}</h4>
+                    <span className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded text-[6px] font-black tracking-widest">${stockCode}</span>
+                  </div>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <span className="text-[7px] font-black text-gray-400 uppercase tracking-[0.2em]">{barber.guild?.name || 'Guilda Elite'}</span>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <p className="text-blue-950 font-black font-orbitron text-xs italic tracking-tighter">R$ {shareValue}</p>
+                  <p className={`text-[7px] font-black uppercase tracking-widest ${isUp ? 'text-green-500' : 'text-red-500'}`}>{variation}</p>
+                </div>
+                
+                <div className="ml-4 opacity-10 group-hover:opacity-100 transition-opacity">
+                  <ChevronRight size={14} className="text-blue-600" />
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
       <style dangerouslySetInnerHTML={{ __html: `
