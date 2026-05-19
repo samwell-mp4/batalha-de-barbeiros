@@ -101,7 +101,6 @@ export default function Profile() {
          setFollowersCount(prev => prev + 1);
       }
    };
-   const [likedItems, setLikedItems] = useState<Set<number>>(new Set());
    const [selectedHighlight, setSelectedHighlight] = useState<any>(null);
    const [storyIndex, setStoryIndex] = useState(0);
    const [showRouteOptions, setShowRouteOptions] = useState(false);
@@ -464,15 +463,9 @@ export default function Profile() {
    // Feed Dinâmico (Vazio para novos)
    const feedImages = barber.posts || [];
 
-   const toggleLike = (itemId: number) => {
-      const newLiked = new Set(likedItems);
-      if (newLiked.has(itemId)) {
-         newLiked.delete(itemId);
-      } else {
-         newLiked.add(itemId);
-      }
-      setLikedItems(newLiked);
-   };
+
+
+
 
    const openExternalMap = (type: 'google' | 'waze') => {
       const { latitude, longitude } = barber.coordinates || { latitude: -23.525, longitude: -46.522 };
