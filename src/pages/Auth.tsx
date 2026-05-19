@@ -315,6 +315,7 @@ export default function Auth() {
 
   const handleLogin = async () => {
     if (!form.email) return alert('Por favor, digite seu e-mail de acesso.');
+    if (!form.password) return alert('Por favor, digite sua senha de acesso.');
     setLoading(true);
     try {
       // Limpa qualquer lixo anterior antes de tentar logar
@@ -330,11 +331,11 @@ export default function Auth() {
           window.location.reload();
         }, 100);
       } else {
-        throw new Error('Resposta do servidor inválida');
+        throw new Error(response?.error || 'Resposta do servidor inválida');
       }
     } catch (error: any) {
       console.error('Erro no login:', error);
-      alert(error.response?.data?.error || 'E-mail não encontrado ou erro no servidor. Verifique os dados ou crie uma nova conta.');
+      alert(error.message || 'E-mail não encontrado ou erro no servidor. Verifique os dados ou crie uma nova conta.');
     } finally {
       setLoading(false);
     }
@@ -353,16 +354,20 @@ export default function Auth() {
         schedule: JSON.stringify(form.schedule)
       });
 
-      // Salva dados básicos para o guia de boas-vindas
-      localStorage.setItem('user', JSON.stringify(response));
-      localStorage.setItem('justRegistered', 'true');
+      if (response && response.id) {
+        // Salva dados básicos para o guia de boas-vindas
+        localStorage.setItem('user', JSON.stringify(response));
+        localStorage.setItem('justRegistered', 'true');
 
-      // Vai direto para o mapa/home após o sucesso
-      navigate('/');
-      window.location.reload(); // Garante que o estado global seja limpo
+        // Vai direto para o mapa/home após o sucesso
+        navigate('/');
+        window.location.reload(); // Garante que o estado global seja limpo
+      } else {
+        throw new Error(response?.error || 'Resposta do servidor inválida');
+      }
     } catch (error: any) {
       console.error('Erro ao cadastrar:', error);
-      const msg = error.response?.data?.error || error.message || 'Erro ao criar conta. Tente novamente.';
+      const msg = error.message || 'Erro ao criar conta. Tente novamente.';
       alert(`ERRO NO CADASTRO: ${msg}`);
     } finally {
       setLoading(false);
@@ -804,6 +809,20 @@ export default function Auth() {
                     placeholder="EXEMPLO@EMAIL.COM"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="w-full bg-gray-50 border-2 border-gray-100 rounded-[30px] py-6 pl-16 pr-6 font-black uppercase text-[12px] focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 placeholder-gray-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-blue-950 uppercase tracking-widest ml-1 mb-2 block text-center">Digite sua Senha</label>
+                <div className="relative">
+                  <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-600" size={20} />
+                  <input
+                    type="password"
+                    placeholder="SUA SENHA DE ACESSO"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
                     className="w-full bg-gray-50 border-2 border-gray-100 rounded-[30px] py-6 pl-16 pr-6 font-black uppercase text-[12px] focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 placeholder-gray-400"
                   />
                 </div>
