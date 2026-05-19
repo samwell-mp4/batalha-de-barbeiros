@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Trophy, Swords, Users, MapPin, Globe, ShieldCheck,
-  Info, Search, Filter, BarChart3, BrainCircuit,
+  Trophy, Swords, MapPin, Globe, ShieldCheck,
+  Info, Search, Filter, BarChart3,
   LayoutGrid, X, ChevronLeft,
   Check, Star, Plus, Heart, MessageCircle, Share2, Send
 } from 'lucide-react';
@@ -43,7 +43,7 @@ export default function League() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 5;
 
-  const [currentUser] = useState<any>(() => {
+  const [currentUser, setCurrentUser] = useState<any>(() => {
     const saved = localStorage.getItem('user');
     if (!saved || saved === 'undefined' || saved === 'null') return null;
     try {
@@ -52,6 +52,23 @@ export default function League() {
       return null;
     }
   });
+
+  useEffect(() => {
+    const syncLocalUser = () => {
+      const saved = localStorage.getItem('user');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (JSON.stringify(parsed) !== JSON.stringify(currentUser)) {
+            setCurrentUser(parsed);
+          }
+        } catch (e) {}
+      }
+    };
+    syncLocalUser();
+    window.addEventListener('focus', syncLocalUser);
+    return () => window.removeEventListener('focus', syncLocalUser);
+  }, [view, activeTab]);
 
   const [dbBarbers, setDbBarbers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -175,8 +192,7 @@ export default function League() {
           {[
             { id: 'tournaments', lab: 'Torneios', icon: <Swords size={14} /> },
             { id: 'my_tournaments', lab: 'Meus', icon: <Plus size={14} /> },
-            { id: 'rankings', lab: 'Rankings', icon: <BarChart3 size={14} /> },
-            { id: 'referee', lab: 'Árbitro', icon: <BrainCircuit size={14} /> }
+            { id: 'rankings', lab: 'Rankings', icon: <BarChart3 size={14} /> }
           ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 flex items-center justify-center space-x-2 py-3 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-400'}`}>
               {tab.icon}
@@ -187,7 +203,7 @@ export default function League() {
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-28 px-6 py-8">
-        {activeTab === 'tournaments' && (
+        {(activeTab === 'tournaments' || activeTab === 'my_tournaments') && (
           <div className="space-y-8">
             <div>
               <div className="flex items-center justify-between mb-4 px-2"><p className="text-[10px] font-black text-blue-950/40 uppercase tracking-[0.2em] italic">Selecione sua categoria</p><Info size={14} className="text-gray-300" /></div>
@@ -425,20 +441,6 @@ export default function League() {
             </div>
           </div>
         )}
-        {activeTab === 'referee' && (
-          <div className="space-y-8">
-            <div className="bg-blue-600 rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden text-center">
-               <div className="absolute -top-4 -right-4 opacity-10"><BrainCircuit size={140} /></div>
-               <div className="inline-flex items-center space-x-2 bg-white/10 px-4 py-2 rounded-full mb-6 backdrop-blur-xl border border-white/10"><ShieldCheck size={16} className="text-cyan-300" /><span className="text-[9px] font-black uppercase tracking-widest">Motor de Arbitragem V2.0</span></div>
-               <h2 className="text-3xl font-black font-orbitron italic mb-2 tracking-tighter uppercase leading-tight">Árbitro IA Ativo</h2>
-               <p className="text-[10px] font-bold text-blue-100 uppercase tracking-widest opacity-80 mb-8">Análise de Simetria e Técnica em Tempo Real</p>
-               <div className="bg-black/20 rounded-[30px] p-6 mb-8 border border-white/5">
-                  {[{lab:'Simetria & Alinhamento',s:92},{lab:'Qualidade do Acabamento',s:88},{lab:'Iluminação & Ângulo',s:95}].map((c,i)=>(<div key={i} className="mb-4 text-left"><div className="flex justify-between text-[8px] font-black uppercase mb-1.5"><span>{c.lab}</span><span className="text-cyan-300">{c.s}/100</span></div><div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden"><div className="h-full bg-cyan-400" style={{width:c.s+'%'}} /></div></div>))}
-               </div>
-               <button onClick={() => setView('referee')} className="w-full py-4 bg-white text-blue-600 rounded-2xl font-black text-xs uppercase italic tracking-widest">Entrar na Sala do Árbitro</button>
-            </div>
-          </div>
-        )}
       </div>
       <motion.button 
         whileHover={{ scale: 1.05 }} 
@@ -472,7 +474,7 @@ export default function League() {
         prize: form.prize,
         votingTime: form.votingTime,
         maxParticipants: form.maxParticipants,
-        startDate: form.startDate,
+        startDate: (form.startDate && form.startTime) ? new Date(`${form.startDate}T${form.startTime}:00`).toISOString() : (form.startDate ? new Date(form.startDate).toISOString() : null),
         startTime: form.startTime,
         creatorId: currentUser?.barberProfile?.id || null,
         opponentId: form.opponentId || null,
@@ -493,7 +495,7 @@ export default function League() {
     <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[6000] bg-white flex flex-col shadow-2xl">
       <div className="px-6 py-8 flex items-center justify-between border-b border-gray-100">
         <button onClick={() => { if(createStep > 0) setCreateStep(s=>s-1); else setView('home'); }} className="p-3 bg-gray-50 rounded-2xl text-blue-950"><ChevronLeft size={24} /></button>
-        <div className="text-center"><p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Passo {createStep + 1} de 4</p><h2 className="text-sm font-black text-blue-950 uppercase italic font-orbitron">Novo Campeonato</h2></div>
+        <div className="text-center"><p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Passo {createStep + 1} de 3</p><h2 className="text-sm font-black text-blue-950 uppercase italic font-orbitron">Novo Campeonato</h2></div>
         <button onClick={() => setView('home')} className="p-3 bg-gray-50 rounded-2xl text-gray-400"><X size={24} /></button>
       </div>
       <div className="flex-1 overflow-y-auto px-6 py-8 space-y-8">
@@ -593,17 +595,6 @@ export default function League() {
         )}
         {createStep === 2 && (
           <div className="space-y-6">
-            <h3 className="text-2xl font-black text-blue-950 uppercase italic font-orbitron">Modo de Arbitragem</h3>
-            {[{id:'hybrid',lab:'Híbrido (Pro)',desc:'IA + Público + Jurados',icon:<Users />},{id:'ia',lab:'IA Técnica',desc:'Análise do Sistema',icon:<BrainCircuit />},{id:'public',lab:'Público Total',desc:'Voto da Galera',icon:<LayoutGrid />}].map(m => (
-              <button key={m.id} onClick={() => setForm({...form, arbitration: m.id})} className={`w-full p-6 rounded-[30px] border-2 flex items-center justify-between transition-all ${form.arbitration === m.id ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white'}`}>
-                <div className="flex items-center space-x-4"><div className={`w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center ${form.arbitration === m.id ? 'text-white bg-blue-600' : '!text-blue-950'}`}>{m.icon}</div><div className="text-left"><p className={`text-sm font-black uppercase ${form.arbitration === m.id ? 'text-blue-600' : '!text-blue-950'}`}>{m.lab}</p><p className="text-[10px] font-bold text-gray-400 uppercase">{m.desc}</p></div></div>
-                {form.arbitration === m.id && <Check className="text-blue-600" />}
-              </button>
-            ))}
-          </div>
-        )}
-        {createStep === 3 && (
-          <div className="space-y-6">
             <h3 className="text-2xl font-black text-blue-950 uppercase italic font-orbitron">Configurações Finais</h3>
             <div className="space-y-4">
               <div className="bg-white p-6 rounded-[30px] border-2 border-gray-100 shadow-inner">
@@ -681,13 +672,13 @@ export default function League() {
       <div className="p-6 border-t border-gray-100">
         <button 
           disabled={loading}
-          onClick={() => { if(createStep < 3) setCreateStep(s=>s+1); else handleCreateFinish(); }} 
+          onClick={() => { if(createStep < 2) setCreateStep(s=>s+1); else handleCreateFinish(); }} 
           className="w-full py-6 bg-blue-600 disabled:bg-gray-400 text-white rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center space-x-2"
         >
           {loading ? (
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
-            <span>{createStep === 3 ? 'Publicar Campeonato' : 'Próximo Passo'}</span>
+            <span>{createStep === 2 ? 'Publicar Campeonato' : 'Próximo Passo'}</span>
           )}
         </button>
       </div>

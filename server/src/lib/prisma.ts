@@ -96,8 +96,7 @@ const db: Record<string, any[]> = {
       updatedAt: new Date()
     }
   ],
-  vote: [],
-  refereelog: []
+  vote: []
 };
 
 // Check if database is reachable on startup
@@ -195,9 +194,6 @@ function resolveRelations(modelName: string, item: any, include: any): any {
   if (modelName === 'match') {
     if (include?.votes) {
       copy.votes = db.vote.filter(v => v.matchId === item.id);
-    }
-    if (include?.refereeLogs) {
-      copy.refereeLogs = db.refereelog.filter(r => r.matchId === item.id);
     }
   }
   return copy;

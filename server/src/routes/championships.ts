@@ -10,14 +10,12 @@ const matchCommentsStore: Record<string, Array<{ id: string, userId: string, use
 function injectLikesAndComments(championship: any) {
   if (!championship) return championship;
   
-  // Clean up refereeLogs from the response object as requested
   if (championship.matches && championship.matches.length > 0) {
     championship.matches = championship.matches.map((m: any) => {
-      const { refereeLogs, ...rest } = m;
       const likes = matchLikesStore[m.id] || [];
       const comments = matchCommentsStore[m.id] || [];
       return {
-        ...rest,
+        ...m,
         likes,
         comments
       };
@@ -33,7 +31,7 @@ async function checkAndSyncChampionship(id: string, nowOverride?: Date) {
     where: { id },
     include: {
       participants: { include: { user: true } },
-      matches: { include: { votes: true, refereeLogs: true } }
+      matches: { include: { votes: true } }
     }
   });
 
@@ -45,12 +43,7 @@ async function checkAndSyncChampionship(id: string, nowOverride?: Date) {
   const now = nowOverride || new Date();
 
   // Helper to parse scheduled start
-  let scheduledStart: Date | null = null;
-  if (championship.startDate) {
-    const datePart = new Date(championship.startDate).toISOString().split('T')[0];
-    const timePart = championship.startTime || '00:00';
-    scheduledStart = new Date(`${datePart}T${timePart}:00`);
-  }
+  const scheduledStart = championship.startDate ? new Date(championship.startDate) : null;
 
   const createdAtTime = new Date(championship.createdAt).getTime();
   const gracePeriodMs = 30 * 60 * 1000;
@@ -71,7 +64,7 @@ async function checkAndSyncChampionship(id: string, nowOverride?: Date) {
       data: { status: 'FINISHED' },
       include: {
         participants: { include: { user: true } },
-        matches: { include: { votes: true, refereeLogs: true } }
+        matches: { include: { votes: true } }
       }
     });
   }
@@ -87,7 +80,7 @@ async function checkAndSyncChampionship(id: string, nowOverride?: Date) {
       data: { status: 'ONGOING' },
       include: {
         participants: { include: { user: true } },
-        matches: { include: { votes: true, refereeLogs: true } }
+        matches: { include: { votes: true } }
       }
     });
   }
@@ -108,7 +101,7 @@ async function checkAndSyncChampionship(id: string, nowOverride?: Date) {
         data: { status: 'FINISHED' },
         include: {
           participants: { include: { user: true } },
-          matches: { include: { votes: true, refereeLogs: true } }
+          matches: { include: { votes: true } }
         }
       });
     }
@@ -129,8 +122,7 @@ router.get('/', async (req, res) => {
         },
         matches: {
           include: {
-            votes: true,
-            refereeLogs: true
+            votes: true
           }
         }
       },
@@ -242,12 +234,7 @@ router.post('/:id/accept', async (req, res) => {
     const match = championship.matches[0];
 
     // Check expiration before accepting
-    let scheduledStart: Date | null = null;
-    if (championship.startDate) {
-      const datePart = new Date(championship.startDate).toISOString().split('T')[0];
-      const timePart = championship.startTime || '00:00';
-      scheduledStart = new Date(`${datePart}T${timePart}:00`);
-    }
+    const scheduledStart = championship.startDate ? new Date(championship.startDate) : null;
 
     const now = req.headers['x-test-current-time'] ? new Date(req.headers['x-test-current-time'] as string) : new Date();
 
@@ -311,7 +298,7 @@ router.post('/:id/start-now', async (req, res) => {
       data: { status: 'ONGOING' },
       include: {
         participants: { include: { user: true } },
-        matches: { include: { votes: true, refereeLogs: true } }
+        matches: { include: { votes: true } }
       }
     });
 
@@ -349,7 +336,7 @@ router.post('/:id/start-scheduled', async (req, res) => {
       data: { status: 'WAITING' },
       include: {
         participants: { include: { user: true } },
-        matches: { include: { votes: true, refereeLogs: true } }
+        matches: { include: { votes: true } }
       }
     });
 
