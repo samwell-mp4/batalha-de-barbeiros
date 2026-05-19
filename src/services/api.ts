@@ -112,4 +112,16 @@ export const api = {
     });
     return res.json();
   },
+  deleteAppointment: async (id: string) => {
+    const res = await fetch(`${API_URL}/appointments/${id}`, {
+      method: 'DELETE',
+    });
+    return res.json();
+  },
+  clearHistory: async (userId: string) => {
+    const res = await fetch(`${API_URL}/appointments/clear-history/${userId}`, {
+      method: 'DELETE',
+    });
+    return res.json();
+  },
 };

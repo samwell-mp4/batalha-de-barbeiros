@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
+import { AppointmentStatus } from '@prisma/client';
 
 const router = Router();
 
@@ -329,6 +330,52 @@ router.get('/user-active/:userId', async (req, res) => {
     res.json(activeAppointment || null);
   } catch (error: any) {
     console.error('[API ERROR] Failed to fetch active appointment:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete a single appointment
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.appointment.delete({
+      where: { id }
+    });
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('[API ERROR] Failed to delete appointment:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Bulk clear completed/cancelled appointments for a user/barber
+router.delete('/clear-history/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Find if the user is a barber
+    const barber = await prisma.barber.findFirst({
+      where: { userId }
+    });
+
+    const deleteResult = await prisma.appointment.deleteMany({
+      where: {
+        OR: [
+          {
+            clientId: userId,
+            status: { in: ['COMPLETED', 'CANCELLED'] as AppointmentStatus[] }
+          },
+          ...(barber ? [{
+            barberId: barber.id,
+            status: { in: ['COMPLETED', 'CANCELLED'] as AppointmentStatus[] }
+          }] : [])
+        ]
+      }
+    });
+
+    res.json({ success: true, count: deleteResult.count });
+  } catch (error: any) {
+    console.error('[API ERROR] Failed to clear history:', error.message);
     res.status(500).json({ error: error.message });
   }
 });

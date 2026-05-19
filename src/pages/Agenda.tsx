@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, ChevronRight, ChevronLeft, Plus, X, Zap, Bell, ShieldOff, Check, Scissors as ScissorsIcon, Star, Settings, Calendar, Clock, Navigation } from 'lucide-react';
+import { User, ChevronRight, ChevronLeft, Plus, X, Zap, Bell, ShieldOff, Check, Scissors as ScissorsIcon, Star, Settings, Calendar, Clock, Navigation, Trash2 } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function Agenda() {
@@ -33,9 +33,157 @@ export default function Agenda() {
   const [clientRatings, setClientRatings] = useState<Record<string, number>>({});
   const [barberRatings, setBarberRatings] = useState<Record<string, number>>({});
 
+  // Estados para Paginação e Filtros Inteligentes
+  const [financeiroSearch, setFinanceiroSearch] = useState('');
+  const [financeiroStatus, setFinanceiroStatus] = useState('ALL');
+  const [financeiroDate, setFinanceiroDate] = useState('ALL');
+  const [financeiroSort, setFinanceiroSort] = useState('date-desc');
+  const [financeiroPage, setFinanceiroPage] = useState(1);
+  const pageSizeFinanceiro = 5;
+
+  const [clientActiveSearch, setClientActiveSearch] = useState('');
+  const [clientActivePage, setClientActivePage] = useState(1);
+  const pageSizeClientActive = 3;
+
+  const [clientHistorySearch, setClientHistorySearch] = useState('');
+  const [clientHistoryPage, setClientHistoryPage] = useState(1);
+  const pageSizeClientHistory = 3;
+
   const globalAgenda = matchSession.globalAgenda || {};
   const barberKeyPrefix = user?.barberProfile?.id || user?.id || 'default';
   const notifications = matchSession.notifications || [];
+
+  const allApps = useMemo(() => {
+    return isBarberView
+      ? [...barberAppointments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      : [...appointments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [barberAppointments, appointments, isBarberView]);
+
+  // Filtros inteligentes e ordenação para a aba Financeiro
+  const filteredAllApps = useMemo(() => {
+    let result = [...allApps];
+
+    // 1. Busca por texto (Cliente, Barbeiro ou Serviços)
+    if (financeiroSearch.trim()) {
+      const query = financeiroSearch.toLowerCase();
+      result = result.filter(app => {
+        const clientName = (app.client?.name || '').toLowerCase();
+        const barberName = (app.barber?.user?.name || app.barber?.name || '').toLowerCase();
+        const services = (app.services || []).join(' ').toLowerCase();
+        return clientName.includes(query) || barberName.includes(query) || services.includes(query);
+      });
+    }
+
+    // 2. Filtro de Status
+    if (financeiroStatus !== 'ALL') {
+      result = result.filter(app => app.status === financeiroStatus);
+    }
+
+    // 3. Filtro de Data
+    if (financeiroDate !== 'ALL') {
+      result = result.filter(app => {
+        const appDate = new Date(app.date);
+        return (appDate.getUTCDate() || 16).toString() === financeiroDate;
+      });
+    }
+
+    // 4. Ordenação
+    result.sort((a, b) => {
+      if (financeiroSort === 'date-desc') {
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      } else if (financeiroSort === 'date-asc') {
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      } else if (financeiroSort === 'price-desc') {
+        return (b.price || 0) - (a.price || 0);
+      } else if (financeiroSort === 'price-asc') {
+        return (a.price || 0) - (b.price || 0);
+      }
+      return 0;
+    });
+
+    return result;
+  }, [allApps, financeiroSearch, financeiroStatus, financeiroDate, financeiroSort]);
+
+  const paginatedAllApps = useMemo(() => {
+    const startIndex = (financeiroPage - 1) * pageSizeFinanceiro;
+    return filteredAllApps.slice(startIndex, startIndex + pageSizeFinanceiro);
+  }, [filteredAllApps, financeiroPage]);
+
+  const totalPagesFinanceiro = useMemo(() => {
+    return Math.ceil(filteredAllApps.length / pageSizeFinanceiro) || 1;
+  }, [filteredAllApps.length]);
+
+  // Lista dinâmica de datas únicas dos agendamentos
+  const uniqueDates = useMemo(() => {
+    const dates = allApps.map(app => {
+      const appDate = new Date(app.date);
+      return appDate.getUTCDate() || 16;
+    });
+    return Array.from(new Set(dates)).sort((a, b) => a - b);
+  }, [allApps]);
+
+  // Resetar página do financeiro ao mudar os filtros
+  useEffect(() => {
+    setFinanceiroPage(1);
+  }, [financeiroSearch, financeiroStatus, financeiroDate, financeiroSort]);
+
+  // Filtragem e paginação das Batalhas Próximas (Cliente)
+  const clientActiveAppsFiltered = useMemo(() => {
+    let result = appointments.filter((a: any) => ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'].includes(a.status));
+    
+    if (clientActiveSearch.trim()) {
+      const query = clientActiveSearch.toLowerCase();
+      result = result.filter(app => {
+        const barberName = (app.barber?.user?.name || app.barber?.name || '').toLowerCase();
+        const services = (app.services || []).join(' ').toLowerCase();
+        return barberName.includes(query) || services.includes(query);
+      });
+    }
+    
+    return result;
+  }, [appointments, clientActiveSearch]);
+
+  const paginatedClientActiveApps = useMemo(() => {
+    const startIndex = (clientActivePage - 1) * pageSizeClientActive;
+    return clientActiveAppsFiltered.slice(startIndex, startIndex + pageSizeClientActive);
+  }, [clientActiveAppsFiltered, clientActivePage]);
+
+  const totalPagesClientActive = useMemo(() => {
+    return Math.ceil(clientActiveAppsFiltered.length / pageSizeClientActive) || 1;
+  }, [clientActiveAppsFiltered.length]);
+
+  useEffect(() => {
+    setClientActivePage(1);
+  }, [clientActiveSearch]);
+
+  // Filtragem e paginação do Histórico de Batalhas (Cliente)
+  const clientHistoryAppsFiltered = useMemo(() => {
+    let result = appointments.filter((a: any) => a.status === 'COMPLETED' || a.status === 'CANCELLED');
+    
+    if (clientHistorySearch.trim()) {
+      const query = clientHistorySearch.toLowerCase();
+      result = result.filter(app => {
+        const barberName = (app.barber?.user?.name || app.barber?.name || '').toLowerCase();
+        const services = (app.services || []).join(' ').toLowerCase();
+        return barberName.includes(query) || services.includes(query);
+      });
+    }
+    
+    return result;
+  }, [appointments, clientHistorySearch]);
+
+  const paginatedClientHistoryApps = useMemo(() => {
+    const startIndex = (clientHistoryPage - 1) * pageSizeClientHistory;
+    return clientHistoryAppsFiltered.slice(startIndex, startIndex + pageSizeClientHistory);
+  }, [clientHistoryAppsFiltered, clientHistoryPage]);
+
+  const totalPagesClientHistory = useMemo(() => {
+    return Math.ceil(clientHistoryAppsFiltered.length / pageSizeClientHistory) || 1;
+  }, [clientHistoryAppsFiltered.length]);
+
+  useEffect(() => {
+    setClientHistoryPage(1);
+  }, [clientHistorySearch]);
 
   // Log derivado em tempo real de todas as notificações de status para ambos (Cliente e Barbeiro)
   const notificationsList = useMemo(() => {
@@ -224,6 +372,19 @@ export default function Agenda() {
     }
   };
 
+  const handleClearHistory = async () => {
+    if (confirm('Deseja limpar todos os agendamentos concluídos e cancelados do histórico? Esta ação é irreversível.')) {
+      try {
+        await api.clearHistory(user.id);
+        alert('Histórico de agendamentos limpo com sucesso!');
+        loadClientAppointments();
+        loadBarberAppointments();
+      } catch (e: any) {
+        alert('Erro ao limpar histórico: ' + e.message);
+      }
+    }
+  };
+
   useEffect(() => {
     loadClientAppointments();
     loadBarberAppointments();
@@ -383,9 +544,7 @@ export default function Agenda() {
   const totalGasto = completedApps.reduce((sum, a) => sum + (a.price || 0), 0);
   const totalAgendado = pendingOrConfirmedApps.reduce((sum, a) => sum + (a.price || 0), 0);
 
-  const allApps = isBarberView
-    ? [...barberAppointments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    : [...appointments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
 
   return (
     <div className="flex flex-col bg-white min-h-full font-inter text-blue-950 pb-44 overflow-y-auto no-scrollbar items-center relative">
@@ -477,23 +636,94 @@ export default function Agenda() {
           {activeTab === 'financeiro' ? (
             /* FINANCEIRO / HISTORICO PANEL */
             <div className="flex flex-col w-full pb-20">
+              {/* SMART FILTERS SECTION */}
+              <div className="bg-white border border-gray-150 p-5 rounded-[28px] shadow-sm mb-4 space-y-3">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder={isBarberView ? "Buscar cliente ou serviço..." : "Buscar barbeiro ou serviço..."}
+                    value={financeiroSearch}
+                    onChange={(e) => setFinanceiroSearch(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 px-4 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-blue-950 placeholder-gray-400"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[7px] font-black text-gray-400 uppercase tracking-widest block mb-1 px-1">Filtrar por Status</label>
+                    <select
+                      value={financeiroStatus}
+                      onChange={(e) => setFinanceiroStatus(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-[9px] font-bold text-blue-950 focus:outline-none"
+                    >
+                      <option value="ALL">Todos os Status</option>
+                      <option value="PENDING">Pendente</option>
+                      <option value="PROPOSAL_SENT">Proposta</option>
+                      <option value="CONFIRMED">Confirmado</option>
+                      <option value="IN_SERVICE">Em Andamento</option>
+                      <option value="PAYMENT">Pagamento</option>
+                      <option value="COMPLETED">Finalizado</option>
+                      <option value="CANCELLED">Cancelado</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[7px] font-black text-gray-400 uppercase tracking-widest block mb-1 px-1">Filtrar por Data</label>
+                    <select
+                      value={financeiroDate}
+                      onChange={(e) => setFinanceiroDate(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-[9px] font-bold text-blue-950 focus:outline-none"
+                    >
+                      <option value="ALL">Todas as Datas</option>
+                      {uniqueDates.map(date => (
+                        <option key={date} value={date.toString()}>Dia {date}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div>
+                    <label className="text-[7px] font-black text-gray-400 uppercase tracking-widest block mb-1 px-1">Ordenar por</label>
+                    <select
+                      value={financeiroSort}
+                      onChange={(e) => setFinanceiroSort(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-[9px] font-bold text-blue-950 focus:outline-none"
+                    >
+                      <option value="date-desc">Mais Recentes</option>
+                      <option value="date-asc">Mais Antigos</option>
+                      <option value="price-desc">Preço: Maior</option>
+                      <option value="price-asc">Preço: Menor</option>
+                    </select>
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      onClick={handleClearHistory}
+                      className="w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-500 rounded-xl text-[9px] font-black uppercase border border-red-100 flex items-center justify-center space-x-1.5 transition-all active:scale-95"
+                    >
+                      <Trash2 size={12} />
+                      <span>Limpar Histórico</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* SUMMARY CARDS */}
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                <div className="bg-gradient-to-br from-blue-950 to-blue-900 text-white p-5 rounded-[28px] border border-blue-800 text-left">
-                  <span className="text-[8px] font-black text-cyan-300 uppercase tracking-widest block mb-1">
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-white border border-gray-150 p-5 rounded-[28px] shadow-sm text-left">
+                  <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest block mb-1">
                     {isBarberView ? 'Faturamento Real' : 'Despesas Totais'}
                   </span>
-                  <p className="text-xl font-black italic">R$ {isBarberView ? faturamentoRealizado : totalGasto},00</p>
-                  <span className="text-[7px] font-black text-cyan-400 uppercase tracking-widest block mt-2">
+                  <p className="text-xl font-black italic text-blue-950">R$ {isBarberView ? faturamentoRealizado : totalGasto},00</p>
+                  <span className="text-[7px] font-bold text-gray-400 uppercase tracking-widest block mt-2">
                     ✓ {completedApps.length} Atendimentos
                   </span>
                 </div>
-                <div className="bg-gray-50 p-5 rounded-[28px] border border-gray-100 text-left">
-                  <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block mb-1">
+                <div className="bg-white border border-gray-150 p-5 rounded-[28px] shadow-sm text-left">
+                  <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest block mb-1">
                     {isBarberView ? 'Previsão / Agendado' : 'Agendamentos Pendentes'}
                   </span>
                   <p className="text-xl font-black italic text-blue-950">R$ {isBarberView ? faturamentoPrevisto : totalAgendado},00</p>
-                  <span className="text-[7px] font-black text-blue-500 uppercase tracking-widest block mt-2">
+                  <span className="text-[7px] font-bold text-gray-400 uppercase tracking-widest block mt-2">
                     ⧗ {pendingOrConfirmedApps.length} Reservas
                   </span>
                 </div>
@@ -501,9 +731,9 @@ export default function Agenda() {
 
               {/* HISTORICO LIST */}
               <div className="space-y-3">
-                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2 text-left">Lista de Agendamentos</p>
-                {allApps.length > 0 ? (
-                  allApps.map((app: any) => {
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2 text-left">Lista de Agendamentos ({filteredAllApps.length})</p>
+                {paginatedAllApps.length > 0 ? (
+                  paginatedAllApps.map((app: any) => {
                     const statusColors: Record<string, string> = {
                       PENDING: 'bg-yellow-50 text-yellow-600 border border-yellow-100',
                       PROPOSAL_SENT: 'bg-cyan-50 text-cyan-600 border border-cyan-100',
@@ -528,7 +758,7 @@ export default function Agenda() {
                     const appDate = new Date(app.date);
 
                     return (
-                      <div key={app.id} className="bg-white border border-gray-100 p-5 rounded-[28px] flex flex-col space-y-4 shadow-sm text-left">
+                      <div key={app.id} className="bg-white border border-gray-100 p-5 rounded-[28px] flex flex-col space-y-4 shadow-sm text-left hover:border-blue-200 transition-all">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center space-x-3">
                             <img
@@ -585,6 +815,29 @@ export default function Agenda() {
                   <div className="py-20 text-center opacity-30 bg-gray-50 rounded-[35px] border border-gray-100">
                     <Calendar size={48} className="mx-auto mb-4 text-blue-950" />
                     <p className="text-[10px] font-black uppercase tracking-widest">Nenhum Registro Encontrado</p>
+                  </div>
+                )}
+
+                {/* PAGINATION CONTROLS */}
+                {totalPagesFinanceiro > 1 && (
+                  <div className="flex items-center justify-between mt-6 bg-white border border-gray-100 p-3 rounded-[24px] shadow-sm">
+                    <button
+                      disabled={financeiroPage === 1}
+                      onClick={() => setFinanceiroPage(prev => Math.max(prev - 1, 1))}
+                      className="px-4 py-2 text-[9px] font-black uppercase text-blue-600 bg-blue-50 border border-blue-100 rounded-xl disabled:opacity-50 disabled:pointer-events-none active:scale-95 transition-transform"
+                    >
+                      Anterior
+                    </button>
+                    <span className="text-[10px] font-black uppercase text-gray-400">
+                      Pág. {financeiroPage} de {totalPagesFinanceiro}
+                    </span>
+                    <button
+                      disabled={financeiroPage === totalPagesFinanceiro}
+                      onClick={() => setFinanceiroPage(prev => Math.min(prev + 1, totalPagesFinanceiro))}
+                      className="px-4 py-2 text-[9px] font-black uppercase text-blue-600 bg-blue-50 border border-blue-100 rounded-xl disabled:opacity-50 disabled:pointer-events-none active:scale-95 transition-transform"
+                    >
+                      Próximo
+                    </button>
                   </div>
                 )}
               </div>
@@ -685,27 +938,38 @@ export default function Agenda() {
                 /* CLIENT VIEW DASHBOARD */
                 <div className="flex flex-col w-full">
                   {/* CURRENT ACTIVE BOOKINGS */}
-                  {/* CURRENT ACTIVE BOOKINGS */}
                   <div className="mb-8">
-                    <h2 className="text-sm font-black text-blue-600 uppercase tracking-widest mb-4">Minhas Próximas Batalhas</h2>
-                    {appointments.filter((a: any) => ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'].includes(a.status)).length > 0 ? (
+                    <h2 className="text-sm font-black text-blue-600 uppercase tracking-widest mb-4">Minhas Próximas Batalhas ({clientActiveAppsFiltered.length})</h2>
+                    
+                    {/* Active search filter */}
+                    <div className="mb-4">
+                      <input
+                        type="text"
+                        placeholder="Buscar batalhas por barbeiro ou serviço..."
+                        value={clientActiveSearch}
+                        onChange={(e) => setClientActiveSearch(e.target.value)}
+                        className="w-full bg-white border border-gray-150 rounded-2xl py-3.5 px-4 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-blue-950 placeholder-gray-400 shadow-sm"
+                      />
+                    </div>
+
+                    {paginatedClientActiveApps.length > 0 ? (
                       <div className="space-y-4">
-                        {appointments.filter((a: any) => ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'].includes(a.status)).map((app: any) => {
+                        {paginatedClientActiveApps.map((app: any) => {
                           const steps = ['PENDING', 'PROPOSAL_SENT', 'CONFIRMED', 'IN_SERVICE', 'PAYMENT', 'COMPLETED'];
                           const stepLabels = ['Solicitado', 'Proposta', 'Confirmado', 'Ativo', 'Pagamento', 'Avaliado'];
                           const currentStepIdx = steps.indexOf(app.status);
 
                           return (
-                            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} key={app.id} className="bg-gradient-to-br from-blue-950 to-blue-900 text-white p-6 rounded-[35px] shadow-2xl relative overflow-hidden border border-blue-800">
-                              <div className="absolute top-0 right-0 p-6 opacity-5"><Zap size={100} /></div>
+                            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} key={app.id} className="bg-white text-blue-950 p-6 rounded-[35px] shadow-md relative overflow-hidden border border-gray-150">
+                              <div className="absolute top-0 right-0 p-6 opacity-[0.03] pointer-events-none text-blue-600"><Zap size={100} /></div>
 
                               {/* HEADER INFO */}
                               <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center space-x-4">
-                                  <img src={app.barber?.user?.avatar || `https://i.pravatar.cc/150?u=${app.barber?.id}`} className="w-14 h-14 rounded-2xl object-cover border-2 border-cyan-400 shadow-md" />
+                                  <img src={app.barber?.user?.avatar || `https://i.pravatar.cc/150?u=${app.barber?.id}`} className="w-14 h-14 rounded-2xl object-cover border-2 border-gray-100 shadow-sm" />
                                   <div>
-                                    <h3 className="text-sm font-black uppercase italic leading-none">{app.barber?.user?.name || 'Arena Barber'}</h3>
-                                    <span className={`inline-block text-[8px] font-black uppercase px-2 py-0.5 rounded-full mt-2 tracking-widest ${app.status === 'CONFIRMED' || app.status === 'IN_SERVICE' ? 'bg-green-500 text-white animate-pulse' : 'bg-yellow-500 text-black'}`}>
+                                    <h3 className="text-sm font-black uppercase italic leading-none text-blue-950">{app.barber?.user?.name || 'Arena Barber'}</h3>
+                                    <span className={`inline-block text-[8px] font-black uppercase px-2 py-0.5 rounded-full mt-2 tracking-widest ${app.status === 'CONFIRMED' || app.status === 'IN_SERVICE' ? 'bg-green-500 text-white animate-pulse' : 'bg-yellow-500 text-white'}`}>
                                       {app.status === 'PENDING' ? 'Aguardando Barbeiro' :
                                         app.status === 'PROPOSAL_SENT' ? 'Proposta Recebida' :
                                           app.status === 'CONFIRMED' ? 'Confirmado' :
@@ -716,20 +980,20 @@ export default function Agenda() {
                                   </div>
                                 </div>
                                 <div className="text-right">
-                                  <p className="text-[14px] font-black text-cyan-400 italic">R$ {app.price},00</p>
-                                  <p className="text-[8px] font-bold text-blue-300 uppercase tracking-widest mt-1">{app.paymentMethod || 'Pix'}</p>
+                                  <p className="text-[14px] font-black text-blue-600 italic">R$ {app.price},00</p>
+                                  <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-1">{app.paymentMethod || 'Pix'}</p>
                                 </div>
                               </div>
 
                               {/* SERVICES & SCHEDULE INFO */}
-                              <div className="bg-blue-900/40 p-3.5 rounded-2xl mb-4 flex items-center space-x-2 border border-blue-800">
-                                <ScissorsIcon size={14} className="text-cyan-400" />
-                                <span className="text-[9px] font-black uppercase tracking-wider">{(app.services || []).join(' + ')}</span>
+                              <div className="bg-gray-50 border border-gray-100 p-3.5 rounded-2xl mb-4 flex items-center space-x-2">
+                                <ScissorsIcon size={14} className="text-blue-500" />
+                                <span className="text-[9px] font-black uppercase tracking-wider text-blue-950">{(app.services || []).join(' + ')}</span>
                               </div>
 
-                              <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider text-blue-300 mb-6 bg-blue-950/40 px-4 py-3 rounded-xl">
-                                <div className="flex items-center space-x-1.5"><Calendar size={12} className="text-cyan-400" /><span>Dia {new Date(app.date).getUTCDate() || 16}</span></div>
-                                <div className="flex items-center space-x-1.5"><Clock size={12} className="text-cyan-400" /><span>Às {app.time}</span></div>
+                              <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider text-blue-900 mb-6 bg-gray-50/70 border border-gray-100 px-4 py-3 rounded-xl">
+                                <div className="flex items-center space-x-1.5"><Calendar size={12} className="text-blue-500" /><span>Dia {new Date(app.date).getUTCDate() || 16}</span></div>
+                                <div className="flex items-center space-x-1.5"><Clock size={12} className="text-blue-500" /><span>Às {app.time}</span></div>
                               </div>
 
                               {/* NEON STEPPER */}
@@ -739,21 +1003,21 @@ export default function Agenda() {
                                   const isActive = idx === currentStepIdx;
                                   return (
                                     <div key={st} className="flex flex-col items-center relative z-10">
-                                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-black transition-all ${isCompleted ? 'bg-cyan-500 text-blue-950' : isActive ? 'bg-green-400 text-blue-950 ring-4 ring-green-400/20 scale-110 animate-pulse' : 'bg-blue-900 text-blue-400'}`}>
+                                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-black transition-all ${isCompleted ? 'bg-blue-600 text-white' : isActive ? 'bg-green-500 text-white ring-4 ring-green-100 scale-110 animate-pulse' : 'bg-gray-100 text-gray-400'}`}>
                                         {idx + 1}
                                       </div>
-                                      <span className={`text-[6px] font-black uppercase mt-1 tracking-tighter ${isActive ? 'text-green-300' : 'text-blue-300'}`}>{stepLabels[idx]}</span>
+                                      <span className={`text-[6px] font-black uppercase mt-1 tracking-tighter ${isActive ? 'text-green-600 font-bold' : 'text-gray-400'}`}>{stepLabels[idx]}</span>
                                     </div>
                                   );
                                 })}
-                                <div className="absolute top-[11px] left-3 right-3 h-[2px] bg-blue-900 z-0" />
-                                <div className="absolute top-[11px] left-3 right-3 h-[2px] bg-cyan-400 z-0 transition-all" style={{ width: `${(Math.max(0, currentStepIdx) / (steps.length - 1)) * 90}%` }} />
+                                <div className="absolute top-[11px] left-3 right-3 h-[2px] bg-gray-100 z-0" />
+                                <div className="absolute top-[11px] left-3 right-3 h-[2px] bg-blue-600 z-0 transition-all" style={{ width: `${(Math.max(0, currentStepIdx) / (steps.length - 1)) * 90}%` }} />
                               </div>
 
                               {/* STATE ACTIONS */}
                               {app.status === 'PENDING' && (
                                 <div className="flex flex-col space-y-2">
-                                  <p className="text-[10px] text-yellow-300 font-bold uppercase tracking-wider text-center">Aguardando aceite do barbeiro na timeline dele.</p>
+                                  <p className="text-[10px] text-yellow-600 font-bold uppercase tracking-wider text-center">Aguardando aceite do barbeiro na timeline dele.</p>
                                   <button
                                     onClick={async () => {
                                       if (confirm('Tem certeza de que deseja cancelar este agendamento?')) {
@@ -766,7 +1030,7 @@ export default function Agenda() {
                                         }
                                       }
                                     }}
-                                    className="w-full py-4 bg-red-500/20 border border-red-500/30 text-red-400 rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-transform"
+                                    className="w-full py-4 bg-red-50 hover:bg-red-100 border border-red-100 text-red-500 rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-transform"
                                   >
                                     Cancelar Serviço
                                   </button>
@@ -774,8 +1038,8 @@ export default function Agenda() {
                               )}
 
                               {app.status === 'PROPOSAL_SENT' && (
-                                <div className="flex flex-col space-y-3 bg-blue-950/50 p-4 rounded-3xl border border-blue-800">
-                                  <p className="text-[10px] text-cyan-300 font-bold uppercase tracking-wider text-center">Preço customizado proposto pelo barbeiro: R$ {app.price},00</p>
+                                <div className="flex flex-col space-y-3 bg-gray-50 p-4 rounded-3xl border border-gray-100">
+                                  <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider text-center">Preço customizado proposto pelo barbeiro: R$ {app.price},00</p>
                                   <div className="grid grid-cols-2 gap-3">
                                     <button
                                       onClick={async () => {
@@ -801,7 +1065,7 @@ export default function Agenda() {
                                           alert('Erro ao recusar proposta: ' + err.message);
                                         }
                                       }}
-                                      className="py-4 bg-red-500/20 border border-red-500/30 text-red-400 rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-transform"
+                                      className="py-4 bg-red-50 hover:bg-red-100 border border-red-100 text-red-500 rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-transform"
                                     >
                                       Recusar
                                     </button>
@@ -811,7 +1075,7 @@ export default function Agenda() {
 
                               {app.status === 'CONFIRMED' && (
                                 <div className="flex flex-col space-y-2">
-                                  <p className="text-[10px] text-green-300 font-bold uppercase tracking-wider text-center mb-1">Você está a caminho! Dirija-se até a Arena.</p>
+                                  <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider text-center mb-1">Você está a caminho! Dirija-se até a Arena.</p>
                                   <div className="grid grid-cols-2 gap-3">
                                     <button
                                       onClick={() => {
@@ -819,7 +1083,7 @@ export default function Agenda() {
                                         const lng = app.barber?.longitude || -46.522;
                                         alert(`Traçando rota até a Arena de ${app.barber?.user?.name || 'Gustavo'}.\nCoordenadas: [${lat}, ${lng}]`);
                                       }}
-                                      className="py-4 bg-cyan-500 text-blue-950 rounded-2xl font-black text-[9px] uppercase italic tracking-widest shadow-lg flex items-center justify-center space-x-1.5 active:scale-95 transition-transform"
+                                      className="py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-[9px] uppercase italic tracking-widest shadow-md flex items-center justify-center space-x-1.5 active:scale-95 transition-transform"
                                     >
                                       <Navigation size={12} fill="currentColor" /> <span>Traçar Rota</span>
                                     </button>
@@ -835,7 +1099,7 @@ export default function Agenda() {
                                           }
                                         }
                                       }}
-                                      className="py-4 bg-red-500/20 border border-red-500/30 text-red-400 rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-transform"
+                                      className="py-4 bg-red-50 hover:bg-red-100 border border-red-100 text-red-500 rounded-2xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-transform"
                                     >
                                       Cancelar Batalha
                                     </button>
@@ -844,24 +1108,24 @@ export default function Agenda() {
                               )}
 
                               {app.status === 'IN_SERVICE' && (
-                                <div className="flex flex-col space-y-4 bg-blue-950/40 p-4 rounded-3xl border border-blue-800">
+                                <div className="flex flex-col space-y-4 bg-gray-50 p-4 rounded-3xl border border-gray-100">
                                   <div className="text-center">
                                     <span className="w-2 h-2 bg-green-500 rounded-full inline-block animate-ping mr-2" />
-                                    <p className="text-[10px] text-green-400 font-black uppercase tracking-wider inline-block">Atendimento em Andamento</p>
+                                    <p className="text-[10px] text-green-600 font-black uppercase tracking-wider inline-block">Atendimento em Andamento</p>
                                   </div>
-                                  <div className="bg-blue-900/20 p-3 rounded-2xl">
-                                    <p className="text-[7px] font-black text-blue-300 uppercase tracking-widest mb-1.5">Comanda de Serviços Activa</p>
+                                  <div className="bg-white border border-gray-100 p-3 rounded-2xl">
+                                    <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Comanda de Serviços Ativa</p>
                                     <ul className="space-y-1">
                                       {(app.services || []).map((srv: string, i: number) => (
-                                        <li key={i} className="text-[9px] font-bold text-white flex items-center space-x-1.5">
-                                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                                        <li key={i} className="text-[9px] font-bold text-blue-950 flex items-center space-x-1.5">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
                                           <span>{srv}</span>
                                         </li>
                                       ))}
                                     </ul>
-                                    <div className="flex justify-between items-center pt-2 mt-2 border-t border-blue-800/40">
-                                      <span className="text-[8px] font-black text-blue-300 uppercase">Total Consolidado</span>
-                                      <span className="text-xs font-black text-cyan-400">R$ {app.price},00</span>
+                                    <div className="flex justify-between items-center pt-2 mt-2 border-t border-gray-100">
+                                      <span className="text-[8px] font-black text-gray-400 uppercase">Total Consolidado</span>
+                                      <span className="text-xs font-black text-blue-600">R$ {app.price},00</span>
                                     </div>
                                   </div>
                                   <div className="grid grid-cols-2 gap-3">
@@ -871,7 +1135,7 @@ export default function Agenda() {
                                           alert('Problema reportado! Entraremos em contato.');
                                         }
                                       }}
-                                      className="py-3 bg-yellow-500/20 text-yellow-400 rounded-xl font-black text-[9px] uppercase tracking-wider border border-yellow-500/20"
+                                      className="py-3 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 rounded-xl font-black text-[9px] uppercase tracking-wider border border-yellow-100"
                                     >
                                       Reportar Problema
                                     </button>
@@ -887,7 +1151,7 @@ export default function Agenda() {
                                           }
                                         }
                                       }}
-                                      className="py-3 bg-red-500/20 text-red-400 rounded-xl font-black text-[9px] uppercase tracking-wider border border-red-500/20"
+                                      className="py-3 bg-red-50 hover:bg-red-100 text-red-500 rounded-xl font-black text-[9px] uppercase tracking-wider border border-red-100"
                                     >
                                       Cancelar
                                     </button>
@@ -896,11 +1160,11 @@ export default function Agenda() {
                               )}
 
                               {app.status === 'PAYMENT' && (
-                                <div className="flex flex-col space-y-4 bg-blue-950/50 p-4 rounded-3xl border border-blue-800">
-                                  <p className="text-[10px] text-cyan-300 font-bold uppercase tracking-wider text-center">Fase de Pagamento Ativa</p>
-                                  <div className="bg-white text-blue-950 p-4 rounded-2xl text-center flex flex-col items-center">
-                                    <div className="w-24 h-24 bg-gray-100 rounded-xl flex items-center justify-center border border-gray-200 mb-2">
-                                      <Zap size={48} className="text-cyan-500 animate-pulse" />
+                                <div className="flex flex-col space-y-4 bg-gray-50 p-4 rounded-3xl border border-gray-100">
+                                  <p className="text-[10px] text-orange-600 font-bold uppercase tracking-wider text-center">Fase de Pagamento Ativa</p>
+                                  <div className="bg-white text-blue-950 p-4 rounded-2xl text-center flex flex-col items-center border border-gray-100">
+                                    <div className="w-24 h-24 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-100 mb-2">
+                                      <Zap size={48} className="text-blue-600 animate-pulse" />
                                     </div>
                                     <p className="text-[9px] font-black uppercase text-blue-950">Chave Pix Copia e Cola:</p>
                                     <code className="text-[7px] font-mono bg-gray-50 p-1.5 rounded border border-gray-100 block w-full select-all overflow-x-auto whitespace-nowrap mt-1 text-gray-500">00020126360014BR.GOV.BCB.PIX0114battlebarberpix</code>
@@ -910,7 +1174,7 @@ export default function Agenda() {
                                     onClick={() => {
                                       alert('Pagamento enviado! Aguardando o barbeiro confirmar o recebimento na tela dele.');
                                     }}
-                                    className="w-full py-4 bg-green-500 hover:bg-green-600 text-white rounded-2xl font-black text-[10px] uppercase italic tracking-widest shadow-xl flex items-center justify-center space-x-2 active:scale-95 transition-transform"
+                                    className="w-full py-4 bg-green-500 hover:bg-green-600 text-white rounded-2xl font-black text-[10px] uppercase italic tracking-widest shadow-md flex items-center justify-center space-x-2 active:scale-95 transition-transform"
                                   >
                                     <Check size={14} /> <span>Já realizei o pagamento</span>
                                   </button>
@@ -918,21 +1182,21 @@ export default function Agenda() {
                               )}
 
                               {app.status === 'COMPLETED' && (
-                                <div className="flex flex-col space-y-4 bg-blue-950/60 p-5 rounded-3xl border border-blue-800 text-center">
-                                  <p className="text-[10px] text-green-300 font-bold uppercase tracking-wider">Atendimento Concluído com Sucesso!</p>
+                                <div className="flex flex-col space-y-4 bg-gray-50 p-5 rounded-3xl border border-gray-100 text-center">
+                                  <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider">Atendimento Concluído com Sucesso!</p>
 
                                   {barberRatings[app.id] ? (
                                     <div className="py-2">
-                                      <p className="text-[9px] text-cyan-400 font-black uppercase">Avaliação enviada com sucesso!</p>
+                                      <p className="text-[9px] text-green-600 font-black uppercase font-bold">Avaliação enviada com sucesso!</p>
                                       <div className="flex justify-center space-x-1 mt-1.5">
                                         {Array.from({ length: 5 }).map((_, i) => (
-                                          <Star key={i} size={14} className={i < barberRatings[app.id] ? "text-yellow-400 fill-yellow-400" : "text-gray-600"} />
+                                          <Star key={i} size={14} className={i < barberRatings[app.id] ? "text-yellow-400 fill-yellow-400" : "text-gray-200"} />
                                         ))}
                                       </div>
                                     </div>
                                   ) : (
                                     <div className="py-2">
-                                      <p className="text-[9px] text-blue-200 font-black uppercase">Avalie o atendimento do Barbeiro:</p>
+                                      <p className="text-[9px] text-blue-950 font-black uppercase">Avalie o atendimento do Barbeiro:</p>
                                       <div className="flex justify-center space-x-2 mt-3">
                                         {Array.from({ length: 5 }).map((_, i) => {
                                           const ratingValue = i + 1;
@@ -945,7 +1209,7 @@ export default function Agenda() {
                                               }}
                                               className="transition-transform active:scale-125"
                                             >
-                                              <Star size={24} className="text-gray-500 hover:text-yellow-400 hover:fill-yellow-400" />
+                                              <Star size={24} className="text-gray-300 hover:text-yellow-400 hover:fill-yellow-400" />
                                             </button>
                                           );
                                         })}
@@ -965,25 +1229,60 @@ export default function Agenda() {
                         <p className="text-[10px] font-black uppercase tracking-widest text-blue-950">Nenhuma Batalha Agendada</p>
                       </div>
                     )}
+
+                    {/* Active battles pagination */}
+                    {totalPagesClientActive > 1 && (
+                      <div className="flex items-center justify-between mt-4 bg-white border border-gray-100 p-2.5 rounded-[20px] shadow-sm">
+                        <button
+                          disabled={clientActivePage === 1}
+                          onClick={() => setClientActivePage(prev => Math.max(prev - 1, 1))}
+                          className="px-3 py-1.5 text-[8px] font-black uppercase text-blue-600 bg-blue-50 border border-blue-100 rounded-lg disabled:opacity-50 disabled:pointer-events-none active:scale-95 transition-transform"
+                        >
+                          Anterior
+                        </button>
+                        <span className="text-[9px] font-black uppercase text-gray-400 font-bold">
+                          Pág. {clientActivePage} de {totalPagesClientActive}
+                        </span>
+                        <button
+                          disabled={clientActivePage === totalPagesClientActive}
+                          onClick={() => setClientActivePage(prev => Math.min(prev + 1, totalPagesClientActive))}
+                          className="px-3 py-1.5 text-[8px] font-black uppercase text-blue-600 bg-blue-50 border border-blue-100 rounded-lg disabled:opacity-50 disabled:pointer-events-none active:scale-95 transition-transform"
+                        >
+                          Próximo
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* PAST/COMPLETED BOOKINGS */}
                   <div>
-                    <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Histórico de Batalhas</h2>
-                    {appointments.filter((a: any) => a.status === 'COMPLETED' || a.status === 'CANCELLED').length > 0 ? (
+                    <h2 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Histórico de Batalhas ({clientHistoryAppsFiltered.length})</h2>
+                    
+                    {/* History search filter */}
+                    <div className="mb-4">
+                      <input
+                        type="text"
+                        placeholder="Buscar histórico por barbeiro ou serviço..."
+                        value={clientHistorySearch}
+                        onChange={(e) => setClientHistorySearch(e.target.value)}
+                        className="w-full bg-white border border-gray-150 rounded-2xl py-3.5 px-4 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-blue-950 placeholder-gray-400 shadow-sm"
+                      />
+                    </div>
+
+                    {paginatedClientHistoryApps.length > 0 ? (
                       <div className="space-y-3">
-                        {appointments.filter((a: any) => a.status === 'COMPLETED' || a.status === 'CANCELLED').map((app: any) => (
-                          <div key={app.id} className="bg-gray-50 border border-gray-100 p-5 rounded-[28px] flex items-center justify-between">
+                        {paginatedClientHistoryApps.map((app: any) => (
+                          <div key={app.id} className="bg-white border border-gray-150 p-5 rounded-[28px] flex items-center justify-between shadow-sm">
                             <div className="flex items-center space-x-3 text-left">
-                              <img src={app.barber?.user?.avatar || `https://i.pravatar.cc/150?u=${app.barber?.id}`} className="w-10 h-10 rounded-xl object-cover" />
+                              <img src={app.barber?.user?.avatar || `https://i.pravatar.cc/150?u=${app.barber?.id}`} className="w-10 h-10 rounded-xl object-cover border border-gray-100" />
                               <div>
                                 <h4 className="text-xs font-black text-blue-950 uppercase italic leading-none">{app.barber?.user?.name || 'Gustavo'}</h4>
-                                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-1">{(app.services || []).join(' + ')}</p>
+                                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-1.5">{(app.services || []).join(' + ')}</p>
                               </div>
                             </div>
                             <div className="text-right">
                               <p className="text-xs font-black text-blue-950">R$ {app.price},00</p>
-                              <span className={`inline-block text-[7px] font-black uppercase px-2 py-0.5 rounded-full mt-1 ${app.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              <span className={`inline-block text-[7px] font-black uppercase px-2 py-0.5 rounded-full mt-1.5 ${app.status === 'COMPLETED' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
                                 {app.status === 'COMPLETED' ? 'Finalizado' : 'Cancelado'}
                               </span>
                             </div>
@@ -993,6 +1292,29 @@ export default function Agenda() {
                     ) : (
                       <div className="py-8 text-center opacity-25">
                         <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Nenhum histórico disponível</p>
+                      </div>
+                    )}
+
+                    {/* History pagination */}
+                    {totalPagesClientHistory > 1 && (
+                      <div className="flex items-center justify-between mt-4 bg-white border border-gray-100 p-2.5 rounded-[20px] shadow-sm">
+                        <button
+                          disabled={clientHistoryPage === 1}
+                          onClick={() => setClientHistoryPage(prev => Math.max(prev - 1, 1))}
+                          className="px-3 py-1.5 text-[8px] font-black uppercase text-blue-600 bg-blue-50 border border-blue-100 rounded-lg disabled:opacity-50 disabled:pointer-events-none active:scale-95 transition-transform"
+                        >
+                          Anterior
+                        </button>
+                        <span className="text-[9px] font-black uppercase text-gray-400 font-bold">
+                          Pág. {clientHistoryPage} de {totalPagesClientHistory}
+                        </span>
+                        <button
+                          disabled={clientHistoryPage === totalPagesClientHistory}
+                          onClick={() => setClientHistoryPage(prev => Math.min(prev + 1, totalPagesClientHistory))}
+                          className="px-3 py-1.5 text-[8px] font-black uppercase text-blue-600 bg-blue-50 border border-blue-100 rounded-lg disabled:opacity-50 disabled:pointer-events-none active:scale-95 transition-transform"
+                        >
+                          Próximo
+                        </button>
                       </div>
                     )}
                   </div>
