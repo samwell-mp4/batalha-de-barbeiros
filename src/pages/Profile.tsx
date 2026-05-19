@@ -131,6 +131,7 @@ export default function Profile() {
    // Booking State
    const [bookingDate, setBookingDate] = useState<string>(() => {
       const today = new Date();
+      today.setHours(12, 0, 0, 0); // prevent UTC offset shift
       return today.toISOString().split('T')[0];
    });
    const [selectedBookingServices, setSelectedBookingServices] = useState<any[]>([]);
@@ -139,14 +140,14 @@ export default function Profile() {
 
    // Fetch appointments of the barber to block occupied slots
    useEffect(() => {
-      if (barber?.id && !isOwnProfile) {
+      if (barber?.id) {
          api.getBarberAppointments(barber.id.toString())
             .then(res => {
                setBarberAppointments(res || []);
             })
             .catch(err => console.error('Error fetching barber appointments:', err));
       }
-   }, [barber?.id, isOwnProfile]);
+   }, [barber?.id]);
 
    // Fetch all barbers for chat search
    useEffect(() => {
@@ -160,6 +161,7 @@ export default function Profile() {
    const bookingDates = useMemo(() => {
       const arr = [];
       const today = new Date();
+      today.setHours(12, 0, 0, 0); // prevent UTC offset shift
       for (let i = 0; i < 14; i++) {
          const d = new Date(today);
          d.setDate(today.getDate() + i);
@@ -172,7 +174,8 @@ export default function Profile() {
 
    const getSlotStatus = (time: string) => {
       const app = barberAppointments.find(a => {
-         const appDate = new Date(a.date).toISOString().split('T')[0];
+         if (!a.date) return false;
+         const appDate = a.date.split('T')[0];
          return appDate === bookingDate && a.time === time && a.status !== 'CANCELLED';
       });
       return app ? 'occupied' : 'free';
@@ -453,22 +456,15 @@ export default function Profile() {
 
 
 
-
-
-
-
    // Highlights Dinâmicos (Vazio para novos)
    const highlights = barber.highlights || [];
 
    // Feed Dinâmico (Vazio para novos)
    const feedImages = barber.posts || [];
 
-
-
-
+   const { latitude, longitude } = barber.coordinates || { latitude: -23.525, longitude: -46.522 };
 
    const openExternalMap = (type: 'google' | 'waze') => {
-      const { latitude, longitude } = barber.coordinates || { latitude: -23.525, longitude: -46.522 };
       const url = type === 'google'
          ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
          : `https://waze.com/ul?ll=${latitude},${longitude}&navigate=yes`;
@@ -531,11 +527,23 @@ export default function Profile() {
                </span>
             </div>
 
-            <div className="flex flex-col items-center space-y-1 mb-8">
-               <p className="text-xs text-gray-400 font-bold italic tracking-tight">Mestre do Visagismo Moderno</p>
+            <div className="flex flex-col items-center space-y-2.5 mb-8">
+               {/* Estrelas de Avaliação Premium */}
+               <div className="flex items-center space-x-1 bg-yellow-50/60 border border-yellow-100/50 px-3.5 py-1.5 rounded-full shadow-sm">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                     <Star 
+                        key={star} 
+                        size={11} 
+                        className={star <= Math.floor(parseFloat(barber.rating || '4.9')) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} 
+                     />
+                  ))}
+                  <span className="text-[10px] font-black text-yellow-600 font-orbitron pl-1.5">{barber.rating || '4.9'}</span>
+                  <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest pl-1">({barber.reviewsCount || 128} avaliações)</span>
+               </div>
+               
                <div className="flex items-center space-x-1.5 text-gray-400">
-                  <Clock size={12} />
-                  <span className="text-[10px] font-bold uppercase tracking-tighter">Seg - Sáb: 09h às 20h</span>
+                  <Clock size={11} />
+                  <span className="text-[9px] font-bold uppercase tracking-widest">Seg - Sáb: 09h às 20h</span>
                </div>
             </div>
 
@@ -716,7 +724,6 @@ export default function Profile() {
                                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{srv.time || '35 min'}</span>
                               </div>
                            </div>
-
                            <div className="mt-5 border-t border-gray-50/80 pt-3">
                               <span className="text-[7px] font-black text-gray-300 uppercase block tracking-widest leading-none mb-1">Preço</span>
                               <p className="text-sm font-black text-blue-600 font-orbitron">R$ {srv.price},00</p>
@@ -726,121 +733,152 @@ export default function Profile() {
                   })}
                </div>
 
-               {/* INLINE AGENDA SCHEDULER */}
-               {!isOwnProfile && (
-                  <div className="mt-8 bg-white p-6 rounded-[35px] border border-gray-50 shadow-sm text-left">
-                     <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] mb-4">Escolha a Data do Desafio</h3>
-                     
-                     <div className="flex space-x-3 overflow-x-auto no-scrollbar py-2 mb-6">
-                        {bookingDates.map((date) => {
-                           const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
-                           const dayNum = date.getDate();
-                           const dateISO = date.toISOString().split('T')[0];
-                           const isSelected = bookingDate === dateISO;
+                {/* INLINE AGENDA SCHEDULER */}
+                <div className="mt-8 bg-white p-6 rounded-[35px] border border-gray-50 shadow-sm text-left">
+                   <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] mb-4">
+                      {isOwnProfile ? 'Sua Agenda de Horários' : 'Escolha a Data do Desafio'}
+                   </h3>
+                   
+                   <div className="flex space-x-3 overflow-x-auto no-scrollbar py-2 mb-6">
+                      {bookingDates.map((date) => {
+                         const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+                         const dayNum = date.getDate();
+                         const dateISO = date.toISOString().split('T')[0];
+                         const isSelected = bookingDate === dateISO;
 
-                           return (
-                              <button
-                                 key={dateISO}
-                                 type="button"
-                                 onClick={() => {
-                                    setBookingDate(dateISO);
-                                    setBookingTime('');
-                                 }}
-                                 className={`flex flex-col items-center min-w-[65px] p-4 rounded-[24px] border transition-all ${isSelected ? 'bg-gradient-to-br from-blue-600 to-blue-800 border-none text-white shadow-lg shadow-blue-200' : 'bg-gray-50 border-gray-100 text-blue-950 hover:bg-gray-100/50'}`}
-                              >
-                                 <span className={`text-[8px] font-black uppercase tracking-widest ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>{dayName}</span>
-                                 <span className="text-base font-black font-orbitron mt-1">{dayNum}</span>
-                              </button>
-                           );
-                        })}
-                     </div>
+                         return (
+                            <button
+                               key={dateISO}
+                               type="button"
+                               onClick={() => {
+                                  setBookingDate(dateISO);
+                                  setBookingTime('');
+                               }}
+                               className={`flex flex-col items-center min-w-[65px] p-4 rounded-[24px] border transition-all ${isSelected ? 'bg-gradient-to-br from-blue-600 to-blue-800 border-none text-white shadow-lg shadow-blue-200' : 'bg-gray-50 border-gray-100 text-blue-950 hover:bg-gray-100/50'}`}
+                            >
+                               <span className={`text-[8px] font-black uppercase tracking-widest ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>{dayName}</span>
+                               <span className="text-base font-black font-orbitron mt-1">{dayNum}</span>
+                            </button>
+                         );
+                      })}
+                   </div>
 
-                     <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] mb-4">Selecione os Serviços</h3>
-                     <div className="grid grid-cols-1 gap-2 mb-6">
-                        {currentServices.map((srv: any) => {
-                           const isSelected = selectedBookingServices.some(s => s.id === srv.id);
-                           return (
-                              <button
-                                 key={srv.id}
-                                 type="button"
-                                 onClick={() => {
-                                    if (isSelected) {
-                                       setSelectedBookingServices(prev => prev.filter(s => s.id !== srv.id));
-                                    } else {
-                                       setSelectedBookingServices(prev => [...prev, srv]);
-                                    }
-                                 }}
-                                 className={`p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${isSelected ? 'border-blue-600 bg-blue-50/30' : 'border-gray-100 bg-white hover:bg-gray-50'}`}
-                              >
-                                 <div className="flex items-center space-x-3">
-                                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center ${isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-200'}`}>
-                                       {isSelected && <Check size={12} strokeWidth={3} />}
-                                    </div>
-                                    <span className="text-xs font-bold text-blue-950 uppercase tracking-tight">{srv.name}</span>
-                                 </div>
-                                 <span className="text-xs font-black text-blue-600 font-orbitron">R$ {srv.price},00</span>
-                              </button>
-                           );
-                        })}
-                     </div>
+                   <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] mb-4">
+                      {isOwnProfile ? 'Status dos Horários' : 'Horários Disponíveis'}
+                   </h3>
+                   <div className="grid grid-cols-4 gap-2 mb-6">
+                      {timeSlots.map((time) => {
+                         const status = getSlotStatus(time);
+                         const isSelected = bookingTime === time;
+                         const isOccupied = status === 'occupied';
 
-                     <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] mb-4">Horários Disponíveis</h3>
-                     <div className="grid grid-cols-4 gap-2 mb-6">
-                        {timeSlots.map((time) => {
-                           const status = getSlotStatus(time);
-                           const isSelected = bookingTime === time;
-                           const isOccupied = status === 'occupied';
+                         return (
+                            <button
+                               key={time}
+                               type="button"
+                               disabled={isOccupied && !isOwnProfile}
+                               onClick={() => {
+                                  if (!isOwnProfile) setBookingTime(time);
+                               }}
+                               className={`py-3 rounded-xl font-orbitron text-xs font-black transition-all ${
+                                  isOccupied 
+                                     ? 'bg-red-50 text-red-500 border border-red-150 cursor-default' 
+                                     : isSelected 
+                                        ? 'bg-blue-600 text-white shadow-lg' 
+                                        : 'bg-gray-50 text-blue-950 border border-gray-100 hover:bg-gray-100'
+                               }`}
+                            >
+                               {time}
+                            </button>
+                         );
+                      })}
+                   </div>
 
-                           return (
-                              <button
-                                 key={time}
-                                 type="button"
-                                 disabled={isOccupied}
-                                 onClick={() => setBookingTime(time)}
-                                 className={`py-3 rounded-xl font-orbitron text-xs font-black transition-all ${isOccupied ? 'bg-gray-150 text-gray-300 line-through cursor-not-allowed border border-dashed border-gray-200' : isSelected ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-50 text-blue-950 border border-gray-100 hover:bg-gray-100'}`}
-                              >
-                                 {time}
-                              </button>
-                           );
-                        })}
-                     </div>
+                   {!isOwnProfile && (
+                      <>
+                         <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] mb-4">Selecione os Serviços</h3>
+                         <div className="grid grid-cols-1 gap-2 mb-6">
+                            {currentServices.map((srv: any) => {
+                               const isSelected = selectedBookingServices.some(s => s.id === srv.id);
+                               return (
+                                  <button
+                                     key={srv.id}
+                                     type="button"
+                                     onClick={() => {
+                                        if (isSelected) {
+                                           setSelectedBookingServices(prev => prev.filter(s => s.id !== srv.id));
+                                        } else {
+                                           setSelectedBookingServices(prev => [...prev, srv]);
+                                        }
+                                     }}
+                                     className={`p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${isSelected ? 'border-blue-600 bg-blue-50/30' : 'border-gray-100 bg-white hover:bg-gray-50'}`}
+                                  >
+                                     <div className="flex items-center space-x-3">
+                                        <div className={`w-5 h-5 rounded-md border flex items-center justify-center ${isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-200'}`}>
+                                           {isSelected && <Check size={12} strokeWidth={3} />}
+                                        </div>
+                                        <span className="text-xs font-bold text-blue-950 uppercase tracking-tight">{srv.name}</span>
+                                     </div>
+                                     <span className="text-xs font-black text-blue-600 font-orbitron">R$ {srv.price},00</span>
+                                  </button>
+                               );
+                            })}
+                         </div>
 
-                     {selectedBookingServices.length > 0 && (
-                        <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/20 mb-6 flex justify-between items-center">
-                           <div>
-                              <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Total do Desafio</span>
-                              <p className="text-xs font-bold text-blue-950 uppercase mt-0.5">{selectedBookingServices.length} {selectedBookingServices.length === 1 ? 'Serviço' : 'Serviços'}</p>
-                           </div>
-                           <p className="text-xl font-black text-blue-600 font-orbitron">R$ {selectedBookingServices.reduce((acc, s) => acc + s.price, 0)},00</p>
-                        </div>
-                     )}
+                         {selectedBookingServices.length > 0 && (
+                            <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/20 mb-6 flex justify-between items-center">
+                               <div>
+                                  <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Total do Desafio</span>
+                                  <p className="text-xs font-bold text-blue-950 uppercase mt-0.5">{selectedBookingServices.length} {selectedBookingServices.length === 1 ? 'Serviço' : 'Serviços'}</p>
+                               </div>
+                               <p className="text-xl font-black text-blue-600 font-orbitron">R$ {selectedBookingServices.reduce((acc, s) => acc + s.price, 0)},00</p>
+                            </div>
+                         )}
 
-                     <button
-                        type="button"
-                        onClick={handleCreateBooking}
-                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center justify-center space-x-2 active:scale-95 transition-all animate-pulse"
-                     >
-                        <Calendar size={14} />
-                        <span>Confirmar Agendamento</span>
-                     </button>
-                  </div>
-               )}
-            </div>
-         )}
+                         <button
+                            type="button"
+                            onClick={handleCreateBooking}
+                            className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center justify-center space-x-2 active:scale-95 transition-all animate-pulse"
+                         >
+                            <Calendar size={14} />
+                            <span>Confirmar Agendamento</span>
+                         </button>
+                      </>
+                   )}
+                </div>
+             </div>
+          )}
 
          {/* LOCALIZAÇÃO E ROTA */}
          <div className="px-6 mb-10">
-            <div className="bg-white p-6 rounded-[35px] border border-gray-50 shadow-sm flex items-center justify-between">
-               <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><MapPin size={20} /></div>
-                  <div>
-                     <h4 className="text-[10px] font-black text-blue-950 uppercase mb-0.5">{barber.city || 'Sua Cidade'}, {barber.state || 'UF'}</h4>
-                     <p className="text-[9px] font-bold text-gray-400 uppercase">Endereço Privado</p>
+            <div className="bg-white p-6 rounded-[35px] border border-gray-50 shadow-sm flex flex-col space-y-4 text-left">
+               <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                     <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><MapPin size={20} /></div>
+                     <div>
+                        <h4 className="text-[10px] font-black text-blue-950 uppercase mb-0.5">{barber.city || 'Sua Cidade'}, {barber.state || 'UF'}</h4>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase">Endereço Privado</p>
+                     </div>
                   </div>
+                  <button onClick={() => setShowRouteOptions(true)} className="px-4 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase flex items-center space-x-2 shadow-lg active:scale-95 transition-all">
+                     <Navigation size={14} className="fill-white" /> <span>Traçar Rota</span>
+                  </button>
                </div>
-               <button onClick={() => setShowRouteOptions(true)} className="px-4 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase flex items-center space-x-2 shadow-lg active:scale-95 transition-all">
-                  <Navigation size={14} className="fill-white" /> <span>Traçar Rota</span>
-               </button>
+
+               {/* Premium Styled Map Preview */}
+               <div className="w-full h-[180px] rounded-[24px] overflow-hidden border border-gray-150/50 shadow-inner relative">
+                  <iframe 
+                     title="Localização do Barbeiro"
+                     width="100%" 
+                     height="100%" 
+                     frameBorder="0" 
+                     scrolling="no" 
+                     marginHeight={0} 
+                     marginWidth={0} 
+                     src={`https://maps.google.com/maps?q=${latitude || -23.525},${longitude || -46.522}&z=15&output=embed`}
+                     className="grayscale opacity-90 contrast-[1.1] saturate-[0.9]"
+                  />
+               </div>
             </div>
          </div>
 
