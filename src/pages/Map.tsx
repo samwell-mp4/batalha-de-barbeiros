@@ -663,23 +663,35 @@ export default function MapPage() {
       if (statusFilter === 'ocupado') statusMatch = isOcupado;
       if (statusFilter === 'acabando') statusMatch = isAcabando;
       
-      let textMatch = true;
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const bAny = b as any;
-        const text = `${bAny.name || ''} ${bAny.barberShop || ''} ${bAny.city || ''} ${bAny.state || ''}`.toLowerCase();
-        textMatch = text.includes(query);
-      }
-
       let serviceMatch = true;
       if (serviceFilter !== 'ALL') {
         const bAny = b as any;
         serviceMatch = bAny.specialties?.includes(serviceFilter);
       }
 
-      return statusMatch && textMatch && serviceMatch;
+      return statusMatch && serviceMatch;
     });
-  }, [statusFilter, radarBarbers, dbBarbers, searchQuery, serviceFilter]);
+  }, [statusFilter, radarBarbers, dbBarbers, serviceFilter]);
+
+  const searchedBarbers = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase();
+    
+    const allBarbers = dbBarbers.length > 0 ? dbBarbers.map((b: any) => ({
+      ...b,
+      id: b.id,
+      name: b.user?.name || b.name,
+      avatar: b.user?.avatar || b.avatar || `https://i.pravatar.cc/100?u=${b.id}`,
+      status: b.isOnline ? STATUS.LIVRE : STATUS.FECHADO,
+      waitTime: 0,
+      rating: 5.0
+    })) : MOCK_BARBERS;
+
+    return allBarbers.filter((b: any) => {
+      const text = `${b.name || ''} ${b.barberShop || ''} ${b.city || ''} ${b.state || ''}`.toLowerCase();
+      return text.includes(query);
+    });
+  }, [searchQuery, dbBarbers]);
 
   const activeBarberCoords = useMemo(() => {
     if (!matchSession?.activeMatch?.barberId) return null;
@@ -764,8 +776,8 @@ export default function MapPage() {
       </AnimatePresence>
       {/* FILTROS FLUTUANTES E BUSCA */}
       <div className="absolute top-4 left-0 right-0 z-[1000] pointer-events-none flex flex-col items-center space-y-2">
-        <div className="w-full max-w-2xl px-6 pointer-events-auto">
-          <div className="bg-white/95 backdrop-blur-xl p-2 rounded-[22px] shadow-2xl border border-white/20 flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+        <div className="w-full max-w-2xl px-6 pointer-events-auto relative">
+          <div className="bg-white/95 backdrop-blur-xl p-2 rounded-[22px] shadow-2xl border border-white/20 flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 relative z-10">
             <div className="flex-1 flex items-center bg-gray-50 rounded-xl px-3 border border-gray-100">
                <input 
                   type="text" 
@@ -786,6 +798,54 @@ export default function MapPage() {
                ))}
             </select>
           </div>
+
+          {/* SEARCH DROPDOWN */}
+          <AnimatePresence>
+            {searchQuery.trim() && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="absolute top-full left-6 right-6 mt-2 bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden z-[2000] max-h-[50vh] overflow-y-auto no-scrollbar"
+              >
+                {searchedBarbers.length > 0 ? (
+                  searchedBarbers.map((b: any) => (
+                    <div 
+                      key={b.id} 
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSelectedBarber(b);
+                        setIsDrawerMinimized(false);
+                      }}
+                      className="p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer flex items-center space-x-3 last:border-0"
+                    >
+                      <img src={b.avatar || b.user?.avatar || `https://i.pravatar.cc/100?u=${b.id}`} className="w-10 h-10 rounded-full object-cover shadow-sm" />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-black text-blue-950 uppercase tracking-tight">{b.name}</h4>
+                          <div className="flex items-center space-x-1">
+                            <Star size={10} className="text-yellow-400 fill-yellow-400" />
+                            <span className="text-[10px] font-bold text-gray-500">{b.rating ? b.rating.toFixed(1) : '5.0'}</span>
+                          </div>
+                        </div>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{b.barberShop || 'Barbearia'}</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[8px] font-bold text-gray-400 truncate max-w-[150px]">{b.city ? `${b.city}, ${b.state}` : 'Localização não informada'}</span>
+                          <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${b.status?.id === STATUS.LIVRE.id ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                            {b.status?.id === STATUS.LIVRE.id ? 'Disponível' : 'Ocupado'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-6 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                    Nenhum resultado encontrado.
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <div className="w-full pointer-events-auto overflow-x-auto no-scrollbar py-1 px-6 flex justify-center">
