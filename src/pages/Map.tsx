@@ -666,13 +666,15 @@ export default function MapPage() {
       let textMatch = true;
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        const text = `${b.name || ''} ${b.barberShop || ''} ${b.city || ''} ${b.state || ''}`.toLowerCase();
+        const bAny = b as any;
+        const text = `${bAny.name || ''} ${bAny.barberShop || ''} ${bAny.city || ''} ${bAny.state || ''}`.toLowerCase();
         textMatch = text.includes(query);
       }
 
       let serviceMatch = true;
       if (serviceFilter !== 'ALL') {
-        serviceMatch = b.specialties?.includes(serviceFilter);
+        const bAny = b as any;
+        serviceMatch = bAny.specialties?.includes(serviceFilter);
       }
 
       return statusMatch && textMatch && serviceMatch;
