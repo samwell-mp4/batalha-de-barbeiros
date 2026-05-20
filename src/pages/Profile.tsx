@@ -2,10 +2,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import {
-   Settings, Play, ChevronDown, CheckCircle2, Zap, Flame, Clock, Heart,
-   Star, MapPin, Calendar, ChevronRight, X, Shield,
-   Navigation, UserPlus, Bookmark, Target, Plus, Camera, Send,
-   MessageSquare, MessageCircle, Check, Lock, Edit3, Eye, EyeOff, Key, ChevronLeft
+   Settings, Play, ChevronDown, CheckCircle2, Zap, Clock, Heart,
+   Star, MapPin, Calendar, ChevronRight, X,
+   Navigation, Bookmark, Target, Plus, Camera, Send,
+   MessageSquare, MessageCircle, Check, Edit3, Eye, EyeOff, Key, ChevronLeft
 } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { calculateLevel } from '@/constants/xpSystem';
@@ -155,8 +155,6 @@ export default function Profile() {
    const [doubleTapHeart, setDoubleTapHeart] = useState(false);
    const [showFullPortfolio, setShowFullPortfolio] = useState(false);
 
-   const [allBarbers, setAllBarbers] = useState<any[]>([]);
-
    // Drawer Minimization & Drag States
    const routeDragControls = useDragControls();
    const [isRouteMinimized, setIsRouteMinimized] = useState(false);
@@ -231,15 +229,6 @@ export default function Profile() {
          }
       }
    }, [barber?.id, loggedUser]);
-
-   // Fetch all barbers for chat search
-   useEffect(() => {
-      api.getBarbers()
-         .then(res => {
-            setAllBarbers(res || []);
-         })
-         .catch(err => console.error('Error fetching barbers for search list:', err));
-   }, []);
 
    const bookingDates = useMemo(() => {
       const arr = [];
@@ -523,7 +512,7 @@ export default function Profile() {
                      <span className="text-[10px] font-black uppercase italic">Postar</span>
                   </button>
                )}
-               <button onClick={handleOpenMessenger} className="p-2 bg-gray-50 rounded-2xl text-blue-950 transition-transform active:scale-95 relative" title="Mensagens">
+               <button onClick={() => navigate('/messages')} className="p-2 bg-gray-50 rounded-2xl text-blue-950 transition-transform active:scale-95 relative" title="Mensagens">
                   <MessageSquare size={20} />
                </button>
                <button onClick={() => setIsFavorited(!isFavorited)} className={`p-2 rounded-2xl transition-all ${isFavorited ? 'bg-red-50 text-red-500 shadow-sm' : 'bg-gray-50 text-blue-950'}`}>
@@ -673,7 +662,7 @@ export default function Profile() {
                   {isFollowing ? 'Seguindo' : 'Seguir'}
                </button>
                <button 
-                  onClick={handleStartChatFromProfile}
+                  onClick={() => navigate('/messages')}
                   className="flex-1 py-3.5 bg-white text-blue-950 border border-gray-100 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-colors"
                >
                   Mensagem

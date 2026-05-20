@@ -1,11 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, Search, MessageSquare, Send } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 
 export default function Messages() {
-   const navigate = useNavigate();
-
    const loggedUser = useMemo(() => {
       const saved = localStorage.getItem('user');
       return saved ? JSON.parse(saved) : null;
