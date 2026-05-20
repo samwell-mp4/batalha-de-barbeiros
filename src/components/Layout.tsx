@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Globe, MapPin, Trophy, User, Calendar } from 'lucide-react';
+import { Globe, MapPin, Trophy, User, Calendar, MessageSquare } from 'lucide-react';
 
 export default function Layout() {
   const navigate = useNavigate();
@@ -124,6 +124,20 @@ export default function Layout() {
                 <>
                   <Calendar size={20} strokeWidth={isActive ? 2.5 : 2} />
                   <span className="text-[9px] font-black uppercase tracking-widest font-orbitron">Agenda</span>
+                </>
+              )}
+            </NavLink>
+
+            <NavLink
+              to={user ? "/messages" : "/auth"}
+              className={({ isActive }) => 
+                `flex flex-col items-center justify-center w-full h-full space-y-1 transition-all duration-300 ${isActive ? 'text-blue-600 scale-110' : 'text-gray-400 hover:text-blue-400'}`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <MessageSquare size={20} strokeWidth={isActive ? 2.5 : 2} />
+                  <span className="text-[9px] font-black uppercase tracking-widest font-orbitron">Chat</span>
                 </>
               )}
             </NavLink>

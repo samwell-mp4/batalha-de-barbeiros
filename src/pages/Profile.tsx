@@ -5,7 +5,7 @@ import {
    Settings, Play, ChevronDown, CheckCircle2, Zap, Flame, Clock, Heart,
    Star, MapPin, Calendar, ChevronRight, X, Shield,
    Navigation, UserPlus, Bookmark, Target, Plus, Camera, Send,
-   MessageSquare, MessageCircle, Check
+   MessageSquare, MessageCircle, Check, Lock, Edit3, Eye, EyeOff, Key
 } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { calculateLevel } from '@/constants/xpSystem';
@@ -105,6 +105,10 @@ export default function Profile() {
    const [storyIndex, setStoryIndex] = useState(0);
    const [showRouteOptions, setShowRouteOptions] = useState(false);
    const [showSettings, setShowSettings] = useState(false);
+   const [settingsView, setSettingsView] = useState<'menu' | 'edit_profile' | 'change_password' | 'privacy' | 'push_alerts'>('menu');
+   const [editProfileData, setEditProfileData] = useState({ name: '', bio: '', avatar: '' });
+   const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
+   const [showPassword, setShowPassword] = useState(false);
    const [showNewPost, setShowNewPost] = useState(false);
    const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
    const [newPostData, setNewPostData] = useState({ imageUrl: '', description: '', category: 'Fade' });
@@ -1154,59 +1158,198 @@ export default function Profile() {
                      </button>
                      <div className="mt-8" />
                      <div className="px-8 pb-4 border-b border-gray-50 flex items-center justify-between">
-                        <h3 className="text-xl font-black text-blue-950 uppercase italic tracking-tighter">Configurações</h3>
-                        <button onClick={() => setShowSettings(false)} className="p-2 bg-gray-50 rounded-xl text-gray-400"><X size={20} /></button>
+                        {settingsView !== 'menu' && (
+                           <button onClick={() => setSettingsView('menu')} className="p-2 bg-gray-50 rounded-xl text-gray-400 mr-2"><ChevronLeft size={20} /></button>
+                        )}
+                        <h3 className="text-xl font-black text-blue-950 uppercase italic tracking-tighter">
+                           {settingsView === 'menu' ? 'Configurações' : settingsView === 'edit_profile' ? 'Editar Perfil' : settingsView === 'change_password' ? 'Trocar Senha' : settingsView === 'privacy' ? 'Privacidade' : 'Notificações'}
+                        </h3>
+                        <div className="flex-1" />
+                        <button onClick={() => { setShowSettings(false); setSettingsView('menu'); }} className="p-2 bg-gray-50 rounded-xl text-gray-400"><X size={20} /></button>
                      </div>
 
                      <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-6 pb-12">
-                        <div className="space-y-1">
-                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Conta</p>
-                           <div className="bg-gray-50 rounded-[30px] p-2 space-y-1">
-                              {[
-                                 { label: 'Editar Perfil', icon: <UserPlus size={18} /> },
-                                 { label: 'Trocar Senha', icon: <Shield size={18} /> },
-                                 { label: 'Privacidade', icon: <Bookmark size={18} /> },
-                                 { label: 'Segurança', icon: <Target size={18} /> }
-                              ].map((item, idx) => (
-                                 <button key={idx} className="w-full flex items-center justify-between p-4 bg-white rounded-[22px] hover:bg-blue-50 transition-colors group">
-                                    <div className="flex items-center space-x-3">
-                                       <div className="text-blue-600">{item.icon}</div>
-                                       <span className="text-sm font-bold text-blue-950">{item.label}</span>
+                        <AnimatePresence mode="wait">
+                           {settingsView === 'menu' && (
+                              <motion.div key="menu" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                 <div className="space-y-1">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Conta</p>
+                                    <div className="bg-gray-50 rounded-[30px] p-2 space-y-1">
+                                       {[
+                                          { id: 'edit_profile', label: 'Editar Perfil', icon: <Edit3 size={18} /> },
+                                          { id: 'change_password', label: 'Trocar Senha', icon: <Key size={18} /> },
+                                          { id: 'privacy', label: 'Privacidade', icon: <Bookmark size={18} /> }
+                                       ].map((item, idx) => (
+                                          <button key={idx} onClick={() => {
+                                             if (item.id === 'edit_profile') {
+                                                setEditProfileData({ name: barber?.name || '', bio: barber?.bio || '', avatar: barber?.avatar || '' });
+                                             }
+                                             setSettingsView(item.id as any);
+                                          }} className="w-full flex items-center justify-between p-4 bg-white rounded-[22px] hover:bg-blue-50 transition-colors group">
+                                             <div className="flex items-center space-x-3">
+                                                <div className="text-blue-600">{item.icon}</div>
+                                                <span className="text-sm font-bold text-blue-950">{item.label}</span>
+                                             </div>
+                                             <ChevronRight size={16} className="text-gray-300 group-hover:text-blue-600 transition-colors" />
+                                          </button>
+                                       ))}
                                     </div>
-                                    <ChevronRight size={16} className="text-gray-300 group-hover:text-blue-600 transition-colors" />
-                                 </button>
-                              ))}
-                           </div>
-                        </div>
+                                 </div>
 
-                        <div className="space-y-1">
-                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Notificações</p>
-                           <div className="bg-gray-50 rounded-[30px] p-2 space-y-1">
-                              {[
-                                 { label: 'Push & Alertas', icon: <Zap size={18} /> },
-                                 { label: 'Sons de Batalha', icon: <Flame size={18} /> }
-                              ].map((item, idx) => (
-                                 <button key={idx} className="w-full flex items-center justify-between p-4 bg-white rounded-[22px] hover:bg-blue-50 transition-colors group">
-                                    <div className="flex items-center space-x-3">
-                                       <div className="text-blue-600">{item.icon}</div>
-                                       <span className="text-sm font-bold text-blue-950">{item.label}</span>
+                                 <div className="space-y-1">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Notificações</p>
+                                    <div className="bg-gray-50 rounded-[30px] p-2 space-y-1">
+                                       {[
+                                          { id: 'push_alerts', label: 'Push & Alertas', icon: <Zap size={18} /> }
+                                       ].map((item, idx) => (
+                                          <button key={idx} onClick={() => setSettingsView(item.id as any)} className="w-full flex items-center justify-between p-4 bg-white rounded-[22px] hover:bg-blue-50 transition-colors group">
+                                             <div className="flex items-center space-x-3">
+                                                <div className="text-blue-600">{item.icon}</div>
+                                                <span className="text-sm font-bold text-blue-950">{item.label}</span>
+                                             </div>
+                                             <ChevronRight size={16} className="text-gray-300 group-hover:text-blue-600 transition-colors" />
+                                          </button>
+                                       ))}
                                     </div>
-                                    <ChevronRight size={16} className="text-gray-300 group-hover:text-blue-600 transition-colors" />
-                                 </button>
-                              ))}
-                           </div>
-                        </div>
+                                 </div>
 
-                        <button
-                           onClick={() => {
-                              localStorage.removeItem('user');
-                              localStorage.removeItem('token');
-                              window.location.href = '/auth';
-                           }}
-                           className="w-full py-5 bg-red-50 text-red-500 rounded-[28px] font-black text-xs uppercase tracking-[0.2em] shadow-sm active:scale-95 transition-all"
-                        >
-                           Sair da Conta
-                        </button>
+                                 <button
+                                    onClick={() => {
+                                       localStorage.removeItem('user');
+                                       localStorage.removeItem('token');
+                                       window.location.href = '/auth';
+                                    }}
+                                    className="w-full py-5 bg-red-50 text-red-500 rounded-[28px] font-black text-xs uppercase tracking-[0.2em] shadow-sm active:scale-95 transition-all"
+                                 >
+                                    Sair da Conta
+                                 </button>
+                              </motion.div>
+                           )}
+
+                           {settingsView === 'edit_profile' && (
+                              <motion.div key="edit" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
+                                 <div className="flex flex-col items-center">
+                                    <label className="relative cursor-pointer group">
+                                       <img src={editProfileData.avatar || barber?.avatar || `https://ui-avatars.com/api/?name=${barber?.name || 'A'}`} className="w-24 h-24 rounded-[30px] object-cover shadow-lg group-hover:opacity-75 transition-opacity" />
+                                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <Camera size={24} className="text-white drop-shadow-md" />
+                                       </div>
+                                       <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                                          const file = e.target.files?.[0];
+                                          if (!file) return;
+                                          const reader = new FileReader();
+                                          reader.onload = (event) => {
+                                             const img = new Image();
+                                             img.onload = () => {
+                                                const canvas = document.createElement('canvas');
+                                                const MAX_WIDTH = 512;
+                                                let width = img.width;
+                                                let height = img.height;
+                                                if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
+                                                canvas.width = width; canvas.height = height;
+                                                const ctx = canvas.getContext('2d');
+                                                ctx?.drawImage(img, 0, 0, width, height);
+                                                setEditProfileData(prev => ({ ...prev, avatar: canvas.toDataURL('image/webp', 0.8) }));
+                                             };
+                                             img.src = event.target?.result as string;
+                                          };
+                                          reader.readAsDataURL(file);
+                                       }} />
+                                    </label>
+                                    <p className="text-[10px] font-bold text-gray-400 mt-2 uppercase tracking-widest">Toque para alterar</p>
+                                 </div>
+                                 <div className="space-y-4">
+                                    <div className="bg-gray-50 rounded-[20px] p-4 border border-gray-100 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100 transition-all">
+                                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Nome Completo</label>
+                                       <input type="text" value={editProfileData.name} onChange={e => setEditProfileData(prev => ({ ...prev, name: e.target.value }))} className="w-full bg-transparent text-sm font-bold text-blue-950 outline-none" />
+                                    </div>
+                                    <div className="bg-gray-50 rounded-[20px] p-4 border border-gray-100 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100 transition-all">
+                                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Biografia (Bio)</label>
+                                       <textarea value={editProfileData.bio} onChange={e => setEditProfileData(prev => ({ ...prev, bio: e.target.value }))} className="w-full bg-transparent text-sm font-bold text-blue-950 outline-none resize-none h-20" />
+                                    </div>
+                                    <button onClick={async () => {
+                                       setIsLoading(true);
+                                       try {
+                                          await api.updateProfile(barber.id, { name: editProfileData.name, bio: editProfileData.bio, avatar: editProfileData.avatar });
+                                          setBarber(prev => ({ ...prev, name: editProfileData.name, bio: editProfileData.bio, avatar: editProfileData.avatar }));
+                                          setSettingsView('menu');
+                                       } catch (e) { alert('Erro ao atualizar perfil'); }
+                                       finally { setIsLoading(false); }
+                                    }} className="w-full py-4 bg-blue-600 text-white rounded-[20px] font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center space-x-2">
+                                       {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span>Salvar Alterações</span>}
+                                    </button>
+                                 </div>
+                              </motion.div>
+                           )}
+
+                           {settingsView === 'change_password' && (
+                              <motion.div key="pwd" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
+                                 <div className="space-y-4">
+                                    <div className="bg-gray-50 rounded-[20px] p-4 border border-gray-100 flex items-center">
+                                       <div className="flex-1">
+                                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Senha Atual</label>
+                                          <input type={showPassword ? "text" : "password"} value={passwordData.current} onChange={e => setPasswordData(prev => ({ ...prev, current: e.target.value }))} className="w-full bg-transparent text-sm font-bold text-blue-950 outline-none" />
+                                       </div>
+                                       <button onClick={() => setShowPassword(!showPassword)} className="text-gray-400 ml-2">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+                                    </div>
+                                    <div className="bg-gray-50 rounded-[20px] p-4 border border-gray-100 flex items-center">
+                                       <div className="flex-1">
+                                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Nova Senha</label>
+                                          <input type={showPassword ? "text" : "password"} value={passwordData.new} onChange={e => setPasswordData(prev => ({ ...prev, new: e.target.value }))} className="w-full bg-transparent text-sm font-bold text-blue-950 outline-none" />
+                                       </div>
+                                    </div>
+                                    <div className="bg-gray-50 rounded-[20px] p-4 border border-gray-100 flex items-center">
+                                       <div className="flex-1">
+                                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Confirmar Nova Senha</label>
+                                          <input type={showPassword ? "text" : "password"} value={passwordData.confirm} onChange={e => setPasswordData(prev => ({ ...prev, confirm: e.target.value }))} className="w-full bg-transparent text-sm font-bold text-blue-950 outline-none" />
+                                       </div>
+                                    </div>
+                                    <button onClick={async () => {
+                                       if (passwordData.new !== passwordData.confirm) return alert('As senhas não coincidem!');
+                                       if (!passwordData.current || !passwordData.new) return alert('Preencha todas as senhas!');
+                                       setIsLoading(true);
+                                       try {
+                                          const res = await api.changePassword(barber.id, { currentPassword: passwordData.current, newPassword: passwordData.new });
+                                          if (res.error) alert(res.error);
+                                          else { alert('Senha alterada com sucesso!'); setSettingsView('menu'); setPasswordData({ current: '', new: '', confirm: '' }); }
+                                       } catch (e) { alert('Erro ao alterar senha'); }
+                                       finally { setIsLoading(false); }
+                                    }} className="w-full py-4 bg-blue-600 text-white rounded-[20px] font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center space-x-2">
+                                       {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <span>Confirmar Nova Senha</span>}
+                                    </button>
+                                 </div>
+                              </motion.div>
+                           )}
+
+                           {settingsView === 'privacy' && (
+                              <motion.div key="privacy" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-4">
+                                 <div className="bg-blue-50/50 p-4 rounded-[20px] flex items-start space-x-3">
+                                    <Bookmark size={20} className="text-blue-600 mt-0.5" />
+                                    <div>
+                                       <h4 className="text-xs font-black text-blue-950 uppercase tracking-wider mb-1">Seus Favoritos</h4>
+                                       <p className="text-[10px] text-gray-500 font-medium">Aqui você encontra os perfis que favoritou e os trabalhos de elite que você apoiou na Arena.</p>
+                                    </div>
+                                 </div>
+                                 <div className="bg-gray-50 rounded-[20px] p-8 flex flex-col items-center justify-center border border-dashed border-gray-200">
+                                    <Heart size={32} className="text-gray-300 mb-3" />
+                                    <p className="text-xs font-bold text-gray-400 text-center uppercase tracking-widest">Nenhum favorito encontrado<br/>recentemente.</p>
+                                 </div>
+                              </motion.div>
+                           )}
+
+                           {settingsView === 'push_alerts' && (
+                              <motion.div key="push" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-4">
+                                 {['Novos Agendamentos', 'Mensagens Diretas', 'Lembretes de Duelo', 'Promoções e Alertas'].map((lbl, i) => (
+                                    <div key={i} className="bg-gray-50 rounded-[20px] p-4 flex items-center justify-between border border-gray-100">
+                                       <span className="text-xs font-bold text-blue-950">{lbl}</span>
+                                       <div className="w-10 h-6 bg-blue-600 rounded-full flex items-center px-1 justify-end cursor-pointer">
+                                          <div className="w-4 h-4 bg-white rounded-full shadow-md" />
+                                       </div>
+                                    </div>
+                                 ))}
+                              </motion.div>
+                           )}
+                        </AnimatePresence>
                      </div>
                   </motion.div>
                </motion.div>
@@ -1476,183 +1619,7 @@ export default function Profile() {
             )}
          </AnimatePresence>
 
-         {/* MODAL MENSAGEIRO (CHAT) */}
-         <AnimatePresence>
-            {showMessenger && (
-               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[7500] bg-blue-950/60 backdrop-blur-md flex items-end justify-center">
-                  <motion.div 
-                     initial={{ y: "100%" }} 
-                     animate={{ y: isMessengerMinimized ? "calc(100% - 130px)" : 0 }} 
-                     exit={{ y: "100%" }} 
-                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                     drag="y"
-                     dragControls={messengerDragControls}
-                     dragListener={false}
-                     dragConstraints={{ top: 0, bottom: 0 }}
-                     dragElastic={0.2}
-                     onDragEnd={(_, info) => {
-                        if (info.offset.y > 50) setIsMessengerMinimized(true);
-                        else if (info.offset.y < -50) setIsMessengerMinimized(false);
-                     }}
-                     className="w-full max-w-md bg-white rounded-t-[45px] h-[90vh] flex flex-col shadow-2xl overflow-hidden relative"
-                  >
-                     <button 
-                        onPointerDown={(e) => messengerDragControls.start(e)}
-                        onClick={() => setIsMessengerMinimized(!isMessengerMinimized)}
-                        className="w-full py-4 mb-2 flex justify-center group pointer-events-auto touch-none absolute top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md rounded-t-[45px]"
-                     >
-                        <div className={`w-12 h-1.5 rounded-full transition-all ${isMessengerMinimized ? 'bg-blue-600 w-16' : 'bg-gray-200 group-hover:bg-gray-300'}`} />
-                     </button>
-                     <div className="mt-8" />
 
-                     {activeChatUser ? (
-                        /* TELA DE CHAT ATIVO */
-                        <div className="flex-1 flex flex-col overflow-hidden h-full">
-                           {/* Chat Header */}
-                           <div className="px-6 pb-4 border-b border-gray-150 flex items-center justify-between">
-                              <div className="flex items-center space-x-3 text-left">
-                                 <button 
-                                    onClick={() => {
-                                       setActiveChatUser(null);
-                                       setChatMessages([]);
-                                    }} 
-                                    className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:bg-gray-100 transition-colors"
-                                 >
-                                    <ChevronDown size={20} className="rotate-90" />
-                                 </button>
-                                 <img src={activeChatUser.avatar || `https://i.pravatar.cc/100?u=${activeChatUser.id}`} className="w-10 h-10 rounded-xl object-cover" />
-                                 <div>
-                                    <h4 className="text-xs font-black text-blue-950 uppercase italic leading-none">{activeChatUser.name}</h4>
-                                    <span className="text-[7px] font-black text-green-500 uppercase tracking-widest block mt-1 animate-pulse">Online</span>
-                                 </div>
-                              </div>
-                              <button onClick={() => setShowMessenger(false)} className="p-2 bg-gray-50 rounded-xl text-gray-400"><X size={20} /></button>
-                           </div>
-
-                           {/* Messages List */}
-                           <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar bg-gray-50/30">
-                              {chatMessages.map((msg: any) => {
-                                 const isMe = msg.senderId === loggedUser?.id;
-                                 return (
-                                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                       <div className={`max-w-[75%] p-4 rounded-[24px] text-xs leading-relaxed text-left ${isMe ? 'bg-blue-600 text-white rounded-tr-sm shadow-md' : 'bg-white border border-gray-150 text-blue-950 rounded-tl-sm shadow-sm'}`}>
-                                          <p>{msg.content}</p>
-                                          <span className={`block text-[6px] font-black uppercase mt-1.5 ${isMe ? 'text-blue-100 text-right' : 'text-gray-300'}`}>
-                                             {new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                          </span>
-                                       </div>
-                                    </div>
-                                 );
-                              })}
-                              {chatMessages.length === 0 && (
-                                 <div className="h-full flex flex-col items-center justify-center opacity-30 py-20">
-                                    <MessageSquare size={36} className="mb-3 text-blue-950" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-950">Nenhuma mensagem. Comece a conversa!</p>
-                                 </div>
-                              )}
-                           </div>
-
-                           {/* Chat Input */}
-                           <div className="p-4 border-t border-gray-150 bg-white flex items-center space-x-2">
-                              <input
-                                 type="text"
-                                 placeholder="Digite sua mensagem..."
-                                 value={chatMessageText}
-                                 onChange={e => setChatMessageText(e.target.value)}
-                                 onKeyDown={e => { if (e.key === 'Enter') handleSendMessage(); }}
-                                 className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl py-3.5 px-4 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-blue-950"
-                              />
-                              <button onClick={handleSendMessage} className="p-3.5 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 active:scale-95 transition-all">
-                                 <Send size={14} />
-                              </button>
-                           </div>
-                        </div>
-                     ) : (
-                        /* LISTA DE CONVERSAS ATIVAS */
-                        <div className="flex-1 flex flex-col overflow-hidden h-full">
-                           <div className="px-6 pb-4 border-b border-gray-150 flex items-center justify-between">
-                              <h3 className="text-xl font-black text-blue-950 uppercase italic tracking-tighter">Minhas Conversas</h3>
-                              <button onClick={() => setShowMessenger(false)} className="p-2 bg-gray-50 rounded-xl text-gray-400"><X size={20} /></button>
-                           </div>
-
-                           {/* Search Box */}
-                           <div className="p-4 border-b border-gray-50 bg-gray-50/50">
-                              <input
-                                 type="text"
-                                 placeholder="Buscar barbeiro ou usuário para conversar..."
-                                 value={searchUserText}
-                                 onChange={e => setSearchUserText(e.target.value)}
-                                 className="w-full bg-white border border-gray-150 rounded-2xl py-3 px-4 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-blue-950"
-                              />
-                           </div>
-
-                           {/* List Container */}
-                           <div className="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
-                              {searchUserText.trim() ? (
-                                 /* SEARCH RESULTS */
-                                 <div>
-                                    <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest px-2 mb-3">Resultados da busca ({filteredSearchResults.length})</p>
-                                    {filteredSearchResults.map((usr: any) => (
-                                       <button
-                                          key={usr.id}
-                                          onClick={() => {
-                                             setActiveChatUser(usr);
-                                             setSearchUserText('');
-                                          }}
-                                          className="w-full bg-white p-3 rounded-2xl border border-gray-100 flex items-center space-x-3 hover:bg-blue-50/30 transition-colors"
-                                       >
-                                          <img src={usr.avatar || `https://i.pravatar.cc/100?u=${usr.id}`} className="w-10 h-10 rounded-xl object-cover" />
-                                          <div className="text-left flex-1">
-                                             <h4 className="text-xs font-black text-blue-950 uppercase italic leading-none">{usr.name}</h4>
-                                             <span className="text-[8px] font-bold text-gray-400 mt-1 block">Clique para iniciar conversa</span>
-                                          </div>
-                                       </button>
-                                    ))}
-                                    {filteredSearchResults.length === 0 && (
-                                       <p className="text-center py-6 text-xs text-gray-300">Nenhum barbeiro ou usuário encontrado</p>
-                                    )}
-                                 </div>
-                              ) : (
-                                 /* ACTIVE CONVERSATIONS LIST */
-                                 <div>
-                                    {conversations.map((conv: any) => (
-                                       <button
-                                          key={conv.otherUser.id}
-                                          onClick={() => setActiveChatUser(conv.otherUser)}
-                                          className="w-full bg-white p-4 rounded-3xl border border-gray-50 flex items-center justify-between hover:bg-blue-50/20 transition-all duration-300 shadow-sm mb-2"
-                                       >
-                                          <div className="flex items-center space-x-3 text-left">
-                                             <img src={conv.otherUser.avatar || `https://i.pravatar.cc/100?u=${conv.otherUser.id}`} className="w-11 h-11 rounded-2xl object-cover" />
-                                             <div>
-                                                <h4 className="text-xs font-black text-blue-950 uppercase italic leading-none">{conv.otherUser.name}</h4>
-                                                <p className="text-[10px] text-gray-400 font-bold truncate max-w-[200px] mt-1.5">
-                                                   {conv.lastMessage.senderId === loggedUser?.id ? 'Você: ' : ''}
-                                                   {conv.lastMessage.content}
-                                                </p>
-                                             </div>
-                                          </div>
-                                          <div className="text-right">
-                                             <span className="text-[6px] font-black text-gray-300 uppercase">
-                                                {new Date(conv.lastMessage.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                             </span>
-                                          </div>
-                                       </button>
-                                    ))}
-                                    {conversations.length === 0 && (
-                                       <div className="py-20 text-center opacity-30">
-                                          <MessageSquare size={36} className="mx-auto mb-3 text-blue-950" />
-                                          <p className="text-[10px] font-black uppercase tracking-widest text-blue-950">Nenhuma conversa ativa</p>
-                                       </div>
-                                    )}
-                                 </div>
-                              )}
-                           </div>
-                        </div>
-                     )}
-                  </motion.div>
-               </motion.div>
-            )}
-         </AnimatePresence>
 
          {/* PORTFOLIO COMPLETO ESTILO INSTAGRAM */}
          <AnimatePresence>

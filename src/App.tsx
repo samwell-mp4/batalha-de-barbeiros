@@ -6,6 +6,7 @@ import League from './pages/League';
 import Agenda from './pages/Agenda';
 import Profile from './pages/Profile';
 import Auth from './pages/Auth';
+import Messages from './pages/Messages';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="agenda" element={<Agenda />} />
           <Route path="profile" element={<Profile />} />
           <Route path="profile/:id" element={<Profile />} />
+          <Route path="messages" element={<Messages />} />
         </Route>
       </Routes>
     </BrowserRouter>

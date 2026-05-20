@@ -109,5 +109,47 @@ router.get('/me/:id', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Atualizar Perfil do Usuário
+router.put('/profile/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, bio, avatar } = req.body;
+    
+    const user = await prisma.user.update({
+      where: { id },
+      data: { name, bio, avatar },
+      include: { barberProfile: true }
+    });
+    
+    res.json(user);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Trocar Senha do Usuário
+router.put('/password/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { currentPassword, newPassword } = req.body;
+    
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+    
+    if (user.password && user.password !== currentPassword) {
+      return res.status(401).json({ error: 'Senha atual incorreta' });
+    }
+    
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { password: newPassword },
+      include: { barberProfile: true }
+    });
+    
+    res.json(updatedUser);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 export default router;

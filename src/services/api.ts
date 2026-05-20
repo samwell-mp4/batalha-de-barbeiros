@@ -49,6 +49,22 @@ export const api = {
     });
     return res.json();
   },
+  updateProfile: async (id: string, data: any) => {
+    const res = await fetch(`${API_URL}/auth/profile/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+  changePassword: async (id: string, data: any) => {
+    const res = await fetch(`${API_URL}/auth/password/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
   createPost: async (data: any) => {
     const res = await fetch(`${API_URL}/posts`, {
       method: 'POST',
