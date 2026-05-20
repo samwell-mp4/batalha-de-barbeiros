@@ -5,7 +5,7 @@ import {
    Settings, Play, ChevronDown, CheckCircle2, Zap, Flame, Clock, Heart,
    Star, MapPin, Calendar, ChevronRight, X, Shield,
    Navigation, UserPlus, Bookmark, Target, Plus, Camera, Send,
-   MessageSquare, MessageCircle, Check, Lock, Edit3, Eye, EyeOff, Key
+   MessageSquare, MessageCircle, Check, Lock, Edit3, Eye, EyeOff, Key, ChevronLeft
 } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { calculateLevel } from '@/constants/xpSystem';
@@ -155,13 +155,6 @@ export default function Profile() {
    const [doubleTapHeart, setDoubleTapHeart] = useState(false);
    const [showFullPortfolio, setShowFullPortfolio] = useState(false);
 
-   // Messenger State
-   const [showMessenger, setShowMessenger] = useState(false);
-   const [conversations, setConversations] = useState<any[]>([]);
-   const [activeChatUser, setActiveChatUser] = useState<any>(null);
-   const [chatMessages, setChatMessages] = useState<any[]>([]);
-   const [chatMessageText, setChatMessageText] = useState('');
-   const [searchUserText, setSearchUserText] = useState('');
    const [allBarbers, setAllBarbers] = useState<any[]>([]);
 
    // Drawer Minimization & Drag States
@@ -171,8 +164,6 @@ export default function Profile() {
    const [isSettingsMinimized, setIsSettingsMinimized] = useState(false);
    const newPostDragControls = useDragControls();
    const [isNewPostMinimized, setIsNewPostMinimized] = useState(false);
-   const messengerDragControls = useDragControls();
-   const [isMessengerMinimized, setIsMessengerMinimized] = useState(false);
 
    // Booking State
    const [bookingDate, setBookingDate] = useState<string>(() => {
@@ -360,99 +351,6 @@ export default function Profile() {
       }
    };
 
-   // Chat Handlers
-   const loadConversations = async () => {
-      if (!loggedUser) return;
-      try {
-         const res = await api.getConversations(loggedUser.id);
-         setConversations(res || []);
-      } catch (err) {
-         console.error('Error loading conversations:', err);
-      }
-   };
-
-   const loadMessages = async (otherUserId: string) => {
-      if (!loggedUser) return;
-      try {
-         const res = await api.getMessages(loggedUser.id, otherUserId);
-         setChatMessages(res || []);
-      } catch (err) {
-         console.error('Error loading messages:', err);
-      }
-   };
-
-   const handleSendMessage = async () => {
-      if (!loggedUser || !activeChatUser || !chatMessageText.trim()) return;
-      try {
-         const content = chatMessageText;
-         setChatMessageText('');
-         await api.sendMessage(loggedUser.id, activeChatUser.id, content);
-         await loadMessages(activeChatUser.id);
-         await loadConversations();
-      } catch (err) {
-         console.error('Error sending message:', err);
-      }
-   };
-
-   const handleStartChatFromProfile = () => {
-      if (!loggedUser) {
-         alert('Faça login para enviar mensagens!');
-         navigate('/auth');
-         return;
-      }
-      if (isOwnProfile) return;
-      
-      const otherUser = barber.user || { id: barber.id, name: barber.name, avatar: barber.avatar };
-      setActiveChatUser(otherUser);
-      setShowMessenger(true);
-   };
-
-   const handleOpenMessenger = () => {
-      if (!loggedUser) {
-         alert('Faça login para acessar o mensageiro!');
-         navigate('/auth');
-         return;
-      }
-      setShowMessenger(true);
-      loadConversations();
-   };
-
-   // Polling active chat messages
-   useEffect(() => {
-      let interval: any;
-      if (showMessenger && activeChatUser) {
-         loadMessages(activeChatUser.id);
-         interval = setInterval(() => {
-            loadMessages(activeChatUser.id);
-         }, 3000);
-      }
-      return () => {
-         if (interval) clearInterval(interval);
-      };
-   }, [showMessenger, activeChatUser]);
-
-   // Polling conversations list
-   useEffect(() => {
-      let interval: any;
-      if (showMessenger && !activeChatUser) {
-         loadConversations();
-         interval = setInterval(loadConversations, 5000);
-      }
-      return () => {
-         if (interval) clearInterval(interval);
-      };
-   }, [showMessenger, activeChatUser]);
-
-   const filteredSearchResults = useMemo(() => {
-      if (!searchUserText.trim()) return [];
-      const query = searchUserText.toLowerCase();
-      return allBarbers
-         .filter(b => b.user?.id !== loggedUser?.id && (
-            b.user?.name?.toLowerCase().includes(query) ||
-            b.barberShop?.toLowerCase().includes(query)
-         ))
-         .map(b => b.user);
-   }, [searchUserText, allBarbers, loggedUser?.id]);
 
    const handleLikePost = async (postId: string) => {
       if (!loggedUser) {
@@ -1271,7 +1169,7 @@ export default function Profile() {
                                        setIsLoading(true);
                                        try {
                                           await api.updateProfile(barber.id, { name: editProfileData.name, bio: editProfileData.bio, avatar: editProfileData.avatar });
-                                          setBarber(prev => ({ ...prev, name: editProfileData.name, bio: editProfileData.bio, avatar: editProfileData.avatar }));
+                                          setBarber((prev: any) => ({ ...prev, name: editProfileData.name, bio: editProfileData.bio, avatar: editProfileData.avatar }));
                                           setSettingsView('menu');
                                        } catch (e) { alert('Erro ao atualizar perfil'); }
                                        finally { setIsLoading(false); }
@@ -1288,20 +1186,20 @@ export default function Profile() {
                                     <div className="bg-gray-50 rounded-[20px] p-4 border border-gray-100 flex items-center">
                                        <div className="flex-1">
                                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Senha Atual</label>
-                                          <input type={showPassword ? "text" : "password"} value={passwordData.current} onChange={e => setPasswordData(prev => ({ ...prev, current: e.target.value }))} className="w-full bg-transparent text-sm font-bold text-blue-950 outline-none" />
+                                          <input type={showPassword ? "text" : "password"} value={passwordData.current} onChange={e => setPasswordData((prev: any) => ({ ...prev, current: e.target.value }))} className="w-full bg-transparent text-sm font-bold text-blue-950 outline-none" />
                                        </div>
                                        <button onClick={() => setShowPassword(!showPassword)} className="text-gray-400 ml-2">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
                                     </div>
                                     <div className="bg-gray-50 rounded-[20px] p-4 border border-gray-100 flex items-center">
                                        <div className="flex-1">
                                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Nova Senha</label>
-                                          <input type={showPassword ? "text" : "password"} value={passwordData.new} onChange={e => setPasswordData(prev => ({ ...prev, new: e.target.value }))} className="w-full bg-transparent text-sm font-bold text-blue-950 outline-none" />
+                                          <input type={showPassword ? "text" : "password"} value={passwordData.new} onChange={e => setPasswordData((prev: any) => ({ ...prev, new: e.target.value }))} className="w-full bg-transparent text-sm font-bold text-blue-950 outline-none" />
                                        </div>
                                     </div>
                                     <div className="bg-gray-50 rounded-[20px] p-4 border border-gray-100 flex items-center">
                                        <div className="flex-1">
                                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Confirmar Nova Senha</label>
-                                          <input type={showPassword ? "text" : "password"} value={passwordData.confirm} onChange={e => setPasswordData(prev => ({ ...prev, confirm: e.target.value }))} className="w-full bg-transparent text-sm font-bold text-blue-950 outline-none" />
+                                          <input type={showPassword ? "text" : "password"} value={passwordData.confirm} onChange={e => setPasswordData((prev: any) => ({ ...prev, confirm: e.target.value }))} className="w-full bg-transparent text-sm font-bold text-blue-950 outline-none" />
                                        </div>
                                     </div>
                                     <button onClick={async () => {
