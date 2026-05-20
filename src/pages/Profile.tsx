@@ -140,20 +140,35 @@ export default function Profile() {
 
    // Fetch appointments of the barber to block occupied slots (polled every 3s for real-time updates)
    useEffect(() => {
-      if (!barber?.id) return;
+       if (!barber?.id) return;
 
-      const fetchAppointments = () => {
-         api.getBarberAppointments(barber.id.toString())
-            .then(res => {
-               setBarberAppointments(res || []);
-            })
-            .catch(err => console.error('Error fetching barber appointments:', err));
-      };
+       const pollData = async () => {
+          try {
+             const freshBarber = await api.getBarber(barber.id.toString());
+             if (freshBarber) {
+                setBarber((prev: any) => {
+                   if (!prev) return freshBarber;
+                   return {
+                      ...prev,
+                      schedule: freshBarber.schedule,
+                      servicesConfig: freshBarber.servicesConfig,
+                      latitude: freshBarber.latitude,
+                      longitude: freshBarber.longitude,
+                      isOnline: freshBarber.isOnline
+                   };
+                });
+             }
+             const freshApps = await api.getBarberAppointments(barber.id.toString());
+             setBarberAppointments(freshApps || []);
+          } catch (err) {
+             console.error('Error polling barber data:', err);
+          }
+       };
 
-      fetchAppointments();
-      const interval = setInterval(fetchAppointments, 3000);
-      return () => clearInterval(interval);
-   }, [barber?.id]);
+       pollData();
+       const interval = setInterval(pollData, 3000);
+       return () => clearInterval(interval);
+    }, [barber?.id]);
 
    // Restore pending booking if returning from login redirect
    useEffect(() => {
@@ -201,16 +216,49 @@ export default function Profile() {
       return arr;
    }, []);
 
-   const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+   const barberSchedule = useMemo(() => {
+       if (!barber?.schedule) return {};
+       try {
+          return JSON.parse(barber.schedule);
+       } catch (e) {
+          console.error('Error parsing barber schedule:', e);
+          return {};
+       }
+    }, [barber?.schedule]);
+
+    const timeSlots = useMemo(() => {
+       const key = `${barber?.id}_${bookingDate}`;
+       const dayData = barberSchedule[key] || {};
+       const workingHours = dayData.workingHours || { start: '08:00', end: '20:00' };
+       
+       const startHour = parseInt(workingHours.start.split(':')[0]);
+       const endHour = parseInt(workingHours.end.split(':')[0]);
+       
+       const arr = [];
+       for (let h = startHour; h <= endHour; h++) {
+          arr.push(`${h.toString().padStart(2, '0')}:00`);
+       }
+       return arr;
+    }, [barber?.id, bookingDate, barberSchedule]);
 
    const getSlotStatus = (time: string) => {
-      const app = barberAppointments.find(a => {
-         if (!a.date) return false;
-         const appDate = a.date.split('T')[0];
-         return appDate === bookingDate && a.time === time && a.status !== 'CANCELLED';
-      });
-      return app ? 'occupied' : 'free';
-   };
+       const app = barberAppointments.find(a => {
+          if (!a.date) return false;
+          const appDate = a.date.split('T')[0];
+          return appDate === bookingDate && a.time === time && a.status !== 'CANCELLED';
+       });
+       if (app) return 'occupied';
+
+       const key = `${barber?.id}_${bookingDate}`;
+       const dayData = barberSchedule[key] || {};
+       const slots = dayData.slots || [];
+       const localSlot = slots.find((s: any) => s.time === time);
+       if (localSlot && (localSlot.status === 'blocked' || localSlot.status === 'occupied')) {
+          return 'occupied';
+       }
+
+       return 'free';
+    };
 
    const handleCreateBooking = async () => {
       if (selectedBookingServices.length === 0) {
@@ -502,7 +550,8 @@ export default function Profile() {
    // Feed Dinâmico (Vazio para novos)
    const feedImages = barber.posts || [];
 
-   const { latitude, longitude } = barber.coordinates || { latitude: -23.525, longitude: -46.522 };
+   const latitude = barber.latitude ?? -23.525;
+    const longitude = barber.longitude ?? -46.522;
 
    const openExternalMap = (type: 'google' | 'waze') => {
       const url = type === 'google'
