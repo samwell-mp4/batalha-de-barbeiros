@@ -196,6 +196,15 @@ export const api = {
     return res.json();
   },
 
+  rateBarber: async (barberId: string, rating: number) => {
+    const res = await fetch(`${API_URL}/barbers/${barberId}/rate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating })
+    });
+    return res.json();
+  },
+
   // MESSAGES / CHAT
   getMessages: async (userId1: string, userId2: string) => {
     const res = await fetch(`${API_URL}/messages/${userId1}/${userId2}`);

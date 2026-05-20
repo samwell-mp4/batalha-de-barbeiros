@@ -1453,9 +1453,13 @@ export default function Agenda() {
                                           return (
                                             <button
                                               key={i}
-                                              onClick={() => {
+                                              onClick={async () => {
                                                 setBarberRatings(prev => ({ ...prev, [app.id]: ratingValue }));
-                                                alert(`Muito obrigado! Você avaliou este atendimento com ${ratingValue} estrelas.`);
+                                                if (app.barberId || app?.barber?.id) {
+                                                  try {
+                                                    await api.rateBarber(app.barberId || app.barber.id, ratingValue);
+                                                  } catch(e) { console.error('Failed to submit rating', e); }
+                                                }
                                               }}
                                               className="transition-transform active:scale-125"
                                             >

@@ -7,7 +7,7 @@ import {
    Navigation, UserPlus, Bookmark, Target, Plus, Camera, Send,
    MessageSquare, MessageCircle, Check
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { calculateLevel } from '@/constants/xpSystem';
 import { api } from '../services/api';
 
@@ -110,6 +110,38 @@ export default function Profile() {
    const [newPostData, setNewPostData] = useState({ imageUrl: '', description: '', category: 'Fade' });
    const [isLoading, setIsLoading] = useState(false);
 
+   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+         const img = new Image();
+         img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 1024;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > MAX_WIDTH) {
+               height = Math.round((height * MAX_WIDTH) / width);
+               width = MAX_WIDTH;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+
+            const webpDataUrl = canvas.toDataURL('image/webp', 0.8);
+            setNewPostData({ ...newPostData, imageUrl: webpDataUrl });
+         };
+         img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+   };
+
    const [showServicesConfig, setShowServicesConfig] = useState(false);
    const [editableServices, setEditableServices] = useState<any[]>([]);
 
@@ -127,6 +159,16 @@ export default function Profile() {
    const [chatMessageText, setChatMessageText] = useState('');
    const [searchUserText, setSearchUserText] = useState('');
    const [allBarbers, setAllBarbers] = useState<any[]>([]);
+
+   // Drawer Minimization & Drag States
+   const routeDragControls = useDragControls();
+   const [isRouteMinimized, setIsRouteMinimized] = useState(false);
+   const settingsDragControls = useDragControls();
+   const [isSettingsMinimized, setIsSettingsMinimized] = useState(false);
+   const newPostDragControls = useDragControls();
+   const [isNewPostMinimized, setIsNewPostMinimized] = useState(false);
+   const messengerDragControls = useDragControls();
+   const [isMessengerMinimized, setIsMessengerMinimized] = useState(false);
 
    // Booking State
    const [bookingDate, setBookingDate] = useState<string>(() => {
@@ -1043,8 +1085,29 @@ export default function Profile() {
          <AnimatePresence>
             {showRouteOptions && (
                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1000] bg-blue-950/40 backdrop-blur-md flex items-end justify-center">
-                  <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full bg-white rounded-t-[45px] p-8 pb-12 shadow-[0_-20px_60px_rgba(0,0,0,0.2)]">
-                     <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-8" />
+                  <motion.div 
+                     initial={{ y: "100%" }} 
+                     animate={{ y: isRouteMinimized ? "calc(100% - 130px)" : 0 }} 
+                     exit={{ y: "100%" }} 
+                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                     drag="y"
+                     dragControls={routeDragControls}
+                     dragListener={false}
+                     dragConstraints={{ top: 0, bottom: 0 }}
+                     dragElastic={0.2}
+                     onDragEnd={(_, info) => {
+                        if (info.offset.y > 50) setIsRouteMinimized(true);
+                        else if (info.offset.y < -50) setIsRouteMinimized(false);
+                     }}
+                     className="w-full bg-white rounded-t-[45px] px-8 pb-12 shadow-[0_-20px_60px_rgba(0,0,0,0.2)]"
+                  >
+                     <button 
+                        onPointerDown={(e) => routeDragControls.start(e)}
+                        onClick={() => setIsRouteMinimized(!isRouteMinimized)}
+                        className="w-full py-4 mb-4 flex justify-center group pointer-events-auto touch-none"
+                     >
+                        <div className={`w-12 h-1.5 rounded-full transition-all ${isRouteMinimized ? 'bg-blue-600 w-16' : 'bg-gray-100 group-hover:bg-gray-200'}`} />
+                     </button>
                      <h3 className="text-xl font-black text-blue-950 uppercase italic text-center mb-8 tracking-tighter">Escolher Navegador</h3>
                      <div className="grid grid-cols-2 gap-4">
                         <button onClick={() => openExternalMap('google')} className="flex flex-col items-center p-6 bg-gray-50 rounded-[35px] border border-gray-100 hover:bg-blue-50 transition-colors active:scale-95">
@@ -1066,9 +1129,30 @@ export default function Profile() {
          <AnimatePresence>
             {showSettings && (
                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[7000] bg-blue-950/60 backdrop-blur-md flex items-end justify-center">
-                  <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full bg-white rounded-t-[45px] max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
-                     <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto my-6" />
-
+                  <motion.div 
+                     initial={{ y: "100%" }} 
+                     animate={{ y: isSettingsMinimized ? "calc(100% - 130px)" : 0 }} 
+                     exit={{ y: "100%" }} 
+                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                     drag="y"
+                     dragControls={settingsDragControls}
+                     dragListener={false}
+                     dragConstraints={{ top: 0, bottom: 0 }}
+                     dragElastic={0.2}
+                     onDragEnd={(_, info) => {
+                        if (info.offset.y > 50) setIsSettingsMinimized(true);
+                        else if (info.offset.y < -50) setIsSettingsMinimized(false);
+                     }}
+                     className="w-full bg-white rounded-t-[45px] max-h-[85vh] overflow-hidden flex flex-col shadow-2xl relative"
+                  >
+                     <button 
+                        onPointerDown={(e) => settingsDragControls.start(e)}
+                        onClick={() => setIsSettingsMinimized(!isSettingsMinimized)}
+                        className="w-full py-4 mb-2 flex justify-center group pointer-events-auto touch-none absolute top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md"
+                     >
+                        <div className={`w-12 h-1.5 rounded-full transition-all ${isSettingsMinimized ? 'bg-blue-600 w-16' : 'bg-gray-200 group-hover:bg-gray-300'}`} />
+                     </button>
+                     <div className="mt-8" />
                      <div className="px-8 pb-4 border-b border-gray-50 flex items-center justify-between">
                         <h3 className="text-xl font-black text-blue-950 uppercase italic tracking-tighter">Configurações</h3>
                         <button onClick={() => setShowSettings(false)} className="p-2 bg-gray-50 rounded-xl text-gray-400"><X size={20} /></button>
@@ -1133,15 +1217,37 @@ export default function Profile() {
          <AnimatePresence>
             {showNewPost && (
                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[8000] bg-blue-950/40 backdrop-blur-md flex items-end justify-center">
-                  <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full bg-white rounded-t-[45px] p-8 pb-12 shadow-2xl flex flex-col">
-                     <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-8" />
+                  <motion.div 
+                     initial={{ y: "100%" }} 
+                     animate={{ y: isNewPostMinimized ? "calc(100% - 130px)" : 0 }} 
+                     exit={{ y: "100%" }} 
+                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                     drag="y"
+                     dragControls={newPostDragControls}
+                     dragListener={false}
+                     dragConstraints={{ top: 0, bottom: 0 }}
+                     dragElastic={0.2}
+                     onDragEnd={(_, info) => {
+                        if (info.offset.y > 50) setIsNewPostMinimized(true);
+                        else if (info.offset.y < -50) setIsNewPostMinimized(false);
+                     }}
+                     className="w-full bg-white rounded-t-[45px] p-8 pb-12 shadow-2xl flex flex-col relative"
+                  >
+                     <button 
+                        onPointerDown={(e) => newPostDragControls.start(e)}
+                        onClick={() => setIsNewPostMinimized(!isNewPostMinimized)}
+                        className="w-full py-4 mb-2 flex justify-center group pointer-events-auto touch-none absolute top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md rounded-t-[45px]"
+                     >
+                        <div className={`w-12 h-1.5 rounded-full transition-all ${isNewPostMinimized ? 'bg-blue-600 w-16' : 'bg-gray-100 group-hover:bg-gray-200'}`} />
+                     </button>
+                     <div className="mt-8" />
                      <div className="flex items-center justify-between mb-8">
                         <h3 className="text-2xl font-black text-blue-950 uppercase italic tracking-tighter">Nova Publicação</h3>
                         <button onClick={() => setShowNewPost(false)} className="p-2 bg-gray-50 rounded-xl text-gray-400"><X size={20} /></button>
                      </div>
 
                      <div className="space-y-6">
-                        <div className="aspect-video bg-gray-50 rounded-[30px] border-2 border-dashed border-blue-100 flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:bg-blue-50 transition-colors overflow-hidden relative">
+                        <label className="aspect-video bg-gray-50 rounded-[30px] border-2 border-dashed border-blue-100 flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:bg-blue-50 transition-colors overflow-hidden relative">
                            {newPostData.imageUrl ? (
                               <img src={newPostData.imageUrl} className="w-full h-full object-cover" />
                            ) : (
@@ -1150,8 +1256,8 @@ export default function Profile() {
                                  <span className="text-[10px] font-black uppercase">Subir Foto ou Vídeo</span>
                               </>
                            )}
-                           <input type="text" placeholder="URL da Imagem (Ex: Unsplash)" value={newPostData.imageUrl} onChange={e => setNewPostData({ ...newPostData, imageUrl: e.target.value })} className="absolute bottom-4 left-4 right-4 bg-white/90 p-3 rounded-xl text-[10px] border-none outline-none font-bold" />
-                        </div>
+                           <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                        </label>
 
                         <textarea
                            placeholder="Escreva uma descrição..."
@@ -1374,8 +1480,30 @@ export default function Profile() {
          <AnimatePresence>
             {showMessenger && (
                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[7500] bg-blue-950/60 backdrop-blur-md flex items-end justify-center">
-                  <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[45px] h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-                     <div className="w-12 h-1.5 bg-gray-150 rounded-full mx-auto my-4" />
+                  <motion.div 
+                     initial={{ y: "100%" }} 
+                     animate={{ y: isMessengerMinimized ? "calc(100% - 130px)" : 0 }} 
+                     exit={{ y: "100%" }} 
+                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                     drag="y"
+                     dragControls={messengerDragControls}
+                     dragListener={false}
+                     dragConstraints={{ top: 0, bottom: 0 }}
+                     dragElastic={0.2}
+                     onDragEnd={(_, info) => {
+                        if (info.offset.y > 50) setIsMessengerMinimized(true);
+                        else if (info.offset.y < -50) setIsMessengerMinimized(false);
+                     }}
+                     className="w-full max-w-md bg-white rounded-t-[45px] h-[90vh] flex flex-col shadow-2xl overflow-hidden relative"
+                  >
+                     <button 
+                        onPointerDown={(e) => messengerDragControls.start(e)}
+                        onClick={() => setIsMessengerMinimized(!isMessengerMinimized)}
+                        className="w-full py-4 mb-2 flex justify-center group pointer-events-auto touch-none absolute top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md rounded-t-[45px]"
+                     >
+                        <div className={`w-12 h-1.5 rounded-full transition-all ${isMessengerMinimized ? 'bg-blue-600 w-16' : 'bg-gray-200 group-hover:bg-gray-300'}`} />
+                     </button>
+                     <div className="mt-8" />
 
                      {activeChatUser ? (
                         /* TELA DE CHAT ATIVO */

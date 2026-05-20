@@ -56,6 +56,7 @@ model Barber {
   schedule      String?   @db.Text
   bio           String?
   rating        Float     @default(5.0)
+  reviewsCount  Int       @default(0)
   isPremium     Boolean   @default(false)
   gallery       String[]
   isOnline      Boolean   @default(false)

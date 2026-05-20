@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Heart, MessageCircle, Share2, Send, ChevronUp, ChevronDown, CheckCircle2, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { api } from '../services/api';
 
 export default function World() {
@@ -13,6 +13,10 @@ export default function World() {
     const tabParam = searchParams.get('tab');
     return (tabParam === 'duels' || tabParam === 'duels') ? 'duels' : 'feed';
   });
+
+  // Comments Drawer Drag Control
+  const commentsDragControls = useDragControls();
+  const [isCommentsMinimized, setIsCommentsMinimized] = useState(false);
 
   const [currentUser] = useState<any>(() => {
     const saved = localStorage.getItem('user');
@@ -221,21 +225,21 @@ export default function World() {
   };
 
   return (
-    <div className="flex flex-col bg-[#030303] min-h-screen text-white relative">
+    <div className="flex flex-col bg-[#f8fafc] min-h-screen text-blue-950 relative">
       
       {/* HUD HEADER & TABS */}
-      <div className="sticky top-0 bg-[#030303]/90 backdrop-blur-xl border-b border-white/5 z-50 px-6 py-4 flex flex-col space-y-4">
+      <div className="sticky top-0 bg-[#f8fafc]/90 backdrop-blur-xl border-b border-gray-100 z-50 px-6 py-4 flex flex-col space-y-4">
         {/* Navigation Tabs */}
-        <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
+        <div className="flex bg-gray-100 p-1 rounded-2xl border border-gray-100/50">
           <button
             onClick={() => setActiveTab('feed')}
-            className={`flex-1 py-3 text-center rounded-xl font-orbitron text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${activeTab === 'feed' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-400 hover:text-white'}`}
+            className={`flex-1 py-3 text-center rounded-xl font-orbitron text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${activeTab === 'feed' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-gray-500 hover:text-blue-600'}`}
           >
             Explorar
           </button>
           <button
             onClick={() => setActiveTab('duels')}
-            className={`flex-1 py-3 text-center rounded-xl font-orbitron text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${activeTab === 'duels' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-400 hover:text-white'}`}
+            className={`flex-1 py-3 text-center rounded-xl font-orbitron text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${activeTab === 'duels' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-gray-500 hover:text-blue-600'}`}
           >
             Duelos
           </button>
@@ -246,8 +250,8 @@ export default function World() {
       <div className="flex-1 pb-32">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-3">
-            <div className="w-8 h-8 rounded-full border-2 border-t-blue-600 border-white/10 animate-spin" />
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Carregando World...</p>
+            <div className="w-8 h-8 rounded-full border-2 border-t-blue-600 border-gray-200 animate-spin" />
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Carregando World...</p>
           </div>
         ) : (
           <AnimatePresence mode="wait">
@@ -272,7 +276,7 @@ export default function World() {
                     const isLiked = currentUser?.id && likes.some((l: any) => l.userId === currentUser.id);
                     
                     return (
-                      <div key={post.id} className="bg-zinc-950/60 rounded-[30px] border border-white/5 overflow-hidden">
+                      <div key={post.id} className="bg-white rounded-[30px] shadow-sm border border-gray-100 overflow-hidden">
                         
                         {/* Feed Card Header */}
                         <div className="p-4 flex items-center justify-between">
@@ -282,24 +286,24 @@ export default function World() {
                           >
                             <img 
                               src={post.barber?.user?.avatar || `https://i.pravatar.cc/100?u=${post.barberId}`} 
-                              className="w-9 h-9 rounded-full object-cover border border-white/10" 
+                              className="w-9 h-9 rounded-full object-cover border border-gray-100" 
                             />
                             <div className="text-left">
                               <div className="flex items-center space-x-1">
-                                <h3 className="text-xs font-black uppercase tracking-tight">{post.barber?.user?.name || 'Barbeiro'}</h3>
+                                <h3 className="text-xs font-black uppercase tracking-tight text-blue-950">{post.barber?.user?.name || 'Barbeiro'}</h3>
                                 <CheckCircle2 size={12} className="text-blue-500 fill-blue-500" />
                               </div>
                               <p className="text-[7px] font-bold text-gray-400 uppercase tracking-wider">{post.barber?.barberShop || 'Elite Barber'}</p>
                             </div>
                           </div>
-                          <span className="text-[7px] font-black text-gray-500 uppercase tracking-wider">
+                          <span className="text-[7px] font-black text-gray-400 uppercase tracking-wider">
                             {new Date(post.createdAt).toLocaleDateString('pt-BR')}
                           </span>
                         </div>
 
                         {/* Feed Card Media */}
                         <div 
-                          className="relative aspect-square w-full bg-zinc-900 flex items-center justify-center overflow-hidden cursor-pointer select-none"
+                          className="relative aspect-square w-full bg-gray-100 flex items-center justify-center overflow-hidden cursor-pointer select-none"
                           onDoubleClick={() => handleDoubleTap(post.id)}
                         >
                           <img src={post.imageUrl} className="w-full h-full object-cover" />
@@ -327,19 +331,19 @@ export default function World() {
                             <div className="flex items-center space-x-4">
                               <button 
                                 onClick={() => handleLikePost(post.id)}
-                                className={`transition-transform active:scale-75 ${isLiked ? 'text-blue-500' : 'text-gray-400 hover:text-white'}`}
+                                className={`transition-transform active:scale-75 ${isLiked ? 'text-blue-500' : 'text-gray-400 hover:text-blue-600'}`}
                               >
                                 <Heart size={22} fill={isLiked ? 'currentColor' : 'none'} />
                               </button>
                               <button 
                                 onClick={() => setSelectedPostForComments(post)}
-                                className="text-gray-400 hover:text-white transition-transform active:scale-95"
+                                className="text-gray-400 hover:text-blue-600 transition-transform active:scale-95"
                               >
                                 <MessageCircle size={22} />
                               </button>
                               <button 
                                 onClick={() => handleSharePost(post)}
-                                className="text-gray-400 hover:text-white transition-transform active:scale-95"
+                                className="text-gray-400 hover:text-blue-600 transition-transform active:scale-95"
                               >
                                 <Share2 size={22} />
                               </button>
@@ -349,19 +353,19 @@ export default function World() {
 
                           {/* Description */}
                           {post.content && (
-                            <div className="text-left text-xs text-gray-200">
-                              <span className="font-black uppercase tracking-tight text-white mr-1.5">{post.barber?.user?.name}</span>
+                            <div className="text-left text-xs text-gray-600">
+                              <span className="font-black uppercase tracking-tight text-blue-950 mr-1.5">{post.barber?.user?.name}</span>
                               {post.content}
                             </div>
                           )}
 
                           {/* Preview Comments List */}
                           {comments.length > 0 && (
-                            <div className="space-y-1.5 pt-2 border-t border-white/5">
+                            <div className="space-y-1.5 pt-2 border-t border-gray-100">
                               {comments.slice(-2).map((cmt: any, idx: number) => (
-                                <div key={idx} className="flex justify-between items-start text-[10px] text-gray-300 text-left">
+                                <div key={idx} className="flex justify-between items-start text-[10px] text-gray-500 text-left">
                                   <p>
-                                    <span className="font-bold text-white uppercase mr-1.5">{cmt.user?.name || 'Cliente'}</span>
+                                    <span className="font-bold text-blue-950 uppercase mr-1.5">{cmt.user?.name || 'Cliente'}</span>
                                     {cmt.content}
                                   </p>
                                 </div>
@@ -391,9 +395,9 @@ export default function World() {
                               name="commentInput"
                               type="text" 
                               placeholder="Adicione um comentário..." 
-                              className="flex-1 bg-white/5 border border-white/5 rounded-xl px-4 py-2 text-[10px] text-white focus:outline-none focus:border-blue-600/30 placeholder-gray-500"
+                              className="flex-1 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-[10px] text-blue-950 focus:outline-none focus:border-blue-200 placeholder-gray-400"
                             />
-                            <button type="submit" className="p-2 bg-blue-600/20 text-blue-500 rounded-xl hover:bg-blue-600 hover:text-white transition-all active:scale-95">
+                            <button type="submit" className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all active:scale-95">
                               <Send size={12} />
                             </button>
                           </form>
@@ -616,21 +620,38 @@ export default function World() {
               onClick={() => setSelectedPostForComments(null)}
             />
             {/* Drawer */}
-            <motion.div
+            <motion.div 
               initial={{ y: '100%' }}
-              animate={{ y: 0 }}
+              animate={{ y: isCommentsMinimized ? "calc(100% - 130px)" : 0 }}
               exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="fixed inset-x-0 bottom-0 max-w-md mx-auto h-[65%] bg-zinc-950 rounded-t-[40px] border-t border-white/10 z-[9500] flex flex-col overflow-hidden text-white"
+              transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+              drag="y"
+              dragControls={commentsDragControls}
+              dragListener={false}
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={0.2}
+              onDragEnd={(_, info) => {
+                 if (info.offset.y > 50) setIsCommentsMinimized(true);
+                 else if (info.offset.y < -50) setIsCommentsMinimized(false);
+              }}
+              className="fixed inset-x-0 bottom-0 max-w-md mx-auto h-[65%] bg-white rounded-t-[45px] shadow-[0_-20px_60px_rgba(0,0,0,0.2)] z-[9500] flex flex-col overflow-hidden text-blue-950 relative"
             >
+              <button 
+                 onPointerDown={(e) => commentsDragControls.start(e)}
+                 onClick={() => setIsCommentsMinimized(!isCommentsMinimized)}
+                 className="w-full py-4 mb-2 flex justify-center group pointer-events-auto touch-none absolute top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md rounded-t-[45px]"
+              >
+                 <div className={`w-12 h-1.5 rounded-full transition-all ${isCommentsMinimized ? 'bg-blue-600 w-16' : 'bg-gray-100 group-hover:bg-gray-200'}`} />
+              </button>
+              <div className="mt-8" />
               {/* Drawer Header */}
-              <div className="px-6 py-4 flex items-center justify-between border-b border-white/5">
+              <div className="px-6 pb-4 pt-2 flex items-center justify-between border-b border-gray-100">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                   Comentários ({selectedPostForComments.comments?.length || 0})
                 </span>
                 <button 
                   onClick={() => setSelectedPostForComments(null)}
-                  className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-all active:scale-95"
+                  className="p-2 bg-gray-50 hover:bg-gray-100 rounded-full transition-all active:scale-95"
                 >
                   <X size={16} />
                 </button>
@@ -643,18 +664,18 @@ export default function World() {
                     <div key={idx} className="flex items-start space-x-3 text-left">
                       <img 
                         src={cmt.user?.avatar || `https://i.pravatar.cc/100?u=${cmt.userId}`} 
-                        className="w-7 h-7 rounded-full object-cover border border-white/5 mt-0.5" 
+                        className="w-7 h-7 rounded-full object-cover border border-gray-100 mt-0.5" 
                       />
                       <div className="flex-1">
                         <div className="flex items-center space-x-1.5">
-                          <span className="text-[9px] font-black text-white uppercase tracking-tight">
+                          <span className="text-[9px] font-black text-blue-950 uppercase tracking-tight">
                             {cmt.user?.name || 'Cliente'}
                           </span>
                           <span className="text-[7px] text-gray-500 uppercase">
                             {new Date(cmt.createdAt).toLocaleDateString('pt-BR')}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-300 mt-1 font-medium">{cmt.content}</p>
+                        <p className="text-xs text-gray-600 mt-1 font-medium">{cmt.content}</p>
                       </div>
                     </div>
                   ))
@@ -666,7 +687,7 @@ export default function World() {
               </div>
 
               {/* Drawer Footer input */}
-              <div className="p-4 bg-zinc-900 border-t border-white/5 pb-8">
+              <div className="p-4 bg-gray-50 border-t border-gray-100 pb-8">
                 <form 
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -679,11 +700,11 @@ export default function World() {
                     value={newCommentText}
                     onChange={(e) => setNewCommentText(e.target.value)}
                     placeholder="Adicione um comentário público..." 
-                    className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-xs text-white focus:outline-none focus:border-blue-600"
+                    className="flex-1 bg-white border border-gray-100 rounded-2xl px-4 py-3 text-xs text-blue-950 focus:outline-none focus:border-blue-200 placeholder-gray-400"
                   />
                   <button 
                     type="submit" 
-                    className="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl transition-all active:scale-95"
+                    className="p-3 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-2xl transition-all active:scale-95"
                   >
                     <Send size={14} />
                   </button>

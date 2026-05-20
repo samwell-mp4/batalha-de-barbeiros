@@ -159,6 +159,8 @@ export default function MapPage() {
   const [showRadius, setShowRadius] = useState(true);
   const [isDrawerMinimized, setIsDrawerMinimized] = useState(false);
   const [dbBarbers, setDbBarbers] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [serviceFilter, setServiceFilter] = useState('ALL');
   
   // EVALUATION & PAYMENT STATE
   const [stars, setStars] = useState(0);
@@ -655,10 +657,25 @@ export default function MapPage() {
       const isLivre = b.status?.id === STATUS.LIVRE.id;
       const isOcupado = b.status?.id === STATUS.TRABALHANDO.id;
       const isAcabando = isOcupado && b.waitTime <= 10;
-      if (statusFilter === 'livre') return isLivre;
-      if (statusFilter === 'ocupado') return isOcupado;
-      if (statusFilter === 'acabando') return isAcabando;
-      return true;
+      
+      let statusMatch = true;
+      if (statusFilter === 'livre') statusMatch = isLivre;
+      if (statusFilter === 'ocupado') statusMatch = isOcupado;
+      if (statusFilter === 'acabando') statusMatch = isAcabando;
+      
+      let textMatch = true;
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const text = `${b.name || ''} ${b.barberShop || ''} ${b.city || ''} ${b.state || ''}`.toLowerCase();
+        textMatch = text.includes(query);
+      }
+
+      let serviceMatch = true;
+      if (serviceFilter !== 'ALL') {
+        serviceMatch = b.specialties?.includes(serviceFilter);
+      }
+
+      return statusMatch && textMatch && serviceMatch;
     });
   }, [statusFilter, radarBarbers, dbBarbers]);
 
@@ -743,9 +760,33 @@ export default function MapPage() {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* FILTROS FLUTUANTES */}
-      <div className="absolute top-4 left-0 right-0 z-[1000] pointer-events-none flex justify-center">
-        <div className="w-full pointer-events-auto overflow-x-auto no-scrollbar py-2 px-6 flex justify-center">
+      {/* FILTROS FLUTUANTES E BUSCA */}
+      <div className="absolute top-4 left-0 right-0 z-[1000] pointer-events-none flex flex-col items-center space-y-2">
+        <div className="w-full max-w-2xl px-6 pointer-events-auto">
+          <div className="bg-white/95 backdrop-blur-xl p-2 rounded-[22px] shadow-2xl border border-white/20 flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+            <div className="flex-1 flex items-center bg-gray-50 rounded-xl px-3 border border-gray-100">
+               <input 
+                  type="text" 
+                  placeholder="Buscar Barbeiro, Barbearia, Cidade..." 
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full bg-transparent border-none py-2.5 text-[11px] font-bold text-blue-950 focus:outline-none placeholder-gray-400"
+               />
+            </div>
+            <select 
+               value={serviceFilter}
+               onChange={e => setServiceFilter(e.target.value)}
+               className="bg-gray-50 rounded-xl border border-gray-100 py-2.5 px-3 text-[11px] font-bold text-blue-950 focus:outline-none outline-none appearance-none cursor-pointer"
+            >
+               <option value="ALL">Todos os Serviços</option>
+               {['Cabelo', 'Barba', 'Fade', 'Navalhado', 'Pigmentação', 'Sobrancelha', 'Platinado', 'Luzes', 'Freestyle', 'Pézinho'].map(s => (
+                 <option key={s} value={s}>{s}</option>
+               ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="w-full pointer-events-auto overflow-x-auto no-scrollbar py-1 px-6 flex justify-center">
           <motion.div 
             initial={{ y: -20, opacity: 0 }} 
             animate={{ y: 0, opacity: 1 }} 
@@ -854,7 +895,7 @@ export default function MapPage() {
               <button 
                 onPointerDown={(e) => dragControls.start(e)}
                 onClick={() => setIsDrawerMinimized(!isDrawerMinimized)}
-                className="w-full py-4 mb-2 flex justify-center group touch-none"
+                className="w-full py-4 mb-2 flex justify-center group pointer-events-auto touch-none"
               >
                 <div className={`w-12 h-1.5 rounded-full transition-all ${isDrawerMinimized ? 'bg-blue-600 w-16' : 'bg-gray-100 group-hover:bg-gray-200'}`} />
               </button>
@@ -1016,34 +1057,30 @@ export default function MapPage() {
                   })()}
 
                   {/* FEED CAROUSEL */}
-                  <div className="mb-8">
-                    <div className="flex items-center justify-between mb-4">
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center"><Camera size={12} className="mr-2" /> Trabalhos Recentes</p>
-                      <span className="text-[10px] font-black text-blue-500 uppercase">Ver todos</span>
-                    </div>
-                    <div className="flex space-x-3 overflow-x-auto no-scrollbar pb-2">
-                      {selectedBarber.posts && selectedBarber.posts.length > 0 ? (
-                        selectedBarber.posts.map((post: any) => (
+                  {selectedBarber.posts && selectedBarber.posts.length > 0 && (
+                    <div className="mb-8">
+                      <div className="flex items-center justify-between mb-4">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center"><Camera size={12} className="mr-2" /> Trabalhos Recentes</p>
+                        <span className="text-[10px] font-black text-blue-500 uppercase">Ver todos</span>
+                      </div>
+                      <div className="flex space-x-3 overflow-x-auto no-scrollbar pb-2">
+                        {selectedBarber.posts.map((post: any) => (
                           <div key={post.id} className="min-w-[130px] h-44 rounded-[30px] bg-gray-100 overflow-hidden shadow-sm flex-shrink-0 border border-gray-100">
                             <img src={post.imageUrl} className="w-full h-full object-cover" />
                           </div>
-                        ))
-                      ) : (
-                        [1, 2, 3].map(i => (
-                          <div key={i} className="min-w-[130px] h-44 rounded-[30px] bg-gray-100 overflow-hidden shadow-sm flex-shrink-0 border border-gray-100">
-                            <img src={`https://picsum.photos/400/600?random=${i + 20}`} className="w-full h-full object-cover" />
-                          </div>
-                        ))
-                      )}
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* ENDEREÃ‡O */}
+                  {/* ENDEREÇO */}
                   <div className="bg-gray-50 p-6 rounded-[35px] border border-gray-100 mb-8 flex items-start space-x-3">
                     <div className="p-2 bg-blue-100 text-blue-600 rounded-xl"><MapPin size={18} /></div>
                     <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase mb-0.5">LocalizaÃ§Ã£o</p>
-                      <p className="text-xs font-bold text-blue-950">Rua da Arena, 452 - TatuapÃ©, SÃ£o Paulo</p>
+                      <p className="text-[10px] font-black text-gray-400 uppercase mb-0.5">Localização</p>
+                      <p className="text-xs font-bold text-blue-950">
+                        {[selectedBarber.user?.address, selectedBarber.user?.city, selectedBarber.user?.state].filter(Boolean).join(', ') || 'Endereço não informado'}
+                      </p>
                     </div>
                   </div>
 

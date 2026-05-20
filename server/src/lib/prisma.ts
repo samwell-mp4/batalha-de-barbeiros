@@ -33,6 +33,7 @@ const db: Record<string, any[]> = {
       specialties: ['Cabelo', 'Barba'],
       workingHours: '08:00 às 22:00',
       rating: 4.9,
+      reviewsCount: 12,
       isOnline: true,
       gallery: [],
       user: { id: 'barber-user-1', name: 'Gustavo Barbeiro', email: 'barber@battlebarber.com', avatar: 'https://i.pravatar.cc/150?u=2' }
@@ -46,6 +47,7 @@ const db: Record<string, any[]> = {
       specialties: ['Fade', 'Pigmentação'],
       workingHours: '09:00 às 20:00',
       rating: 4.9,
+      reviewsCount: 8,
       isOnline: true,
       gallery: [],
       user: { id: 'barber-user-2', name: 'Henrique Barber', email: 'henrique@elite.com', avatar: 'https://i.pravatar.cc/150?u=3' }
@@ -59,6 +61,7 @@ const db: Record<string, any[]> = {
       specialties: ['Navalhado'],
       workingHours: '09:00 às 21:00',
       rating: 4.8,
+      reviewsCount: 5,
       isOnline: true,
       gallery: [],
       user: { id: 'barber-user-3', name: 'Vitor do Corte', email: 'vitor@elite.com', avatar: 'https://i.pravatar.cc/150?u=4' }

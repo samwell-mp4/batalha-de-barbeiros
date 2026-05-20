@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
+import fs from 'fs';
+import path from 'path';
 
 const router = Router();
 
@@ -107,9 +109,35 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Image URL and Barber ID are required' });
     }
 
+    let imageUrlToSave = imageUrl;
+
+    if (imageUrl.startsWith('data:image/')) {
+      try {
+        const matches = imageUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          const base64Data = matches[2];
+          const buffer = Buffer.from(base64Data, 'base64');
+          
+          const filename = `post-${Date.now()}-${Math.floor(Math.random() * 100000)}.webp`;
+          
+          const uploadsDir = path.join(__dirname, '..', '..', '..', 'public', 'uploads');
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+          
+          const filePath = path.join(uploadsDir, filename);
+          fs.writeFileSync(filePath, buffer);
+          
+          imageUrlToSave = `/uploads/${filename}`;
+        }
+      } catch (e: any) {
+        console.error('[UPLOAD ERROR] Failed to save base64 image:', e.message);
+      }
+    }
+
     const post = await prisma.post.create({
       data: {
-        imageUrl,
+        imageUrl: imageUrlToSave,
         content: description || '',
         barberId
       }

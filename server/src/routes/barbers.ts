@@ -129,4 +129,46 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+router.post('/:id/rate', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rating } = req.body;
+    const numericRating = parseFloat(rating);
+    if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
+      return res.status(400).json({ error: 'Invalid rating value' });
+    }
+
+    const barber = await prisma.barber.findFirst({
+      where: {
+        OR: [
+          { id: id },
+          { userId: id }
+        ]
+      }
+    });
+
+    if (!barber) {
+      return res.status(404).json({ error: 'Barber not found' });
+    }
+
+    const currentReviewsCount = barber.reviewsCount || 0;
+    const currentRating = barber.rating || 5.0;
+    const nextReviewsCount = currentReviewsCount + 1;
+    const nextRating = parseFloat(((currentRating * currentReviewsCount + numericRating) / nextReviewsCount).toFixed(1));
+
+    const updated = await prisma.barber.update({
+      where: { id: barber.id },
+      data: {
+        rating: nextRating,
+        reviewsCount: nextReviewsCount
+      }
+    });
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error('[API ERROR] Failed to submit barber rating:', error.message);
+    res.status(500).json({ error: 'Failed to submit barber rating' });
+  }
+});
+
 export default router;
