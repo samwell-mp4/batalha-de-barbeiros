@@ -679,7 +679,7 @@ export default function MapPage() {
 
       return statusMatch && textMatch && serviceMatch;
     });
-  }, [statusFilter, radarBarbers, dbBarbers]);
+  }, [statusFilter, radarBarbers, dbBarbers, searchQuery, serviceFilter]);
 
   const activeBarberCoords = useMemo(() => {
     if (!matchSession?.activeMatch?.barberId) return null;
