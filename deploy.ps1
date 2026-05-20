@@ -31,8 +31,8 @@ Write-Host "[OK] Push realizado com sucesso!" -ForegroundColor Green
 # 5. Webhook Deploy
 Write-Host "[5/5] Acionando deploy no servidor..." -ForegroundColor Yellow
 try {
-    $response = Invoke-WebRequest -Uri "http://72.62.138.244:3000/api/deploy/37c4f6aa10c6c124cdad9dc7937d41d62000606d27dea080" -Method GET -TimeoutSec 120
-    Write-Host "[OK] Deploy acionado! Resposta: $($response.StatusCode)" -ForegroundColor Green
+    $response = Invoke-RestMethod -Uri "http://72.62.138.244:3000/api/deploy/37c4f6aa10c6c124cdad9dc7937d41d62000606d27dea080" -Method GET -TimeoutSec 120 -ErrorAction Stop
+    Write-Host "[OK] Deploy acionado! Resposta: $response" -ForegroundColor Green
 } catch {
     Write-Host "[AVISO] Webhook respondeu: $_" -ForegroundColor Yellow
 }

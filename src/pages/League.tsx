@@ -74,8 +74,6 @@ export default function League() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOpponent, setSelectedOpponent] = useState<any>(null);
 
-
-
   const navigate = useNavigate();
   const [storyIndex, setStoryIndex] = useState(0);
   const [showCommentsPanel, setShowCommentsPanel] = useState(false);
@@ -85,7 +83,6 @@ export default function League() {
     fetchChampionships();
     fetchBarbers();
 
-    // Deep link detection
     const params = new URLSearchParams(window.location.search);
     const championshipId = params.get('championshipId') || params.get('id');
     const autoVote = params.get('autoVote');
@@ -97,7 +94,6 @@ export default function League() {
         setTimeout(() => {
           handleVoteSubmit(autoVote, championshipId);
         }, 800);
-        // Clear query param
         window.history.replaceState({}, '', `/league?championshipId=${championshipId}`);
       }
     }
@@ -107,7 +103,6 @@ export default function League() {
     try {
       const data = await api.getBarbers();
       if (data && Array.isArray(data)) {
-        // Exclude the current logged-in barber from the options!
         const filtered = data.filter((b: any) => b.userId !== currentUser?.id && b.id !== currentUser?.barberProfile?.id);
         setDbBarbers(filtered);
       }
@@ -152,8 +147,8 @@ export default function League() {
 
   const LEAGUES = [
     { id: 1, name: 'Duelo 1x1', type: 'X1 CLASSIC', players: '2', radius: 'Global (Nickname)', duration: 'Definido pelo usuário', icon: <Swords size={18} />, canCreate: true },
-    { id: 2, name: 'Campeonato do Bairro', type: 'BAIRRO', players: '8/16/32', radius: '5km', duration: 'Definido pelo usuário', icon: <MapPin size={18} />, canCreate: true },
-    { id: 3, name: 'Campeonato Regional', type: 'REGIONAL', players: '32 - 128', radius: 'Região Auto', duration: '5 dias', icon: <LayoutGrid size={18} />, canCreate: true },
+    { id: 2, name: 'Campeonato do Bairro', type: 'BAIRRO', players: '8/16/32', radius: '5km', duration: 'Definido pelo usuário', icon: <MapPin size={18} />, canCreate: false },
+    { id: 3, name: 'Campeonato Regional', type: 'REGIONAL', players: '32 - 128', radius: 'Região Auto', duration: '5 dias', icon: <LayoutGrid size={18} />, canCreate: false },
     { id: 4, name: 'Campeonato Estadual', type: 'ESTADUAL', players: '64 - 256', radius: 'Estado', duration: '1x por semana', icon: <Globe size={18} />, canCreate: false },
     { id: 5, name: 'Campeonato Brasileiro', type: 'BRASILEIRO', players: '512 - 1024', radius: 'Nacional', duration: '15 dias', icon: <Trophy size={18} />, canCreate: false },
   ];
@@ -172,29 +167,29 @@ export default function League() {
   ];
 
   const renderHome = () => (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full bg-[#F8FAFC]">
-      {loading && <div className="fixed inset-0 bg-white/50 backdrop-blur-sm z-[999] flex items-center justify-center"><div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" /></div>}
-      <div className="bg-white border-b border-gray-100 px-6 py-6 z-30 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full bg-gradient-to-br from-slate-50 via-white to-blue-50">
+      {loading && <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-[999] flex items-center justify-center"><div className="w-10 h-10 border-[3px] border-blue-600/20 border-t-blue-600 rounded-full animate-spin" /></div>}
+      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-6 pt-6 pb-5 z-30 shadow-sm">
+        <div className="flex items-center justify-between mb-5">
           <div className="flex items-center space-x-3">
-            <div className="bg-blue-600 p-2 rounded-2xl shadow-lg shadow-blue-200"><Trophy size={22} className="text-white" /></div>
+            <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-2.5 rounded-2xl shadow-lg shadow-blue-200/50"><Trophy size={22} className="text-white" /></div>
             <div>
-              <h1 className="text-blue-950 text-xl font-black font-orbitron italic tracking-widest uppercase">Elite Leagues</h1>
-              <span className="flex items-center text-[8px] font-black text-green-500 uppercase tracking-widest"><div className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1 animate-pulse" /> SISTEMA AUTOMATIZADO</span>
+              <h1 className="text-slate-900 text-xl font-black font-orbitron italic tracking-widest uppercase">Elite Leagues</h1>
+              <span className="flex items-center text-[8px] font-black text-emerald-600 uppercase tracking-[0.25em]"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" /> SISTEMA AUTOMATIZADO</span>
             </div>
           </div>
           <div className="flex space-x-2">
-            <button className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 border border-gray-100"><Search size={18} /></button>
-            <button className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 border border-gray-100"><Filter size={18} /></button>
+            <button className="w-10 h-10 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center text-slate-500 transition-colors"><Search size={18} /></button>
+            <button className="w-10 h-10 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center text-slate-500 transition-colors"><Filter size={18} /></button>
           </div>
         </div>
-        <div className="flex bg-gray-50 p-1 rounded-2xl border border-gray-100 overflow-x-auto no-scrollbar">
+        <div className="flex bg-slate-100/80 p-1 rounded-2xl border border-slate-200/60 overflow-x-auto no-scrollbar">
           {[
             { id: 'tournaments', lab: 'Torneios', icon: <Swords size={14} /> },
             { id: 'my_tournaments', lab: 'Meus', icon: <Plus size={14} /> },
             { id: 'rankings', lab: 'Rankings', icon: <BarChart3 size={14} /> }
           ].map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 flex items-center justify-center space-x-2 py-3 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-400'}`}>
+            <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 flex items-center justify-center space-x-2 py-3 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-200 whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm border border-slate-200/80' : 'text-slate-400 hover:text-slate-600'}`}>
               {tab.icon}
               <span>{tab.lab}</span>
             </button>
@@ -205,27 +200,96 @@ export default function League() {
       <div className="flex-1 overflow-y-auto no-scrollbar pb-28 px-6 py-8">
         {(activeTab === 'tournaments' || activeTab === 'my_tournaments') && (
           <div className="space-y-8">
-            <div>
-              <div className="flex items-center justify-between mb-4 px-2"><p className="text-[10px] font-black text-blue-950/40 uppercase tracking-[0.2em] italic">Selecione sua categoria</p><Info size={14} className="text-gray-300" /></div>
-              <div className="flex space-x-3 overflow-x-auto no-scrollbar pb-2">
-                {LEAGUES.map(league => (
-                  <button key={league.id} onClick={() => setSelectedLeague(league.id)} className={`min-w-[120px] p-4 rounded-[30px] border-2 transition-all flex flex-col items-center space-y-3 ${selectedLeague === league.id ? 'border-blue-600 bg-white shadow-xl shadow-blue-100 scale-105' : 'border-gray-100 bg-white/50 text-gray-400'}`}>
-                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${selectedLeague === league.id ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}>{league.icon}</div>
-                    <div className="text-center"><p className="text-[10px] font-black uppercase italic">{league.name}</p><p className="text-[7px] font-bold uppercase tracking-tighter opacity-60">{league.type}</p></div>
-                  </button>
-                ))}
+            {activeTab !== 'my_tournaments' && (
+              <div>
+                <div className="flex items-center justify-between mb-4 px-2"><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] italic">Selecione sua categoria</p><Info size={14} className="text-slate-300" /></div>
+                <div className="grid grid-cols-5 gap-2 pb-2">
+                  {LEAGUES.map(league => {
+                    const isSelected = selectedLeague === league.id;
+                    const isDisabled = !league.canCreate;
+                    return (
+                      <button
+                        key={league.id}
+                        disabled={isDisabled}
+                        onClick={() => setSelectedLeague(league.id)}
+                        className={`
+                          relative p-3 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center justify-center space-y-2
+                          ${isSelected
+                            ? 'border-blue-600 bg-gradient-to-b from-white to-blue-50 shadow-lg shadow-blue-200/40 scale-105 ring-2 ring-blue-600/20'
+                            : isDisabled
+                              ? 'border-slate-100 bg-slate-50/50 text-slate-300 cursor-not-allowed opacity-50 grayscale'
+                              : 'border-slate-200 bg-white/80 text-slate-500 hover:border-slate-300 hover:shadow-md hover:bg-white'
+                          }
+                        `}
+                      >
+                        {isSelected && (
+                          <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center shadow-md shadow-blue-300">
+                            <Check size={10} className="text-white" strokeWidth={4} />
+                          </div>
+                        )}
+                        <div className={`
+                          w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200
+                          ${isSelected
+                            ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-md shadow-blue-200'
+                            : isDisabled
+                              ? 'bg-slate-100 text-slate-300'
+                              : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
+                          }
+                        `}>
+                          {league.icon}
+                        </div>
+                        <div className="text-center">
+                          <p className={`text-[8px] font-black uppercase leading-tight ${isSelected ? 'text-blue-700' : isDisabled ? 'text-slate-300' : 'text-slate-700'}`}>{league.name}</p>
+                          <p className={`text-[6px] font-bold uppercase tracking-tighter mt-0.5 ${isDisabled ? 'text-slate-200' : 'text-slate-400'}`}>{league.type}</p>
+                        </div>
+                        {isDisabled && (
+                          <span className="text-[5px] font-black uppercase tracking-widest text-slate-300 bg-slate-100 px-1.5 py-0.5 rounded-full mt-0.5">Em breve</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
-            {(() => {
+            {activeTab !== 'my_tournaments' && (() => {
               const l = LEAGUES.find(l => l.id === selectedLeague)!;
               return (
-                <div className="bg-blue-950 rounded-[40px] p-8 text-white relative overflow-hidden shadow-2xl">
-                  <div className="absolute top-0 right-0 p-8 opacity-10"><Trophy size={120} /></div>
-                  <div className="relative z-10">
-                    <div className="flex items-center space-x-3 mb-6"><span className="bg-blue-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest italic">{l.name}</span><span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{l.type}</span></div>
-                    <div className="grid grid-cols-2 gap-6 mb-8">
-                      {[{lab:'Participantes',val:l.players+' JOGADORES'},{lab:'Raio de Ação',val:l.radius},{lab:'Duração',val:l.duration},{lab:'Criação',val:selectedLeague<=3?'USUÁRIOS':'PLATAFORMA'}].map((item,i)=>(<div key={i}><p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-1">{item.lab}</p><p className="text-lg font-black italic">{item.val}</p></div>))}
+                <div className="relative bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 rounded-[32px] overflow-hidden shadow-2xl shadow-indigo-200/20 group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-transparent" />
+                  <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-all duration-700" />
+                  <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl" />
+                  <div className="relative z-10 p-6">
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10">
+                        <Swords size={12} className="text-blue-300" />
+                        <span className="text-[8px] font-black uppercase tracking-widest text-white">{l.name}</span>
+                      </div>
+                      <span className="text-[7px] font-black text-blue-300/80 uppercase tracking-widest">{l.type}</span>
+                    </div>
+                    <div className="flex items-center gap-6 mb-6">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/5">
+                          <span className="text-sm font-black text-white">2</span>
+                        </div>
+                        <p className="text-[8px] font-black text-blue-200/70 uppercase tracking-wider">Jogadores</p>
+                      </div>
+                      <div className="w-px h-8 bg-white/10" />
+                      <div className="flex items-center gap-2">
+                        <MapPin size={14} className="text-blue-300" />
+                        <div>
+                          <p className="text-[8px] font-black text-blue-200/70 uppercase tracking-wider">Alcance</p>
+                          <p className="text-[10px] font-black text-white">{l.radius}</p>
+                        </div>
+                      </div>
+                      <div className="w-px h-8 bg-white/10" />
+                      <div className="flex items-center gap-2">
+                        <Trophy size={14} className="text-blue-300" />
+                        <div>
+                          <p className="text-[8px] font-black text-blue-200/70 uppercase tracking-wider">Duração</p>
+                          <p className="text-[10px] font-black text-white">{l.duration}</p>
+                        </div>
+                      </div>
                     </div>
                     <button 
                       onClick={() => { 
@@ -234,9 +298,10 @@ export default function League() {
                         setView('create'); 
                       }} 
                       disabled={!l.canCreate}
-                      className={`w-full py-4 rounded-[20px] font-black text-xs uppercase italic tracking-widest shadow-xl active:scale-95 transition-transform ${l.canCreate ? 'bg-white text-blue-950' : 'bg-white/10 text-white/40 cursor-not-allowed'}`}
+                      className={`w-full py-4 rounded-2xl font-black text-xs uppercase italic tracking-widest shadow-xl active:scale-[0.97] transition-all duration-200 flex items-center justify-center gap-2 ${l.canCreate ? 'bg-white text-slate-900 hover:bg-slate-100 hover:shadow-2xl' : 'bg-white/5 text-white/20 cursor-not-allowed'}`}
                     >
-                      {!l.canCreate ? 'Sistema Automático' : selectedLeague === 1 ? 'Lançar Desafio 1x1' : 'Criar Novo Campeonato'}
+                      <Swords size={16} className={l.canCreate ? 'text-blue-600' : 'text-white/20'} />
+                      {!l.canCreate ? 'Indisponível' : 'Lançar Desafio 1x1'}
                     </button>
                   </div>
                 </div>
@@ -245,50 +310,55 @@ export default function League() {
 
             <div>
               <div className="flex items-center justify-between mb-4 px-2">
-                <p className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] italic">
-                  {(activeTab as any) === 'my_tournaments' ? 'Torneios Criados por Você' : 'Torneios em Andamento'}
+                <p className="text-[10px] font-black text-slate-700 uppercase tracking-[0.25em] italic">
+                  {(activeTab as any) === 'my_tournaments' ? 'Meus Desafios e Torneios' : 'Torneios em Andamento'}
                 </p>
-                <div className="flex items-center space-x-1">
-                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-[8px] font-black text-red-500 uppercase">LIVE</span>
-                </div>
+                {activeTab !== 'my_tournaments' && (
+                  <div className="flex items-center space-x-1.5">
+                    <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-lg shadow-rose-300" />
+                    <span className="text-[8px] font-black text-rose-600 uppercase tracking-widest">LIVE</span>
+                  </div>
+                )}
               </div>
 
               {activeTab === 'tournaments' && (
-                <div className="mb-6 space-y-3 bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
+                <div className="mb-6 bg-white/90 backdrop-blur-sm p-5 rounded-3xl border border-slate-200/70 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-1 h-4 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full" />
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em]">Filtros</p>
+                  </div>
                   <div>
-                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 px-1">Filtrar Status</p>
-                    <div className="flex space-x-1.5 overflow-x-auto no-scrollbar pb-1">
+                    <div className="flex flex-wrap gap-1.5">
                       {[
                         { id: 'all', label: 'Todos' },
-                        { id: 'ongoing', label: 'Em Andamento' },
-                        { id: 'waiting', label: 'Inscrições' },
-                        { id: 'finished', label: 'Finalizados' }
+                        { id: 'ongoing', label: '🔥 Em Andamento' },
+                        { id: 'waiting', label: '📋 Inscrições' },
+                        { id: 'finished', label: '✅ Finalizados' }
                       ].map(f => (
                         <button 
                           key={f.id} 
                           onClick={() => { setFilterStatus(f.id); setCurrentPage(1); }} 
-                          className={`px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${filterStatus === f.id ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}
+                          className={`px-3 py-2 rounded-xl text-[7px] font-black uppercase tracking-widest transition-all duration-200 ${filterStatus === f.id ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-200/40 scale-105' : 'bg-slate-100/80 text-slate-400 hover:bg-slate-200 hover:text-slate-600 active:scale-95'}`}
                         >
                           {f.label}
                         </button>
                       ))}
                     </div>
                   </div>
+                  <div className="h-px bg-gradient-to-r from-slate-200/50 via-slate-200 to-slate-200/50" />
                   <div>
-                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 px-1">Filtrar Categoria</p>
-                    <div className="flex space-x-1.5 overflow-x-auto no-scrollbar pb-1">
+                    <div className="flex flex-wrap gap-1.5">
                       {[
                         { id: 'all', label: 'Todas' },
-                        { id: 'x1', label: '1x1' },
-                        { id: 'free', label: 'Freestyle' },
-                        { id: 'deg', label: 'Degradê' },
-                        { id: 'nav', label: 'Navalhado' }
+                        { id: 'x1', label: '⚔️ 1x1' },
+                        { id: 'free', label: '🎨 Freestyle' },
+                        { id: 'deg', label: '📏 Degradê' },
+                        { id: 'nav', label: '🪒 Navalhado' }
                       ].map(f => (
                         <button 
                           key={f.id} 
                           onClick={() => { setFilterModality(f.id); setCurrentPage(1); }} 
-                          className={`px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${filterModality === f.id ? 'bg-gray-800 text-white shadow-md' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}
+                          className={`px-3 py-2 rounded-xl text-[7px] font-black uppercase tracking-widest transition-all duration-200 ${filterModality === f.id ? 'bg-slate-800 text-white shadow-lg shadow-slate-200/40 scale-105 ring-1 ring-slate-700' : 'bg-slate-100/80 text-slate-400 hover:bg-slate-200 hover:text-slate-600 active:scale-95'}`}
                         >
                           {f.label}
                         </button>
@@ -312,9 +382,9 @@ export default function League() {
 
                   if (myChampionships.length === 0) {
                     return (
-                      <div className="text-center py-20 border-2 border-dashed border-gray-200 rounded-[40px] bg-gray-50/50">
-                        <Trophy size={40} className="mx-auto mb-4 text-gray-300" />
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Você ainda não criou ou foi convidado para nenhum campeonato.</p>
+                      <div className="text-center py-20 border-2 border-dashed border-slate-200 rounded-[40px] bg-slate-50/50">
+                        <Trophy size={40} className="mx-auto mb-4 text-slate-300" />
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Você ainda não criou ou foi convidado para nenhum campeonato.</p>
                       </div>
                     );
                   }
@@ -322,35 +392,107 @@ export default function League() {
                   return myChampionships.map(t => {
                     const currentBarberId = currentUser?.barberProfile?.id;
                     const isCreator = t.creatorId === currentBarberId || t.creatorId === currentUser?.id;
+                    const isOpponent = currentUser && Array.isArray(t.participants) && t.participants.some((p: any) => p.id === currentBarberId && p.id !== t.creatorId);
                     const match = t.matches?.[0];
                     const isAccepted = match?.photo2 !== null && match?.photo2 !== undefined;
 
-                    // Calculate if expired
                     let isExpired = false;
                     if (t.status === 'FINISHED' && match && match.status === 'FINISHED' && !match.winnerId) {
                       isExpired = true;
                     }
 
+                    const canAccept = isOpponent && t.status === 'WAITING' && !isAccepted;
+                    const canCancel = isCreator && t.status === 'WAITING' && !isAccepted;
+                    const canStart = isCreator && t.status === 'WAITING' && isAccepted;
+                    const canVote = t.status === 'ONGOING';
+
+                    const handleAction = (e: React.MouseEvent, action: string) => {
+                      e.stopPropagation();
+                      setSelectedChamp(t);
+                      if (action === 'accept' || action === 'cancel' || action === 'start') {
+                        setView('detail');
+                      } else if (action === 'vote') {
+                        setStoryIndex(0);
+                        setView('voting');
+                      }
+                    };
+
                     return (
-                      <div key={t.id} onClick={() => { setSelectedChamp(t); setView('detail'); }} className="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm relative group overflow-hidden cursor-pointer active:scale-95 transition-all">
-                        <div className={`absolute top-0 right-0 h-full w-1.5 ${isExpired ? 'bg-red-500' : isCreator ? 'bg-blue-600' : 'bg-green-500'}`} />
-                        <div className="flex justify-between items-start mb-4">
+                      <motion.div
+                        key={t.id}
+                        layout
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white/80 backdrop-blur-sm p-6 rounded-[35px] border border-slate-200/60 shadow-sm hover:shadow-xl hover:border-slate-300/80 relative overflow-hidden transition-all duration-200"
+                      >
+                        <div className={`absolute top-0 right-0 h-full w-1.5 ${isExpired ? 'bg-gradient-to-b from-rose-500 to-rose-400' : isCreator ? 'bg-gradient-to-b from-blue-600 to-blue-400' : 'bg-gradient-to-b from-emerald-500 to-emerald-400'}`} />
+                        <div className="flex justify-between items-start mb-3">
                           <div>
                             <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[7px] font-black uppercase tracking-widest mr-2">{t.modality || '1x1'}</span>
-                            <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest italic uppercase">
-                              {isExpired ? 'EXPIRADO' : t.status === 'FINISHED' ? 'FINALIZADO' : !isAccepted ? 'AGUARDANDO ACEITAR' : t.status === 'ONGOING' ? 'EM ANDAMENTO' : 'AGUARDANDO INÍCIO'}
+                            <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest italic">
+                              {isExpired ? 'EXPIRADO' : t.status === 'FINISHED' ? 'FINALIZADO' : !isAccepted ? 'AGUARDANDO ACEITAR' : t.status === 'ONGOING' ? 'LIVE' : 'AGUARDANDO INÍCIO'}
                             </span>
                           </div>
-                          {isCreator && <p className="text-[7px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded">Meu Desafio</p>}
-                        </div>
-                        <h4 className="text-blue-950 text-lg font-black font-orbitron italic mb-4">{t.name.toUpperCase()}</h4>
-                        <div className="flex items-center justify-between">
-                          <div className="text-[10px] font-black text-blue-950/60 uppercase">
-                            {isExpired ? 'Expirou sem aceitação' : !isAccepted ? 'Aguardando oponente confirmar' : 'Pronto para o Combate'}
+                          <div className="flex space-x-1">
+                            {isCreator && <span className="text-[7px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded">Criador</span>}
+                            {isOpponent && <span className="text-[7px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-1.5 py-0.5 rounded">Convidado</span>}
                           </div>
-                          <button className="bg-gray-900 text-white px-4 py-2.5 rounded-xl text-[9px] font-black uppercase italic shadow-lg">Ver Painel</button>
                         </div>
-                      </div>
+                        <h4 className="text-slate-900 text-lg font-black font-orbitron italic mb-3">{t.name.toUpperCase()}</h4>
+                        <div className="flex items-center text-[9px] font-bold text-slate-400 uppercase mb-4 space-x-3">
+                          <span>🏆 {t.prize || 'Respeito'}</span>
+                          <span>👥 {Array.isArray(t.participants) ? t.participants.length : 0}/{t.maxParticipants || 2}</span>
+                          {t.theme && <span>🎯 {t.theme}</span>}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedChamp(t); setView('detail'); }}
+                            className="flex-1 min-w-[80px] bg-slate-900 hover:bg-slate-800 text-white px-3 py-2.5 rounded-xl text-[8px] font-black uppercase italic shadow-lg transition-all"
+                          >
+                            Detalhes
+                          </button>
+                          {canAccept && (
+                            <button
+                              onClick={(e) => handleAction(e, 'accept')}
+                              className="flex-1 min-w-[80px] bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-3 py-2.5 rounded-xl text-[8px] font-black uppercase italic shadow-lg shadow-emerald-200/50 transition-all"
+                            >
+                              Aceitar
+                            </button>
+                          )}
+                          {canCancel && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); if (confirm('Cancelar este desafio?')) { setView('detail'); } }}
+                              className="flex-1 min-w-[80px] bg-rose-500 hover:bg-rose-600 text-white px-3 py-2.5 rounded-xl text-[8px] font-black uppercase italic shadow-lg transition-all"
+                            >
+                              Cancelar
+                            </button>
+                          )}
+                          {canStart && (
+                            <button
+                              onClick={(e) => handleAction(e, 'start')}
+                              className="flex-1 min-w-[80px] bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-3 py-2.5 rounded-xl text-[8px] font-black uppercase italic shadow-lg shadow-blue-200/50 transition-all"
+                            >
+                              Iniciar
+                            </button>
+                          )}
+                          {canVote && (
+                            <button
+                              onClick={(e) => handleAction(e, 'vote')}
+                              className="flex-1 min-w-[80px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-3 py-2.5 rounded-xl text-[8px] font-black uppercase italic shadow-lg shadow-amber-200/50 transition-all"
+                            >
+                              Votar
+                            </button>
+                          )}
+                          {t.status === 'FINISHED' && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setSelectedChamp(t); setView('detail'); }}
+                              className="flex-1 min-w-[80px] bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2.5 rounded-xl text-[8px] font-black uppercase italic transition-all"
+                            >
+                              Resultado
+                            </button>
+                          )}
+                        </div>
+                      </motion.div>
                     );
                   });
                 })()}
@@ -359,14 +501,12 @@ export default function League() {
                   const combined = [...dbChampionships, ...ACTIVE_TOURNAMENTS.filter(at => !dbChampionships.find(db => db.name === at.name))];
                   
                   const filtered = combined.filter(t => {
-                    // Status matching
                     if (filterStatus !== 'all') {
                       const statusVal = (t.status || '').toLowerCase();
                       if (filterStatus === 'ongoing' && statusVal !== 'ongoing' && statusVal !== 'live') return false;
                       if (filterStatus === 'waiting' && statusVal !== 'waiting' && statusVal !== 'open') return false;
                       if (filterStatus === 'finished' && statusVal !== 'finished') return false;
                     }
-                    // Modality matching
                     if (filterModality !== 'all') {
                       const modVal = (t.modality || t.type || '').toLowerCase();
                       if (filterModality === 'x1' && !modVal.includes('x1') && !modVal.includes('classic')) return false;
@@ -384,7 +524,7 @@ export default function League() {
 
                   if (paginated.length === 0) {
                     return (
-                      <p className="text-center text-[10px] font-black text-gray-400 uppercase py-10 bg-white rounded-3xl border border-gray-100">
+                      <p className="text-center text-[10px] font-black text-slate-400 uppercase py-10 bg-white/60 backdrop-blur-sm rounded-3xl border border-slate-200/60">
                         Nenhum campeonato ativo nesta categoria
                       </p>
                     );
@@ -392,24 +532,31 @@ export default function League() {
 
                   return (
                     <div className="space-y-4">
-                      {paginated.map(t => {
+                      {paginated.map((t, idx) => {
                         const statusVal = (t.status || '').toLowerCase();
                         const isFinished = statusVal === 'finished';
                         const isWaiting = statusVal === 'waiting' || statusVal === 'open';
                         
                         return (
-                          <div key={t.id} onClick={() => { setSelectedChamp(t); setView('detail'); }} className="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm relative group overflow-hidden cursor-pointer active:scale-95 transition-all">
-                            <div className="absolute top-0 right-0 h-full w-1.5 bg-blue-600" />
+                          <motion.div
+                            key={t.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            onClick={() => { setSelectedChamp(t); setView('detail'); }}
+                            className="bg-white/80 backdrop-blur-sm p-6 rounded-[35px] border border-slate-200/60 shadow-sm hover:shadow-xl hover:border-slate-300/80 relative group overflow-hidden cursor-pointer active:scale-[0.98] transition-all duration-200"
+                          >
+                            <div className="absolute top-0 right-0 h-full w-1.5 bg-gradient-to-b from-blue-600 to-blue-400" />
                             <div className="flex justify-between items-start mb-4">
-                              <div><span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[7px] font-black uppercase tracking-widest mr-2">{t.modality || t.type || 'Torneio'}</span><span className="text-[7px] font-black text-gray-400 uppercase tracking-widest italic">{isFinished ? 'FINALIZADO' : isWaiting ? 'INSCRIÇÕES' : 'EM ANDAMENTO'}</span></div>
+                              <div><span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[7px] font-black uppercase tracking-widest mr-2">{t.modality || t.type || 'Torneio'}</span><span className="text-[7px] font-black text-slate-400 uppercase tracking-widest italic">{isFinished ? 'FINALIZADO' : isWaiting ? 'INSCRIÇÕES' : 'EM ANDAMENTO'}</span></div>
                               <p className="text-[9px] font-black text-blue-600 uppercase tracking-tighter">{t.progress || (isFinished ? 100 : isWaiting ? 0 : 50)}% COMPLETO</p>
                             </div>
-                            <h4 className="text-blue-950 text-lg font-black font-orbitron italic mb-4">{t.name.toUpperCase()}</h4>
+                            <h4 className="text-slate-900 text-lg font-black font-orbitron italic mb-4">{t.name.toUpperCase()}</h4>
                             <div className="flex items-center justify-between">
-                              <div className="flex -space-x-2">{[1,2,3,4].map(i=>(<img key={i} src={`https://i.pravatar.cc/150?u=${t.id}${i}`} className="w-8 h-8 rounded-full border-2 border-white shadow-sm object-cover" />))}<div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[8px] font-black text-gray-400">+{Math.max(0, (Array.isArray(t.participants) ? t.participants.length : (t.participants || 16)) - 4)}</div></div>
-                              <button className="bg-gray-900 text-white px-4 py-2.5 rounded-xl text-[9px] font-black uppercase italic shadow-lg">{isFinished ? 'Ver Resultado' : 'Assistir Live'}</button>
+                              <div className="flex -space-x-2">{[1,2,3,4].map(i=>(<img key={i} src={`https://i.pravatar.cc/150?u=${t.id}${i}`} className="w-8 h-8 rounded-full border-2 border-white shadow-sm object-cover" />))}<div className="w-8 h-8 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[8px] font-black text-slate-400">+{Math.max(0, (Array.isArray(t.participants) ? t.participants.length : (t.participants || 16)) - 4)}</div></div>
+                              <button className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-[9px] font-black uppercase italic shadow-lg transition-all">{isFinished ? 'Ver Resultado' : 'Assistir Live'}</button>
                             </div>
-                          </div>
+                          </motion.div>
                         );
                       })}
 
@@ -418,17 +565,17 @@ export default function League() {
                           <button 
                             disabled={currentPage === 1} 
                             onClick={(e) => { e.stopPropagation(); setCurrentPage(p => Math.max(1, p - 1)); }} 
-                            className={`px-4 py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all ${currentPage === 1 ? 'opacity-40 cursor-not-allowed bg-gray-50 text-gray-300' : 'bg-white text-blue-950 border-gray-200'}`}
+                            className={`px-4 py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all duration-200 ${currentPage === 1 ? 'opacity-40 cursor-not-allowed bg-slate-50 text-slate-300 border-slate-200' : 'bg-white text-slate-900 border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}
                           >
                             Anterior
                           </button>
-                          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                             Página {currentPage} de {totalPages}
                           </span>
                           <button 
                             disabled={currentPage === totalPages} 
                             onClick={(e) => { e.stopPropagation(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} 
-                            className={`px-4 py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all ${currentPage === totalPages ? 'opacity-40 cursor-not-allowed bg-gray-50 text-gray-300' : 'bg-white text-blue-950 border-gray-200'}`}
+                            className={`px-4 py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all duration-200 ${currentPage === totalPages ? 'opacity-40 cursor-not-allowed bg-slate-50 text-slate-300 border-slate-200' : 'bg-white text-slate-900 border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}
                           >
                             Próximo
                           </button>
@@ -452,7 +599,7 @@ export default function League() {
           }
           setView('create');
         }} 
-        className="fixed bottom-28 right-6 w-16 h-16 bg-blue-600 text-white rounded-3xl shadow-2xl z-50 flex items-center justify-center"
+        className="fixed bottom-28 right-6 w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-3xl shadow-2xl shadow-blue-400/30 z-50 flex items-center justify-center hover:shadow-blue-400/50 transition-shadow duration-200"
       >
         <Plus size={32} />
       </motion.button>
@@ -492,26 +639,26 @@ export default function League() {
   };
 
   const renderCreate = () => (
-    <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[6000] bg-white flex flex-col shadow-2xl">
-      <div className="px-6 py-8 flex items-center justify-between border-b border-gray-100">
-        <button onClick={() => { if(createStep > 0) setCreateStep(s=>s-1); else setView('home'); }} className="p-3 bg-gray-50 rounded-2xl text-blue-950"><ChevronLeft size={24} /></button>
-        <div className="text-center"><p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Passo {createStep + 1} de 3</p><h2 className="text-sm font-black text-blue-950 uppercase italic font-orbitron">Novo Campeonato</h2></div>
-        <button onClick={() => setView('home')} className="p-3 bg-gray-50 rounded-2xl text-gray-400"><X size={24} /></button>
+    <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[6000] bg-gradient-to-b from-white to-slate-50 flex flex-col shadow-2xl">
+      <div className="px-6 py-8 flex items-center justify-between border-b border-slate-200/60 bg-white/80 backdrop-blur-xl">
+        <button onClick={() => { if(createStep > 0) setCreateStep(s=>s-1); else setView('home'); }} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-2xl text-slate-900 transition-colors"><ChevronLeft size={24} /></button>
+        <div className="text-center"><p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Passo {createStep + 1} de 3</p><h2 className="text-sm font-black text-slate-900 uppercase italic font-orbitron">Novo Campeonato</h2></div>
+        <button onClick={() => setView('home')} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-2xl text-slate-400 transition-colors"><X size={24} /></button>
       </div>
       <div className="flex-1 overflow-y-auto px-6 py-8 space-y-8">
         {createStep === 0 && (
           <div className="space-y-6">
-            <h3 className="text-2xl font-black text-blue-950 uppercase italic font-orbitron">{form.liga === 1 ? 'Qual o nome do Desafio?' : 'Qual o nome da Arena?'}</h3>
-            <input type="text" placeholder={form.liga === 1 ? "Ex: Duelo de Gigantes" : "Ex: Batalha do Bairro"} value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="w-full p-6 bg-gray-50 rounded-[25px] border-2 border-gray-200 text-lg font-black outline-none focus:border-blue-600 transition-all !text-blue-950 placeholder:text-gray-400 shadow-sm" />
+            <h3 className="text-2xl font-black text-slate-900 uppercase italic font-orbitron">{form.liga === 1 ? 'Qual o nome do Desafio?' : 'Qual o nome da Arena?'}</h3>
+            <input type="text" placeholder={form.liga === 1 ? "Ex: Duelo de Gigantes" : "Ex: Batalha do Bairro"} value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="w-full p-6 bg-white rounded-[25px] border-2 border-slate-200 text-lg font-black outline-none focus:border-blue-600 transition-all !text-slate-900 placeholder:text-slate-400 shadow-sm hover:border-slate-300" />
             
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 mt-4">Tema do Campeonato</p>
-            <input type="text" placeholder="Ex: Estilo Retro / Degradê Perfeito" value={form.theme} onChange={e=>setForm({...form,theme:e.target.value})} className="w-full p-6 bg-gray-50 rounded-[25px] border-2 border-gray-200 text-lg font-black outline-none focus:border-blue-600 transition-all !text-blue-950 placeholder:text-gray-400 shadow-sm" />
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mt-4">Tema do Campeonato</p>
+            <input type="text" placeholder="Ex: Estilo Retro / Degradê Perfeito" value={form.theme} onChange={e=>setForm({...form,theme:e.target.value})} className="w-full p-6 bg-white rounded-[25px] border-2 border-slate-200 text-lg font-black outline-none focus:border-blue-600 transition-all !text-slate-900 placeholder:text-slate-400 shadow-sm hover:border-slate-300" />
 
             <div className="grid grid-cols-2 gap-4 mt-6">
               {LEAGUES.map(l => (
-                <button key={l.id} disabled={!l.canCreate} onClick={() => setForm({...form, liga: l.id, maxParticipants: l.id === 1 ? 2 : 16} as any)} className={`p-6 rounded-[30px] border-2 flex flex-col items-center space-y-3 transition-all ${!l.canCreate ? 'opacity-30 grayscale cursor-not-allowed' : ''} ${form.liga === l.id ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white'}`}>
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${form.liga === l.id ? 'bg-blue-600 text-white' : 'bg-gray-100 !text-blue-950'}`}>{l.icon}</div>
-                  <span className={`text-[10px] font-black uppercase italic ${form.liga === l.id ? 'text-blue-600' : '!text-blue-950'}`}>{l.name}</span>
+                <button key={l.id} disabled={!l.canCreate} onClick={() => setForm({...form, liga: l.id, maxParticipants: l.id === 1 ? 2 : 16} as any)} className={`p-6 rounded-[30px] border-2 flex flex-col items-center space-y-3 transition-all ${!l.canCreate ? 'opacity-30 grayscale cursor-not-allowed' : ''} ${form.liga === l.id ? 'border-blue-600 bg-blue-50 shadow-lg shadow-blue-100' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-colors ${form.liga === l.id ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-md' : 'bg-slate-100 text-slate-900'}`}>{l.icon}</div>
+                  <span className={`text-[10px] font-black uppercase italic ${form.liga === l.id ? 'text-blue-600' : 'text-slate-900'}`}>{l.name}</span>
                 </button>
               ))}
             </div>
@@ -519,35 +666,35 @@ export default function League() {
         )}
         {createStep === 1 && (
           <div className="space-y-6">
-            <h3 className="text-2xl font-black text-blue-950 uppercase italic font-orbitron">{form.liga === 1 ? 'Desafiar quem?' : 'Escolha a Modalidade'}</h3>
+            <h3 className="text-2xl font-black text-slate-900 uppercase italic font-orbitron">{form.liga === 1 ? 'Desafiar quem?' : 'Escolha a Modalidade'}</h3>
             {form.liga === 1 ? (
               <div className="space-y-4">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2">Buscar Barbeiro no Banco de Dados</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">Buscar Barbeiro no Banco de Dados</p>
                 <div className="relative">
-                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                   <input 
                     type="text" 
                     placeholder="Buscar por nome ou barbearia..." 
                     value={searchTerm} 
                     onChange={e=>setSearchTerm(e.target.value)} 
-                    className="w-full p-6 pl-16 bg-gray-50 rounded-[25px] border-2 border-gray-200 text-lg font-black outline-none focus:border-blue-600 transition-all !text-blue-950 placeholder:text-gray-400 shadow-sm" 
+                    className="w-full p-6 pl-16 bg-white rounded-[25px] border-2 border-slate-200 text-lg font-black outline-none focus:border-blue-600 transition-all !text-slate-900 placeholder:text-slate-400 shadow-sm hover:border-slate-300" 
                   />
                 </div>
                 
                 {selectedOpponent && (
-                  <div className="p-4 bg-green-50 rounded-[25px] border-2 border-green-500 flex items-center justify-between animate-in fade-in zoom-in-95">
+                  <div className="p-4 bg-emerald-50 rounded-[25px] border-2 border-emerald-300 flex items-center justify-between animate-in fade-in zoom-in-95">
                     <div className="flex items-center space-x-3">
                       <img src={selectedOpponent.user?.avatar || `https://i.pravatar.cc/150?u=${selectedOpponent.id}`} className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm" />
                       <div>
-                        <p className="text-sm font-black text-green-950 uppercase">{selectedOpponent.user?.name}</p>
-                        <p className="text-[9px] font-bold text-green-700 uppercase">{selectedOpponent.barberShop}</p>
+                        <p className="text-sm font-black text-emerald-950 uppercase">{selectedOpponent.user?.name}</p>
+                        <p className="text-[9px] font-bold text-emerald-700 uppercase">{selectedOpponent.barberShop}</p>
                       </div>
                     </div>
-                    <button type="button" onClick={() => { setSelectedOpponent(null); setForm(f => ({ ...f, opponentId: '', opponentNick: '' })); }} className="p-2 bg-green-100 hover:bg-green-200 rounded-full text-green-700"><X size={16} /></button>
+                    <button type="button" onClick={() => { setSelectedOpponent(null); setForm(f => ({ ...f, opponentId: '', opponentNick: '' })); }} className="p-2 bg-emerald-100 hover:bg-emerald-200 rounded-full text-emerald-700 transition-colors"><X size={16} /></button>
                   </div>
                 )}
 
-                <div className="max-h-[220px] overflow-y-auto space-y-2 pr-1 no-scrollbar border-t border-gray-100 pt-3">
+                <div className="max-h-[220px] overflow-y-auto space-y-2 pr-1 no-scrollbar border-t border-slate-100 pt-3">
                   {(() => {
                     const filteredBarbers = dbBarbers.filter(barber => {
                       const name = barber.user?.name?.toLowerCase() || '';
@@ -557,7 +704,7 @@ export default function League() {
                     });
 
                     if (filteredBarbers.length === 0) {
-                      return <p className="text-center text-[10px] font-black text-gray-400 uppercase py-6">Nenhum barbeiro encontrado</p>;
+                      return <p className="text-center text-[10px] font-black text-slate-400 uppercase py-6">Nenhum barbeiro encontrado</p>;
                     }
 
                     return filteredBarbers.map(barber => (
@@ -569,12 +716,12 @@ export default function League() {
                           setForm(f => ({ ...f, opponentId: barber.id, opponentNick: barber.user?.name || '' }));
                           setSearchTerm('');
                         }}
-                        className={`w-full p-4 rounded-2xl border-2 text-left flex items-center space-x-3 transition-all ${selectedOpponent?.id === barber.id ? 'border-blue-600 bg-blue-50' : 'border-gray-100 bg-white hover:border-blue-300'}`}
+                        className={`w-full p-4 rounded-2xl border-2 text-left flex items-center space-x-3 transition-all ${selectedOpponent?.id === barber.id ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-md'}`}
                       >
-                        <img src={barber.user?.avatar || `https://i.pravatar.cc/150?u=${barber.id}`} className="w-10 h-10 rounded-full object-cover border border-gray-100 shadow-sm" />
+                        <img src={barber.user?.avatar || `https://i.pravatar.cc/150?u=${barber.id}`} className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-black text-blue-950 truncate uppercase">{barber.user?.name}</p>
-                          <p className="text-[9px] font-bold text-gray-400 truncate uppercase">{barber.barberShop} • {barber.user?.city || 'Brasil'}</p>
+                          <p className="text-xs font-black text-slate-900 truncate uppercase">{barber.user?.name}</p>
+                          <p className="text-[9px] font-bold text-slate-400 truncate uppercase">{barber.barberShop} • {barber.user?.city || 'Brasil'}</p>
                         </div>
                       </button>
                     ));
@@ -584,8 +731,8 @@ export default function League() {
             ) : (
               <div className="grid grid-cols-1 gap-4">
                 {MODALITIES.map(m => (
-                  <button key={m.id} onClick={() => setForm({...form, modality: m.id})} className={`p-6 rounded-[30px] border-2 flex items-center justify-between transition-all ${form.modality === m.id ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white'}`}>
-                    <div className="flex items-center space-x-4"><span className="text-3xl">{m.icon}</span><div className="text-left"><p className={`text-sm font-black uppercase ${form.modality === m.id ? 'text-blue-600' : '!text-blue-950'}`}>{m.name}</p><p className="text-[10px] font-bold text-gray-400 uppercase">{m.desc}</p></div></div>
+                  <button key={m.id} onClick={() => setForm({...form, modality: m.id})} className={`p-6 rounded-[30px] border-2 flex items-center justify-between transition-all ${form.modality === m.id ? 'border-blue-600 bg-blue-50 shadow-lg shadow-blue-100' : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'}`}>
+                    <div className="flex items-center space-x-4"><span className="text-3xl">{m.icon}</span><div className="text-left"><p className={`text-sm font-black uppercase ${form.modality === m.id ? 'text-blue-600' : 'text-slate-900'}`}>{m.name}</p><p className="text-[10px] font-bold text-slate-400 uppercase">{m.desc}</p></div></div>
                     {form.modality === m.id && <Check className="text-blue-600" />}
                   </button>
                 ))}
@@ -595,30 +742,30 @@ export default function League() {
         )}
         {createStep === 2 && (
           <div className="space-y-6">
-            <h3 className="text-2xl font-black text-blue-950 uppercase italic font-orbitron">Configurações Finais</h3>
+            <h3 className="text-2xl font-black text-slate-900 uppercase italic font-orbitron">Configurações Finais</h3>
             <div className="space-y-4">
-              <div className="bg-white p-6 rounded-[30px] border-2 border-gray-100 shadow-inner">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Data e Horário de Início</p>
+              <div className="bg-white p-6 rounded-[30px] border-2 border-slate-200 shadow-sm">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Data e Horário de Início</p>
                 <div className="flex space-x-2">
-                   <input type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})} className="flex-1 bg-transparent text-sm font-black outline-none !text-blue-950 uppercase" />
-                   <input type="time" value={form.startTime} onChange={e=>setForm({...form,startTime:e.target.value})} className="flex-1 bg-transparent text-sm font-black outline-none !text-blue-950 uppercase" />
+                   <input type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})} className="flex-1 bg-transparent text-sm font-black outline-none !text-slate-900 uppercase" />
+                   <input type="time" value={form.startTime} onChange={e=>setForm({...form,startTime:e.target.value})} className="flex-1 bg-transparent text-sm font-black outline-none !text-slate-900 uppercase" />
                 </div>
               </div>
 
               {form.liga === 1 && (
-                <div className="bg-white p-6 rounded-[30px] border-2 border-gray-100 shadow-inner">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Foto do seu corte/trabalho</p>
+                <div className="bg-white p-6 rounded-[30px] border-2 border-slate-200 shadow-sm">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Foto do seu corte/trabalho</p>
                   <div className="flex flex-col space-y-3">
                     {form.photo1 ? (
-                      <div className="relative rounded-2xl overflow-hidden border border-gray-200 aspect-video group">
+                      <div className="relative rounded-2xl overflow-hidden border border-slate-200 aspect-video group">
                         <img src={form.photo1} className="w-full h-full object-cover" />
-                        <button type="button" onClick={() => setForm({...form, photo1: ''})} className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full shadow-lg transition-all"><X size={16} /></button>
+                        <button type="button" onClick={() => setForm({...form, photo1: ''})} className="absolute top-2 right-2 bg-rose-600 hover:bg-rose-700 text-white p-2 rounded-full shadow-lg transition-all"><X size={16} /></button>
                       </div>
                     ) : (
                       <div className="flex flex-col space-y-2">
                         <div className="grid grid-cols-3 gap-2">
                           {['https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500', 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=500', 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=500'].map((mockUrl) => (
-                            <button key={mockUrl} type="button" onClick={() => setForm({...form, photo1: mockUrl})} className="relative rounded-xl overflow-hidden border border-gray-200 aspect-square group">
+                            <button key={mockUrl} type="button" onClick={() => setForm({...form, photo1: mockUrl})} className="relative rounded-xl overflow-hidden border border-slate-200 aspect-square group hover:border-blue-400 transition-colors">
                               <img src={mockUrl} className="w-full h-full object-cover" />
                             </button>
                           ))}
@@ -628,7 +775,7 @@ export default function League() {
                           placeholder="Ou cole a URL de uma foto..." 
                           value={form.photo1} 
                           onChange={e=>setForm({...form, photo1: e.target.value})} 
-                          className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-xs font-black outline-none focus:border-blue-600 transition-all !text-blue-950 placeholder:text-gray-400 shadow-sm" 
+                          className="w-full p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs font-black outline-none focus:border-blue-600 transition-all !text-slate-900 placeholder:text-slate-400" 
                         />
                       </div>
                     )}
@@ -636,47 +783,47 @@ export default function League() {
                 </div>
               )}
 
-              <div className="bg-white p-6 rounded-[30px] border-2 border-gray-100 shadow-inner">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Duração da Votação</p>
+              <div className="bg-white p-6 rounded-[30px] border-2 border-slate-200 shadow-sm">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Duração da Votação</p>
                 <div className="grid grid-cols-4 gap-2">
                   {[1, 2, 6, 12, 24, 48].map(h => (
-                    <button key={h} onClick={() => setForm({...form, votingTime: h})} className={`py-2 rounded-lg font-black text-[10px] ${form.votingTime===h?'bg-blue-600 text-white shadow-lg':'bg-gray-100 text-gray-400'}`}>{h}h</button>
+                    <button key={h} onClick={() => setForm({...form, votingTime: h})} className={`py-2 rounded-lg font-black text-[10px] transition-all ${form.votingTime===h?'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md shadow-blue-200':'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}>{h}h</button>
                   ))}
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-[30px] border-2 border-gray-100 shadow-inner">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Premiação</p>
-                <input type="text" placeholder="Ex: R$ 5.000 + Kit Barba" value={form.prize} onChange={e=>setForm({...form,prize:e.target.value})} className="w-full bg-transparent text-lg font-black outline-none !text-blue-950 uppercase placeholder:text-gray-400" />
+              <div className="bg-white p-6 rounded-[30px] border-2 border-slate-200 shadow-sm">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Premiação</p>
+                <input type="text" placeholder="Ex: R$ 5.000 + Kit Barba" value={form.prize} onChange={e=>setForm({...form,prize:e.target.value})} className="w-full bg-transparent text-lg font-black outline-none !text-slate-900 uppercase placeholder:text-slate-400" />
               </div>
               {form.liga !== 1 && (
-                <div className="bg-gray-50 p-6 rounded-[30px] border border-gray-100">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Vagas no Torneio</p>
+                <div className="bg-slate-50 p-6 rounded-[30px] border border-slate-200">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Vagas no Torneio</p>
                   <div className="flex space-x-3">
                     {[8, 16, 32, 64].map(v => (
-                      <button key={v} onClick={() => setForm({...form, maxParticipants: v})} className={`flex-1 py-3 rounded-xl font-black text-[10px] ${form.maxParticipants===v?'bg-blue-600 text-white shadow-lg':'bg-white text-gray-400 border border-gray-200'}`}>{v} VAGAS</button>
+                      <button key={v} onClick={() => setForm({...form, maxParticipants: v})} className={`flex-1 py-3 rounded-xl font-black text-[10px] transition-all ${form.maxParticipants===v?'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md':'bg-white text-slate-400 border border-slate-200 hover:border-slate-300'}`}>{v} VAGAS</button>
                     ))}
                   </div>
                 </div>
               )}
               {form.liga === 1 && (
-                <div className="bg-blue-600 p-6 rounded-[30px] text-white flex items-center justify-between">
+                <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-6 rounded-[30px] text-white flex items-center justify-between shadow-lg shadow-blue-200/40">
                   <div><p className="text-[8px] font-black uppercase opacity-60">Status do Desafio</p><p className="text-sm font-black uppercase italic">2 Participantes (1x1)</p></div>
-                  <Swords size={24} />
+                  <Swords size={24} className="opacity-80" />
                 </div>
               )}
             </div>
           </div>
         )}
       </div>
-      <div className="p-6 border-t border-gray-100">
+      <div className="p-6 border-t border-slate-200/60 bg-white/80 backdrop-blur-xl">
         <button 
           disabled={loading}
           onClick={() => { if(createStep < 2) setCreateStep(s=>s+1); else handleCreateFinish(); }} 
-          className="w-full py-6 bg-blue-600 disabled:bg-gray-400 text-white rounded-[25px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center space-x-2"
+          className="w-full py-6 bg-gradient-to-r from-blue-600 to-blue-700 disabled:from-slate-400 disabled:to-slate-400 text-white rounded-[25px] font-black uppercase italic tracking-widest shadow-xl shadow-blue-200/50 active:scale-95 transition-all duration-200 flex items-center justify-center space-x-2 hover:shadow-blue-300/60"
         >
           {loading ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <div className="w-5 h-5 border-[3px] border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
             <span>{createStep === 2 ? 'Publicar Campeonato' : 'Próximo Passo'}</span>
           )}
@@ -699,7 +846,6 @@ export default function League() {
     const hasPhoto2 = match && match.photo2 !== null && match.photo2 !== undefined;
     const isX1 = selectedChamp?.modality === 'x1' || selectedChamp?.ligaId === 1;
 
-    // Check expiration status
     let isExpired = false;
     let scheduledStart: Date | null = null;
     if (selectedChamp?.startDate) {
@@ -711,7 +857,6 @@ export default function League() {
       }
     }
 
-    // Accept handling
     const handleAccept = async () => {
       if (!photo2Input) {
         alert('Por favor, escolha ou insira uma foto do seu trabalho para aceitar o desafio.');
@@ -736,7 +881,6 @@ export default function League() {
       }
     };
 
-    // Start now handling
     const handleStartNow = async () => {
       setLoading(true);
       try {
@@ -756,7 +900,6 @@ export default function League() {
       }
     };
 
-    // Start scheduled handling
     const handleStartScheduled = async () => {
       setLoading(true);
       try {
@@ -776,7 +919,6 @@ export default function League() {
       }
     };
 
-    // Time calculations
     let votingTimeLeftLabel = '';
     if (selectedChamp?.status === 'ONGOING' && match?.startedAt) {
       const startedTime = new Date(match.startedAt).getTime();
@@ -793,75 +935,74 @@ export default function League() {
     }
 
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[5500] bg-[#F8FAFC] flex flex-col shadow-2xl">
-        {loading && <div className="fixed inset-0 bg-white/50 backdrop-blur-sm z-[999] flex items-center justify-center"><div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" /></div>}
-        <div className="px-6 py-6 flex items-center justify-between bg-white border-b border-gray-100">
-          <button onClick={() => setView('home')} className="p-3 bg-gray-50 rounded-2xl text-blue-950"><ChevronLeft size={24} /></button>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[5500] bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col shadow-2xl">
+        {loading && <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-[999] flex items-center justify-center"><div className="w-10 h-10 border-[3px] border-blue-600/20 border-t-blue-600 rounded-full animate-spin" /></div>}
+        <div className="px-6 py-6 flex items-center justify-between bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
+          <button onClick={() => setView('home')} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-2xl text-slate-900 transition-colors"><ChevronLeft size={24} /></button>
           <div className="text-center">
-            <span className="text-[8px] font-black text-red-500 uppercase flex items-center justify-center">
-              <div className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1 animate-pulse" /> 
+            <span className="text-[8px] font-black text-rose-600 uppercase flex items-center justify-center">
+              <div className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5 animate-pulse" /> 
               {isExpired ? 'EXPIRADO' : selectedChamp?.status === 'WAITING' ? 'AGUARDANDO' : selectedChamp?.status === 'ONGOING' ? 'LIVE NOW' : 'FINALIZADO'}
             </span>
-            <h2 className="text-sm font-black text-blue-950 font-orbitron italic uppercase">{selectedChamp?.name}</h2>
+            <h2 className="text-sm font-black text-slate-900 font-orbitron italic uppercase">{selectedChamp?.name}</h2>
           </div>
-          <button className="p-3 bg-gray-50 rounded-2xl text-gray-400"><Share2 size={24} /></button>
+          <button className="p-3 bg-slate-100 hover:bg-slate-200 rounded-2xl text-slate-400 transition-colors"><Share2 size={24} /></button>
         </div>
         <div className="flex-1 overflow-y-auto no-scrollbar">
-          <div className="bg-blue-600 p-8 text-white relative overflow-hidden">
+          <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 p-8 text-white relative overflow-hidden">
+             <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 to-transparent" />
              <div className="flex items-center justify-between relative z-10">
                 <div className="text-center w-[120px] flex flex-col items-center">
                    {p1 ? (
-                     <img src={p1.user?.avatar || `https://i.pravatar.cc/150?u=${p1.id}`} className="w-20 h-20 rounded-full border-4 border-white/20 mb-3 shadow-xl object-cover" />
+                     <img src={p1.user?.avatar || `https://i.pravatar.cc/150?u=${p1.id}`} className="w-20 h-20 rounded-full border-4 border-white/20 mb-3 shadow-xl object-cover ring-2 ring-white/10" />
                    ) : (
-                     <div className="w-20 h-20 rounded-full border-4 border-white/20 mb-3 shadow-xl bg-blue-900 flex items-center justify-center text-xl font-black">?</div>
+                     <div className="w-20 h-20 rounded-full border-4 border-white/20 mb-3 shadow-xl bg-blue-900/50 backdrop-blur-sm flex items-center justify-center text-xl font-black">?</div>
                    )}
                    <p className="text-[10px] font-black uppercase truncate max-w-full">{p1?.user?.name || 'Vaga Aberta'}</p>
-                   <div className="bg-white/20 px-3 py-1 rounded-full text-[12px] font-black mt-2 italic">{votes1} Votos</div>
+                   <div className="bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full text-[12px] font-black mt-2 italic">{votes1} Votos</div>
                 </div>
                 <div className="flex flex-col items-center">
-                   <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-xl mb-2 font-orbitron font-black italic text-xl">VS</div>
-                   <div className={`px-3 py-1 rounded-full text-[8px] font-black text-black uppercase ${selectedChamp?.status === 'WAITING' ? 'bg-gray-300' : 'bg-yellow-400'}`}>{selectedChamp?.status === 'WAITING' ? 'AGUARDANDO' : 'LIVE NOW'}</div>
+                   <div className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white shadow-xl mb-2 font-orbitron font-black italic text-xl border border-white/10">VS</div>
+                   <div className={`px-3 py-1 rounded-full text-[8px] font-black text-black uppercase backdrop-blur-sm ${selectedChamp?.status === 'WAITING' ? 'bg-slate-300/80' : 'bg-yellow-400/90'}`}>{selectedChamp?.status === 'WAITING' ? 'AGUARDANDO' : 'LIVE NOW'}</div>
                 </div>
                 <div className="text-center w-[120px] flex flex-col items-center">
                    {p2 ? (
-                     <img src={p2.user?.avatar || `https://i.pravatar.cc/150?u=${p2.id}`} className="w-20 h-20 rounded-full border-4 border-white/20 mb-3 shadow-xl object-cover" />
+                     <img src={p2.user?.avatar || `https://i.pravatar.cc/150?u=${p2.id}`} className="w-20 h-20 rounded-full border-4 border-white/20 mb-3 shadow-xl object-cover ring-2 ring-white/10" />
                    ) : (
-                     <div className="w-20 h-20 rounded-full border-4 border-white/20 mb-3 shadow-xl bg-blue-900 flex items-center justify-center text-xl font-black">?</div>
+                     <div className="w-20 h-20 rounded-full border-4 border-white/20 mb-3 shadow-xl bg-blue-900/50 backdrop-blur-sm flex items-center justify-center text-xl font-black">?</div>
                    )}
                    <p className="text-[10px] font-black uppercase truncate max-w-full">{p2?.user?.name || 'Vaga Aberta'}</p>
-                   <div className="bg-white/20 px-3 py-1 rounded-full text-[12px] font-black mt-2 italic">{votes2} Votos</div>
+                   <div className="bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full text-[12px] font-black mt-2 italic">{votes2} Votos</div>
                 </div>
              </div>
              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[120px] font-black text-white/5 font-orbitron italic pointer-events-none uppercase">{selectedChamp?.modality || 'x1'}</div>
           </div>
 
           <div className="p-6 space-y-8">
-             {/* Expired Alert */}
              {isExpired && (
-               <div className="bg-red-50 text-red-800 p-6 rounded-[30px] border-2 border-red-200">
+               <div className="bg-rose-50 text-rose-900 p-6 rounded-[30px] border-2 border-rose-200">
                  <p className="text-xs font-black uppercase italic mb-1">Desafio Expirado</p>
                  <p className="text-[10px] font-bold">O oponente não aceitou o desafio a tempo. Esta liga está fechada.</p>
                </div>
              )}
 
-             {/* Accept workflow for Opponent */}
              {isX1 && selectedChamp?.status === 'WAITING' && !hasPhoto2 && !isExpired && (
-               <div className="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm space-y-6">
+               <div className="bg-white/80 backdrop-blur-sm p-6 rounded-[35px] border border-slate-200/60 shadow-sm space-y-6">
                  {isOpponent ? (
                    <div className="space-y-4">
                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Você foi desafiado! Envie uma foto do seu corte para aceitar</p>
                      
                      {photo2Input ? (
-                       <div className="relative rounded-2xl overflow-hidden border border-gray-200 aspect-video">
+                       <div className="relative rounded-2xl overflow-hidden border border-slate-200 aspect-video">
                          <img src={photo2Input} className="w-full h-full object-cover" />
-                         <button type="button" onClick={() => setPhoto2Input('')} className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full shadow-lg"><X size={16} /></button>
+                         <button type="button" onClick={() => setPhoto2Input('')} className="absolute top-2 right-2 bg-rose-600 hover:bg-rose-700 text-white p-2 rounded-full shadow-lg"><X size={16} /></button>
                        </div>
                      ) : (
                        <div className="flex flex-col space-y-2">
-                         <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Selecione uma foto modelo:</p>
+                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Selecione uma foto modelo:</p>
                          <div className="grid grid-cols-3 gap-2">
                            {['https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=500', 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=500', 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=500'].map((mockUrl) => (
-                             <button key={mockUrl} type="button" onClick={() => setPhoto2Input(mockUrl)} className="rounded-xl overflow-hidden border border-gray-200 aspect-square">
+                             <button key={mockUrl} type="button" onClick={() => setPhoto2Input(mockUrl)} className="rounded-xl overflow-hidden border border-slate-200 aspect-square hover:border-blue-400 transition-colors">
                                <img src={mockUrl} className="w-full h-full object-cover" />
                              </button>
                            ))}
@@ -871,36 +1012,35 @@ export default function League() {
                            placeholder="Ou cole a URL da sua foto..." 
                            value={photo2Input} 
                            onChange={e => setPhoto2Input(e.target.value)} 
-                           className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-xs font-black outline-none focus:border-blue-600 transition-all !text-blue-950 placeholder:text-gray-400" 
+                           className="w-full p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs font-black outline-none focus:border-blue-600 transition-all !text-slate-900 placeholder:text-slate-400" 
                          />
                        </div>
                      )}
 
-                     <button onClick={handleAccept} className="w-full py-4 bg-green-500 hover:bg-green-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg">Confirmar e Aceitar Desafio</button>
+                     <button onClick={handleAccept} className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-emerald-200/50 transition-all">Confirmar e Aceitar Desafio</button>
                    </div>
                  ) : (
                    <div className="text-center py-4">
-                     <p className="text-[10px] font-bold text-gray-400 uppercase">Aguardando o oponente enviar a foto e aceitar o desafio.</p>
+                     <p className="text-[10px] font-bold text-slate-400 uppercase">Aguardando o oponente enviar a foto e aceitar o desafio.</p>
                      {scheduledStart && (
-                       <p className="text-[8px] font-black text-red-500 uppercase mt-2">Prazo máximo: {scheduledStart.toLocaleString()}</p>
+                       <p className="text-[8px] font-black text-rose-500 uppercase mt-2">Prazo máximo: {scheduledStart.toLocaleString()}</p>
                      )}
                    </div>
                  )}
                </div>
              )}
 
-             {/* Creator Start Options */}
              {isX1 && selectedChamp?.status === 'WAITING' && hasPhoto2 && match?.status === 'PENDING' && !isExpired && (
-               <div className="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm space-y-6">
+               <div className="bg-white/80 backdrop-blur-sm p-6 rounded-[35px] border border-slate-200/60 shadow-sm space-y-6">
                  {isCreator ? (
                    <div className="space-y-4">
                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest text-center">Desafio Aceito! Escolha como começar:</p>
                      <div className="grid grid-cols-2 gap-3">
-                       <button onClick={handleStartNow} className="p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl flex flex-col items-center justify-center space-y-2 shadow-lg">
+                       <button onClick={handleStartNow} className="p-4 bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-2xl flex flex-col items-center justify-center space-y-2 shadow-lg shadow-blue-200/50 transition-all">
                          <Swords size={20} />
                          <span className="text-[9px] font-black uppercase tracking-widest">Começar Agora</span>
                        </button>
-                       <button onClick={handleStartScheduled} className="p-4 bg-gray-900 hover:bg-gray-800 text-white rounded-2xl flex flex-col items-center justify-center space-y-2 shadow-lg">
+                       <button onClick={handleStartScheduled} className="p-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl flex flex-col items-center justify-center space-y-2 shadow-lg transition-all">
                          <MapPin size={20} className="text-cyan-400" />
                          <span className="text-[9px] font-black uppercase tracking-widest">Esperar Horário</span>
                        </button>
@@ -908,83 +1048,83 @@ export default function League() {
                    </div>
                  ) : (
                    <div className="text-center py-4">
-                     <p className="text-[10px] font-bold text-gray-400 uppercase">Desafio confirmado! Aguardando o criador iniciar a batalha.</p>
+                     <p className="text-[10px] font-bold text-slate-400 uppercase">Desafio confirmado! Aguardando o criador iniciar a batalha.</p>
                    </div>
                  )}
                </div>
              )}
 
-             {/* Photo comparison */}
              {match && (match.photo1 || match.photo2) && (
                <div>
-                 <div className="flex items-center justify-between mb-4"><p className="text-[10px] font-black text-blue-950 uppercase tracking-widest italic">Trabalhos do Desafio</p></div>
+                 <div className="flex items-center justify-between mb-4"><p className="text-[10px] font-black text-slate-700 uppercase tracking-widest italic">Trabalhos do Desafio</p></div>
                  <div className="grid grid-cols-2 gap-4">
-                   <div className="bg-white p-3 rounded-3xl border border-gray-100 shadow-sm text-center">
-                     <div className="rounded-2xl overflow-hidden aspect-square bg-gray-100 mb-2 border border-gray-100">
+                   <div className="bg-white/80 backdrop-blur-sm p-3 rounded-3xl border border-slate-200/60 shadow-sm text-center">
+                     <div className="rounded-2xl overflow-hidden aspect-square bg-slate-100 mb-2 border border-slate-100">
                        {match.photo1 ? (
                          <img src={match.photo1} className="w-full h-full object-cover" />
                        ) : (
-                         <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-gray-300 uppercase">Sem foto</div>
+                         <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-slate-300 uppercase">Sem foto</div>
                        )}
                      </div>
-                     <span className="text-[8px] font-black text-blue-950 uppercase">{p1?.user?.name}</span>
+                     <span className="text-[8px] font-black text-slate-900 uppercase">{p1?.user?.name}</span>
                    </div>
-                   <div className="bg-white p-3 rounded-3xl border border-gray-100 shadow-sm text-center">
-                     <div className="rounded-2xl overflow-hidden aspect-square bg-gray-100 mb-2 border border-gray-100">
+                   <div className="bg-white/80 backdrop-blur-sm p-3 rounded-3xl border border-slate-200/60 shadow-sm text-center">
+                     <div className="rounded-2xl overflow-hidden aspect-square bg-slate-100 mb-2 border border-slate-100">
                        {match.photo2 ? (
                          <img src={match.photo2} className="w-full h-full object-cover" />
                        ) : (
-                         <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-gray-300 uppercase">Aguardando...</div>
+                         <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-slate-300 uppercase">Aguardando...</div>
                        )}
                      </div>
-                     <span className="text-[8px] font-black text-blue-950 uppercase">{p2 ? p2.user?.name : 'Convidado'}</span>
+                     <span className="text-[8px] font-black text-slate-900 uppercase">{p2 ? p2.user?.name : 'Convidado'}</span>
                    </div>
                  </div>
                </div>
              )}
 
-             <div className="bg-blue-950 rounded-[30px] p-6 text-white">
-                <div className="flex justify-between items-center mb-4"><p className="text-[10px] font-black text-blue-400 uppercase tracking-widest italic">Informações da Arena</p><ShieldCheck size={16} className="text-blue-400" /></div>
-                <div className="grid grid-cols-2 gap-4">
+             <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 rounded-[30px] p-6 text-white relative overflow-hidden">
+                <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl" />
+                <div className="flex justify-between items-center mb-4 relative z-10"><p className="text-[10px] font-black text-blue-300 uppercase tracking-widest italic">Informações da Arena</p><ShieldCheck size={16} className="text-blue-400" /></div>
+                <div className="grid grid-cols-2 gap-4 relative z-10">
                    <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Premiação</p><p className="text-sm font-black italic">{selectedChamp?.prize || 'Respeito'}</p></div>
                    <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Vagas</p><p className="text-sm font-black italic">{selectedChamp?.maxParticipants || 2} BARBEIROS</p></div>
                    <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Duração da Votação</p><p className="text-sm font-black italic uppercase">{selectedChamp?.votingTime || 24} HORAS</p></div>
                    <div><p className="text-[8px] font-black text-blue-400/60 uppercase mb-1">Tema</p><p className="text-sm font-black italic uppercase">{selectedChamp?.theme || 'Livre'}</p></div>
                 </div>
                 {votingTimeLeftLabel && (
-                  <div className="mt-4 pt-4 border-t border-blue-900 flex items-center justify-between">
-                    <span className="text-[8px] font-black text-blue-400 uppercase">Tempo de Voto</span>
+                  <div className="mt-4 pt-4 border-t border-blue-900/50 flex items-center justify-between relative z-10">
+                    <span className="text-[8px] font-black text-blue-300 uppercase">Tempo de Voto</span>
                     <span className="text-xs font-black text-yellow-400 uppercase font-orbitron">{votingTimeLeftLabel}</span>
                   </div>
                 )}
              </div>
 
              <div>
-                <div className="flex items-center justify-between mb-4"><p className="text-[10px] font-black text-blue-950 uppercase tracking-widest italic">Chaveamento Oficial</p></div>
-                <div className="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm space-y-6">
+                <div className="flex items-center justify-between mb-4"><p className="text-[10px] font-black text-slate-700 uppercase tracking-widest italic">Chaveamento Oficial</p></div>
+                <div className="bg-white/80 backdrop-blur-sm p-6 rounded-[35px] border border-slate-200/60 shadow-sm space-y-6">
                    {selectedChamp?.status === 'WAITING' || !p1 ? (
-                     <div className="text-center py-4"><p className="text-[10px] font-bold text-gray-400 uppercase">Chaveamento será gerado assim que as vagas forem preenchidas.</p></div>
+                     <div className="text-center py-4"><p className="text-[10px] font-bold text-slate-400 uppercase">Chaveamento será gerado assim que as vagas forem preenchidas.</p></div>
                    ) : (
-                     <div className={`p-4 rounded-2xl border-2 border-blue-600 bg-blue-50`}>
+                     <div className="p-4 rounded-2xl border-2 border-blue-600/30 bg-blue-50/50">
                         <div className="flex justify-between items-center mb-2">
-                          <span className="text-[10px] font-black text-blue-950 uppercase">{p1?.user?.name}</span>
+                          <span className="text-[10px] font-black text-slate-900 uppercase">{p1?.user?.name}</span>
                           <span className="text-[12px] font-black text-blue-600">{votes1} votos</span>
                         </div>
-                        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mb-2">
-                          <div className="h-full bg-blue-600" style={{width: ((votes1 + votes2) > 0 ? (votes1 / (votes1 + votes2) * 100) : 50)+'%'}} />
+                        <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden mb-2">
+                          <div className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full" style={{width: ((votes1 + votes2) > 0 ? (votes1 / (votes1 + votes2) * 100) : 50)+'%'}} />
                         </div>
                         <div className="flex justify-between items-center">
-                           <span className="text-[10px] font-black text-blue-950 uppercase">{p2 ? p2.user?.name : 'Vaga Aberta'}</span>
+                           <span className="text-[10px] font-black text-slate-900 uppercase">{p2 ? p2.user?.name : 'Vaga Aberta'}</span>
                            <span className="text-[12px] font-black text-blue-600">{votes2} votos</span>
                         </div>
                      </div>
                    )}
                  </div>
-              </div>
+             </div>
            </div>
         </div>
-        <div className="p-6 bg-white border-t border-gray-100">
-           <button onClick={() => { setStoryIndex(0); setView('voting'); }} className={`w-full py-5 rounded-[20px] font-black uppercase italic tracking-widest shadow-xl transition-all ${selectedChamp?.status !== 'ONGOING' || !p2 || isExpired || votingTimeLeftLabel === 'Votação Encerrada' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white'}`} disabled={selectedChamp?.status !== 'ONGOING' || !p2 || isExpired || votingTimeLeftLabel === 'Votação Encerrada'}>Votar na Arena (Story)</button>
+        <div className="p-6 bg-white/80 backdrop-blur-xl border-t border-slate-200/60">
+           <button onClick={() => { setStoryIndex(0); setView('voting'); }} className={`w-full py-5 rounded-[20px] font-black uppercase italic tracking-widest shadow-xl transition-all duration-200 ${selectedChamp?.status !== 'ONGOING' || !p2 || isExpired || votingTimeLeftLabel === 'Votação Encerrada' ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:shadow-blue-300/60'}`} disabled={selectedChamp?.status !== 'ONGOING' || !p2 || isExpired || votingTimeLeftLabel === 'Votação Encerrada'}>Votar na Arena (Story)</button>
         </div>
       </motion.div>
     );
@@ -1141,19 +1281,17 @@ export default function League() {
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
         exit={{ opacity: 0 }} 
-        className="fixed inset-0 w-full max-w-md mx-auto z-[7000] bg-black flex flex-col overflow-hidden text-white"
+        className="fixed inset-0 w-full max-w-md mx-auto z-[7000] bg-gradient-to-b from-zinc-950 via-black to-zinc-950 flex flex-col overflow-hidden text-white"
       >
-        {/* Story Progress Bars */}
         <div className="absolute top-4 inset-x-4 flex space-x-1.5 z-50">
-          <div className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
+          <div className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
             <div className={`h-full bg-white transition-all duration-300 ${storyIndex >= 0 ? 'w-full' : 'w-0'}`} />
           </div>
-          <div className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
+          <div className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
             <div className={`h-full bg-white transition-all duration-300 ${storyIndex >= 1 ? 'w-full' : 'w-0'}`} />
           </div>
         </div>
 
-        {/* Story Header */}
         <div className="absolute top-8 inset-x-0 px-6 flex items-center justify-between z-50">
           <div className="flex items-center space-x-3">
             <button 
@@ -1169,16 +1307,15 @@ export default function League() {
               />
               <div className="text-left">
                 <p className="text-[10px] font-black text-white uppercase tracking-wider">{activePlayer?.user?.name || 'Carregando...'}</p>
-                <p className="text-[7px] font-bold text-white/60 uppercase">Corte de Competição</p>
+                <p className="text-[7px] font-bold text-white/50 uppercase">Corte de Competição</p>
               </div>
             </div>
           </div>
-          <span className="text-[8px] font-black bg-blue-600 px-3 py-1 rounded-full uppercase tracking-wider italic font-orbitron">
+          <span className="text-[8px] font-black bg-gradient-to-r from-blue-600 to-blue-800 px-3 py-1 rounded-full uppercase tracking-wider italic font-orbitron shadow-lg shadow-blue-600/30">
             {storyIndex === 0 ? 'Trabalho 1/2' : 'Trabalho 2/2'}
           </span>
         </div>
 
-        {/* Click Areas to navigate between slides */}
         <div className="absolute inset-x-0 top-20 bottom-32 z-10 flex">
           <div 
             onClick={() => setStoryIndex(0)} 
@@ -1190,8 +1327,7 @@ export default function League() {
           />
         </div>
 
-        {/* Background Cut Photo */}
-        <div className="flex-1 relative bg-gray-950 flex items-center justify-center">
+        <div className="flex-1 relative bg-zinc-950 flex items-center justify-center">
           {activePhoto ? (
             <img 
               src={activePhoto} 
@@ -1199,8 +1335,8 @@ export default function League() {
               alt={`Corte de ${activePlayer?.user?.name}`}
             />
           ) : (
-            <div className="flex flex-col items-center justify-center p-8 text-center text-gray-500 space-y-4">
-              <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center text-gray-400">
+            <div className="flex flex-col items-center justify-center p-8 text-center text-zinc-500 space-y-4">
+              <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center text-zinc-400 backdrop-blur-sm border border-white/5">
                 <Swords size={32} />
               </div>
               <p className="text-[10px] font-black uppercase tracking-wider">Aguardando envio da foto deste barbeiro</p>
@@ -1209,53 +1345,51 @@ export default function League() {
           <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40 pointer-events-none" />
         </div>
 
-        {/* Interaction Sidebar */}
         <div className="absolute right-4 bottom-32 z-30 flex flex-col space-y-4 items-center">
           <div className="flex flex-col items-center">
             <button 
               onClick={handleLikeToggle}
-              className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-90 ${isLiked ? 'bg-pink-600 text-white' : 'bg-black/40 text-white hover:bg-black/60'}`}
+              className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-90 border border-white/10 ${isLiked ? 'bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-500/30' : 'bg-black/40 text-white hover:bg-black/60'}`}
             >
               <Heart size={20} fill={isLiked ? 'currentColor' : 'none'} />
             </button>
-            <span className="text-[8px] font-black uppercase tracking-wider text-white mt-1 shadow-sm">{likesCount} Likes</span>
+            <span className="text-[8px] font-black uppercase tracking-wider text-white/70 mt-1">{likesCount} Likes</span>
           </div>
 
           <div className="flex flex-col items-center">
             <button 
               onClick={() => setShowCommentsPanel(true)}
-              className="w-12 h-12 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-md transition-all active:scale-90"
+              className="w-12 h-12 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-md transition-all active:scale-90 border border-white/10"
             >
               <MessageCircle size={20} />
             </button>
-            <span className="text-[8px] font-black uppercase tracking-wider text-white mt-1 shadow-sm">{commentsCount} Comentários</span>
+            <span className="text-[8px] font-black uppercase tracking-wider text-white/70 mt-1">{commentsCount} Comentários</span>
           </div>
 
           <div className="flex flex-col items-center">
             <button 
               onClick={handleShare}
-              className="w-12 h-12 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-md transition-all active:scale-90"
+              className="w-12 h-12 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-md transition-all active:scale-90 border border-white/10"
             >
               <Share2 size={20} />
             </button>
-            <span className="text-[8px] font-black uppercase tracking-wider text-white mt-1 shadow-sm">Compartilhar</span>
+            <span className="text-[8px] font-black uppercase tracking-wider text-white/70 mt-1">Compartilhar</span>
           </div>
         </div>
 
-        {/* Action Button */}
-        <div className="p-6 bg-black/85 backdrop-blur-md border-t border-white/10 relative z-30 flex flex-col space-y-3">
+        <div className="p-6 bg-black/90 backdrop-blur-xl border-t border-white/10 relative z-30 flex flex-col space-y-3">
           {hasVoted ? (
             <div className="space-y-3">
-              <p className="text-[9px] font-black text-green-400 uppercase tracking-widest text-center">
+              <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest text-center">
                 ✓ Seu Voto foi Computado!
               </p>
               <div className="grid grid-cols-2 gap-3 text-center">
-                <div className={`p-3 rounded-2xl border ${voteChoice === p1?.id ? 'bg-blue-600/20 border-blue-500' : 'bg-white/5 border-white/10'}`}>
-                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-wider">{p1?.user?.name}</p>
+                <div className={`p-3 rounded-2xl border ${voteChoice === p1?.id ? 'bg-blue-600/20 border-blue-500 shadow-lg shadow-blue-600/20' : 'bg-white/5 border-white/10'}`}>
+                  <p className="text-[8px] font-black text-zinc-400 uppercase tracking-wider">{p1?.user?.name}</p>
                   <p className="text-sm font-black font-orbitron text-white">{pct1}%</p>
                 </div>
-                <div className={`p-3 rounded-2xl border ${voteChoice === p2?.id ? 'bg-blue-600/20 border-blue-500' : 'bg-white/5 border-white/10'}`}>
-                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-wider">{p2?.user?.name}</p>
+                <div className={`p-3 rounded-2xl border ${voteChoice === p2?.id ? 'bg-blue-600/20 border-blue-500 shadow-lg shadow-blue-600/20' : 'bg-white/5 border-white/10'}`}>
+                  <p className="text-[8px] font-black text-zinc-400 uppercase tracking-wider">{p2?.user?.name}</p>
                   <p className="text-sm font-black font-orbitron text-white">{pct2}%</p>
                 </div>
               </div>
@@ -1263,19 +1397,18 @@ export default function League() {
           ) : (
             <button 
               onClick={() => handleVoteSubmit(activePlayer.id)}
-              className="w-full py-5 bg-blue-600 text-white rounded-[20px] font-black uppercase italic tracking-widest shadow-xl transition-all hover:bg-blue-700 active:scale-95 text-xs"
+              className="w-full py-5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-[20px] font-black uppercase italic tracking-widest shadow-xl shadow-blue-600/30 transition-all hover:from-blue-700 hover:to-blue-800 active:scale-95 text-xs"
             >
               VOTAR NO CORTE DE {activePlayer?.user?.name}
             </button>
           )}
         </div>
 
-        {/* Comments Sliding Drawer Panel */}
         <AnimatePresence>
           {showCommentsPanel && (
             <>
               <div 
-                className="absolute inset-0 bg-black/50 z-[80]" 
+                className="absolute inset-0 bg-black/60 z-[80]" 
                 onClick={() => setShowCommentsPanel(false)}
               />
               <motion.div 
@@ -1283,13 +1416,13 @@ export default function League() {
                 animate={{ y: 0 }} 
                 exit={{ y: '100%' }} 
                 transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-                className="absolute inset-x-0 bottom-0 h-[60%] bg-zinc-900 rounded-t-[30px] border-t border-white/10 z-[90] flex flex-col text-white"
+                className="absolute inset-x-0 bottom-0 h-[60%] bg-zinc-900/95 backdrop-blur-xl rounded-t-[30px] border-t border-white/10 z-[90] flex flex-col text-white"
               >
                 <div className="px-6 py-4 flex items-center justify-between border-b border-white/5">
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Comentários ({commentsCount})</span>
+                  <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Comentários ({commentsCount})</span>
                   <button 
                     onClick={() => setShowCommentsPanel(false)} 
-                    className="p-1 text-gray-400 hover:text-white"
+                    className="p-1 text-zinc-400 hover:text-white transition-colors"
                   >
                     <X size={20} />
                   </button>
@@ -1306,27 +1439,27 @@ export default function League() {
                         <div className="flex-1 bg-white/5 p-3 rounded-2xl border border-white/5">
                           <div className="flex justify-between items-baseline mb-1">
                             <span className="text-[9px] font-black text-blue-400 uppercase">{cmt.userName}</span>
-                            <span className="text-[7px] text-gray-500">
+                            <span className="text-[7px] text-zinc-500">
                               {new Date(cmt.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <p className="text-[10px] font-medium text-gray-200 uppercase tracking-wide leading-relaxed">
+                          <p className="text-[10px] font-medium text-zinc-200 uppercase tracking-wide leading-relaxed">
                             {cmt.content}
                           </p>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-12 text-gray-500">
+                    <div className="text-center py-12 text-zinc-500">
                       <p className="text-[9px] font-black uppercase tracking-wider">Sem comentários ainda.</p>
-                      <p className="text-[7px] font-bold uppercase tracking-wider text-gray-600 mt-1">Seja o primeiro a mandar a braba!</p>
+                      <p className="text-[7px] font-bold uppercase tracking-wider text-zinc-600 mt-1">Seja o primeiro a mandar a braba!</p>
                     </div>
                   )}
                 </div>
 
                 <form 
                   onSubmit={handleCommentSubmit}
-                  className="p-4 bg-zinc-950 border-t border-white/5 flex items-center space-x-3"
+                  className="p-4 bg-zinc-950/80 border-t border-white/5 flex items-center space-x-3"
                 >
                   <input 
                     type="text" 
@@ -1337,7 +1470,7 @@ export default function League() {
                   />
                   <button 
                     type="submit"
-                    className="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all active:scale-95"
+                    className="p-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-all active:scale-95 shadow-lg shadow-blue-600/30"
                   >
                     <Send size={14} />
                   </button>
@@ -1361,10 +1494,11 @@ export default function League() {
     const winnerVotes = votes1 >= votes2 ? votes1 : votes2;
 
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[8000] bg-blue-950 flex flex-col items-center justify-center text-center p-8 overflow-hidden shadow-2xl">
-         <div className="absolute top-0 left-0 w-full h-full"><div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-600/20 blur-[120px] rounded-full animate-pulse" /></div>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[8000] bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex flex-col items-center justify-center text-center p-8 overflow-hidden shadow-2xl">
+         <div className="absolute inset-0"><div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-gradient-to-br from-blue-600/20 to-indigo-600/20 blur-[120px] rounded-full animate-pulse" /></div>
+         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-yellow-400/5 via-transparent to-transparent" />
          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', bounce: 0.5, delay: 0.2 }} className="relative z-10 mb-12">
-            <div className="w-48 h-48 bg-yellow-400 rounded-[60px] flex items-center justify-center shadow-2xl rotate-12 relative"><Trophy size={100} className="text-blue-950 -rotate-12" /><div className="absolute -top-4 -right-4 bg-white p-4 rounded-3xl shadow-xl text-blue-600 rotate-12"><Star size={32} fill="currentColor" /></div></div>
+            <div className="w-48 h-48 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-[60px] flex items-center justify-center shadow-2xl shadow-yellow-400/30 rotate-12 relative"><Trophy size={100} className="text-slate-900 -rotate-12" /><div className="absolute -top-4 -right-4 bg-white p-4 rounded-3xl shadow-xl text-blue-600 rotate-12"><Star size={32} fill="currentColor" /></div></div>
          </motion.div>
          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }} className="relative z-10">
             <p className="text-cyan-400 font-black font-orbitron tracking-[0.4em] uppercase text-[12px] mb-4">Vencedor do Combate</p>
@@ -1372,9 +1506,9 @@ export default function League() {
             <div className="flex items-center justify-center space-x-3 mb-12">
               <span className="text-[14px] font-black text-blue-200 uppercase tracking-widest italic">{winnerVotes} Votos</span>
             </div>
-            <button onClick={() => setView('home')} className="px-12 py-6 bg-white text-blue-950 rounded-[30px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all">Sair da Arena</button>
+            <button onClick={() => setView('home')} className="px-12 py-6 bg-white text-slate-900 rounded-[30px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all hover:bg-slate-100">Sair da Arena</button>
          </motion.div>
-         <div className="absolute bottom-0 w-full p-8"><p className="text-[10px] font-black text-blue-300/40 uppercase tracking-[0.2em] italic">Próxima Batalha em breve</p></div>
+         <div className="absolute bottom-0 w-full p-8"><p className="text-[10px] font-black text-blue-300/30 uppercase tracking-[0.2em] italic">Próxima Batalha em breve</p></div>
       </motion.div>
     );
   };
@@ -1391,13 +1525,13 @@ export default function League() {
 
       <AnimatePresence>
         {showSuccess && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[9999] bg-blue-950/95 flex items-center justify-center p-6 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-[50px] p-10 text-center w-full max-w-sm shadow-2xl">
-              <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-8 text-white shadow-lg shadow-green-200">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[9999] bg-gradient-to-br from-slate-900/95 via-blue-950/95 to-indigo-950/95 flex items-center justify-center p-6 backdrop-blur-md">
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-[50px] p-10 text-center w-full max-w-sm shadow-2xl shadow-blue-950/50">
+              <div className="w-24 h-24 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-8 text-white shadow-lg shadow-emerald-200/50">
                 <Check size={50} strokeWidth={4} />
               </div>
-              <h2 className="text-2xl font-black text-blue-950 font-orbitron italic uppercase mb-2 tracking-tighter">Sucesso Total!</h2>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-8">Sua arena está ativa e pronta para os combates.</p>
+              <h2 className="text-2xl font-black text-slate-900 font-orbitron italic uppercase mb-2 tracking-tighter">Sucesso Total!</h2>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-8">Sua arena está ativa e pronta para os combates.</p>
               <div className="space-y-3">
                 <button 
                   onClick={() => { 
@@ -1408,7 +1542,7 @@ export default function League() {
                     setForm({ name: '', modality: 'x1', arbitration: 'hybrid', maxParticipants: 16, prize: '', votingTime: 24, judges: [] as string[], liga: 1, opponentNick: '', opponentId: '', theme: '', startDate: '', startTime: '', photo1: '' });
                     setSelectedOpponent(null);
                   }} 
-                  className="w-full py-5 bg-blue-600 text-white rounded-[20px] font-black uppercase italic tracking-widest shadow-xl"
+                  className="w-full py-5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-[20px] font-black uppercase italic tracking-widest shadow-xl hover:shadow-blue-300/60 transition-all duration-200"
                 >
                   Ver Detalhes Agora
                 </button>
@@ -1420,7 +1554,7 @@ export default function League() {
                     setForm({ name: '', modality: 'x1', arbitration: 'hybrid', maxParticipants: 16, prize: '', votingTime: 24, judges: [] as string[], liga: 1, opponentNick: '', opponentId: '', theme: '', startDate: '', startTime: '', photo1: '' }); 
                     setSelectedOpponent(null);
                   }} 
-                  className="w-full py-4 text-blue-950 font-black uppercase text-[10px] tracking-widest"
+                  className="w-full py-4 text-slate-900 font-black uppercase text-[10px] tracking-widest hover:text-blue-600 transition-colors"
                 >
                   Voltar para Home
                 </button>
