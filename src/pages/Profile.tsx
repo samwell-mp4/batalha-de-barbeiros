@@ -5,7 +5,8 @@ import {
    Settings, Play, ChevronDown, CheckCircle2, Zap, Clock, Heart,
    Star, MapPin, Calendar, ChevronRight, X,
    Navigation, Bookmark, Target, Plus, Camera, Send,
-   MessageSquare, MessageCircle, Check, Edit3, Eye, EyeOff, Key, ChevronLeft, MoreVertical, Trash2
+   MessageSquare, MessageCircle, Check, Edit3, Eye, EyeOff, Key, ChevronLeft, MoreVertical, Trash2,
+   Link2, Copy, ExternalLink, Share2
 } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { calculateLevel } from '@/constants/xpSystem';
@@ -105,12 +106,13 @@ export default function Profile() {
    const [storyIndex, setStoryIndex] = useState(0);
    const [showRouteOptions, setShowRouteOptions] = useState(false);
    const [showSettings, setShowSettings] = useState(false);
-   const [settingsView, setSettingsView] = useState<'menu' | 'edit_profile' | 'change_password' | 'privacy' | 'push_alerts'>('menu');
+   const [settingsView, setSettingsView] = useState<'menu' | 'edit_profile' | 'change_password' | 'privacy' | 'push_alerts' | 'instagram_bio'>('menu');
    const [editProfileData, setEditProfileData] = useState({ name: '', bio: '', avatar: '' });
    const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
    const [showPassword, setShowPassword] = useState(false);
    const [showNewPost, setShowNewPost] = useState(false);
    const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
+   const [bioCopied, setBioCopied] = useState(false);
    const [newPostData, setNewPostData] = useState({ imageUrl: '', description: '', category: 'Fade' });
    const [isLoading, setIsLoading] = useState(false);
 
@@ -1106,9 +1108,9 @@ export default function Profile() {
                         {settingsView !== 'menu' && (
                            <button onClick={() => setSettingsView('menu')} className="p-2 bg-gray-50 rounded-xl text-gray-400 mr-2"><ChevronLeft size={20} /></button>
                         )}
-                        <h3 className="text-xl font-black text-blue-950 uppercase italic tracking-tighter">
-                           {settingsView === 'menu' ? 'Configurações' : settingsView === 'edit_profile' ? 'Editar Perfil' : settingsView === 'change_password' ? 'Trocar Senha' : settingsView === 'privacy' ? 'Privacidade' : 'Notificações'}
-                        </h3>
+                         <h3 className="text-xl font-black text-blue-950 uppercase italic tracking-tighter">
+                            {settingsView === 'menu' ? 'Configurações' : settingsView === 'edit_profile' ? 'Editar Perfil' : settingsView === 'change_password' ? 'Trocar Senha' : settingsView === 'privacy' ? 'Privacidade' : settingsView === 'instagram_bio' ? 'Bio para Instagram' : 'Notificações'}
+                         </h3>
                         <div className="flex-1" />
                         <button onClick={() => { setShowSettings(false); setSettingsView('menu'); }} className="p-2 bg-gray-50 rounded-xl text-gray-400"><X size={20} /></button>
                      </div>
@@ -1123,8 +1125,9 @@ export default function Profile() {
                                        {[
                                           { id: 'edit_profile', label: 'Editar Perfil', icon: <Edit3 size={18} /> },
                                           { id: 'change_password', label: 'Trocar Senha', icon: <Key size={18} /> },
-                                          { id: 'privacy', label: 'Privacidade', icon: <Bookmark size={18} /> }
-                                       ].map((item, idx) => (
+                                           { id: 'privacy', label: 'Privacidade', icon: <Bookmark size={18} /> },
+                                           { id: 'instagram_bio', label: 'Gerar Link Bio para Instagram', icon: <Link2 size={18} /> }
+                                        ].map((item, idx) => (
                                           <button key={idx} onClick={() => {
                                              if (item.id === 'edit_profile') {
                                                 setEditProfileData({ name: barber?.name || '', bio: barber?.bio || '', avatar: barber?.avatar || '' });
@@ -1287,8 +1290,181 @@ export default function Profile() {
                               </motion.div>
                            )}
 
+                           {settingsView === 'instagram_bio' && (
+                               <motion.div key="ig-bio" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-5">
+                                  <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 rounded-[30px] p-6 text-white relative overflow-hidden">
+                                     <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                                     <div className="absolute bottom-0 left-0 w-24 h-24 bg-cyan-400/10 rounded-full translate-y-1/2 -translate-x-1/2" />
+                                     <div className="flex items-center space-x-4 relative z-10">
+                                        <div className="w-16 h-16 rounded-[20px] overflow-hidden border-2 border-white/30 shadow-lg flex-shrink-0">
+                                           <img src={barber.avatar} className="w-full h-full object-cover" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                           <h4 className="text-lg font-black uppercase italic tracking-tight truncate">{barber.name}</h4>
+                                           <div className="flex items-center space-x-2 mt-1">
+                                              <span className="text-[10px] font-black bg-white/20 px-2.5 py-1 rounded-lg uppercase tracking-widest">
+                                                 Nível {calculateLevel(barber.xp || 0, true).level}
+                                              </span>
+                                              <span className="text-[10px] font-black bg-yellow-400/20 text-yellow-300 px-2.5 py-1 rounded-lg">
+                                                 ★ {barber.rating || '4.9'}
+                                              </span>
+                                           </div>
+                                        </div>
+                                     </div>
+                                  </div>
+
+                                  {(() => {
+                                     const level = calculateLevel(barber.xp || 0, true);
+                                     const scheduleSummary = (() => {
+                                        const schedule = barberSchedule || {};
+                                        const days = Object.keys(schedule);
+                                        if (days.length === 0) return 'Seg - Sáb: 09h às 20h';
+                                        const hours = days.map(d => {
+                                           const day = schedule[d];
+                                           if (day?.workingHours) return `${day.workingHours.start}-${day.workingHours.end}`;
+                                           return '09h-20h';
+                                        }).filter(Boolean);
+                                        const unique = [...new Set(hours)];
+                                        return `Seg - Sáb: ${unique[0] || '09h às 20h'}`;
+                                     })();
+
+                                     const servicesText = currentServices.slice(0, 4).map(s =>
+                                        `✂️ ${s.name}: R$ ${s.price},00`
+                                     ).join('\n');
+
+                                     const fullBio = [
+                                        `⚡ ${barber.name} • Nível ${level.level} ${level.title}`,
+                                        `⭐ ${barber.rating || '4.9'} • ${barber.city || 'Sua Cidade'}, ${barber.state || 'BR'}`,
+                                        ``,
+                                        `${barber.bio || '✂️ Especialista em cortes masculinos | Transformando visões em estilo'}`,
+                                        ``,
+                                        `📋 SERVIÇOS:`,
+                                        servicesText,
+                                        ``,
+                                        `📅 AGENDA:`,
+                                        `${scheduleSummary}`,
+                                        `📍 Localização: ${barber.city || 'Sua Cidade'}`,
+                                        ``,
+                                        `👇 Agende seu horário:`,
+                                        `${window.location.origin}/profile/${barber.id}`,
+                                        ``,
+                                        `#Barbeiro #CorteMasculino #Degradê #Barbearia #Estilo`
+                                     ].join('\n');
+
+                                     return (
+                                        <>
+                                           <div className="bg-gray-50 rounded-[25px] p-5 border border-gray-100">
+                                              <div className="flex items-center justify-between mb-3">
+                                                 <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Prévia da Bio</h4>
+                                                 <div className="flex items-center space-x-2">
+                                                    <button
+                                                       onClick={() => {
+                                                          navigator.clipboard.writeText(fullBio).then(() => {
+                                                             setBioCopied(true);
+                                                             setTimeout(() => setBioCopied(false), 2000);
+                                                          }).catch(() => {
+                                                             const ta = document.createElement('textarea');
+                                                             ta.value = fullBio;
+                                                             document.body.appendChild(ta);
+                                                             ta.select();
+                                                             document.execCommand('copy');
+                                                             document.body.removeChild(ta);
+                                                             setBioCopied(true);
+                                                             setTimeout(() => setBioCopied(false), 2000);
+                                                          });
+                                                       }}
+                                                       className="flex items-center space-x-1.5 px-4 py-2 bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                                                    >
+                                                       {bioCopied ? <><Check size={14} /> <span>Copiado!</span></> : <><Copy size={14} /> <span>Copiar Bio</span></>}
+                                                    </button>
+                                                    <button
+                                                       onClick={() => {
+                                                          const igUrl = `https://instagram.com`;
+                                                          window.open(igUrl, '_blank');
+                                                       }}
+                                                       className="p-2 bg-gray-100 rounded-xl text-gray-400 hover:text-pink-500 transition-colors"
+                                                       title="Abrir Instagram"
+                                                    >
+                                                       <ExternalLink size={16} />
+                                                    </button>
+                                                 </div>
+                                              </div>
+
+                                              <div className="bg-white rounded-[20px] p-5 border border-gray-100 shadow-sm text-left">
+                                                 <div className="flex items-center space-x-3 mb-4 pb-4 border-b border-gray-50">
+                                                    <img src={barber.avatar} className="w-12 h-12 rounded-[15px] object-cover border border-gray-100" />
+                                                    <div>
+                                                       <h5 className="text-sm font-black text-blue-950 uppercase italic">{barber.name}</h5>
+                                                       <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Nível {level.level} • ★ {barber.rating || '4.9'}</p>
+                                                    </div>
+                                                 </div>
+
+                                                 <div className="space-y-3">
+                                                    <div className="flex items-start space-x-2.5">
+                                                       <Zap size={14} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                                                       <p className="text-[11px] text-blue-950 font-medium leading-relaxed">{barber.bio || '✂️ Especialista em cortes masculinos | Transformando visões em estilo'}</p>
+                                                    </div>
+                                                    <div className="flex items-start space-x-2.5">
+                                                       <Calendar size={14} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                                                       <div>
+                                                          <p className="text-[11px] font-bold text-blue-950">{scheduleSummary}</p>
+                                                          <p className="text-[9px] text-gray-400 font-medium">Horários disponíveis</p>
+                                                       </div>
+                                                    </div>
+                                                    <div className="flex items-start space-x-2.5">
+                                                       <MapPin size={14} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                                                       <p className="text-[11px] text-blue-950 font-medium">{barber.city || 'Sua Cidade'}, {barber.state || 'BR'}</p>
+                                                    </div>
+                                                    <div className="flex items-start space-x-2.5">
+                                                       <Star size={14} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                                                       <div className="flex flex-wrap gap-1.5">
+                                                          {currentServices.slice(0, 4).map(s => (
+                                                             <span key={s.id} className="text-[9px] bg-blue-50 text-blue-700 font-bold px-2.5 py-1 rounded-lg">{s.name}</span>
+                                                          ))}
+                                                          {currentServices.length > 4 && (
+                                                             <span className="text-[9px] bg-blue-50 text-blue-700 font-bold px-2.5 py-1 rounded-lg">+{currentServices.length - 4}</span>
+                                                          )}
+                                                       </div>
+                                                    </div>
+                                                 </div>
+                                              </div>
+                                           </div>
+
+                                           <div>
+                                              <div className="flex items-center justify-between mb-2 px-1">
+                                                 <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Texto para Copiar</h4>
+                                                 <span className="text-[8px] text-gray-300 font-medium">{fullBio.split('\n').length} linhas</span>
+                                              </div>
+                                              <div className="bg-gray-900 text-gray-100 rounded-[20px] p-5 text-[11px] font-mono leading-relaxed whitespace-pre-wrap select-all border border-gray-800 max-h-[280px] overflow-y-auto no-scrollbar">
+                                                 {fullBio}
+                                              </div>
+                                           </div>
+
+                                           <button
+                                              onClick={() => {
+                                                 const shareText = fullBio;
+                                                 if (navigator.share) {
+                                                    navigator.share({ title: 'Minha Bio Battle Barber', text: shareText }).catch(() => {});
+                                                 } else {
+                                                    navigator.clipboard.writeText(shareText).then(() => {
+                                                       setBioCopied(true);
+                                                       setTimeout(() => setBioCopied(false), 2000);
+                                                    });
+                                                 }
+                                              }}
+                                              className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-[20px] font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center space-x-2 active:scale-95 transition-all"
+                                           >
+                                              <Share2 size={16} />
+                                              <span>Compartilhar Bio</span>
+                                           </button>
+                                        </>
+                                     );
+                                  })()}
+                               </motion.div>
+                            )}
+
                            {settingsView === 'push_alerts' && (
-                              <motion.div key="push" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-4">
+                               <motion.div key="push" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-4">
                                  {['Novos Agendamentos', 'Mensagens Diretas', 'Lembretes de Duelo', 'Promoções e Alertas'].map((lbl, i) => (
                                     <div key={i} className="bg-gray-50 rounded-[20px] p-4 flex items-center justify-between border border-gray-100">
                                        <span className="text-xs font-bold text-blue-950">{lbl}</span>
