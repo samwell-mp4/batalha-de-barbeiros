@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, ChevronRight, ChevronLeft, Plus, X, Zap, Bell, ShieldOff, Check, Scissors as ScissorsIcon, Star, Settings, Calendar, CalendarDays, Clock, Navigation, Trash2, Filter } from 'lucide-react';
+import { User, ChevronRight, ChevronLeft, Plus, X, Zap, Bell, ShieldOff, Check, Scissors as ScissorsIcon, Star, Settings, Calendar, CalendarDays, Clock, Navigation, Trash2, Filter, Share2 } from 'lucide-react';
 import { api } from '../services/api';
 
 const getDatesRange = () => {
@@ -683,7 +683,20 @@ export default function Agenda() {
                 {isBarberView ? 'Agenda Estratégica' : 'Meus Serviço'}
               </h1>
             </div>
-            <div className="flex space-x-2">
+             <div className="flex space-x-2">
+              {isBarberView && user?.barberProfile?.id && (
+                <button
+                  onClick={() => {
+                    const shareUrl = `${window.location.origin}/profile/${user.barberProfile.id}`;
+                    navigator.clipboard.writeText(shareUrl);
+                    alert('Link da sua agenda copiado para a área de transferência!');
+                  }}
+                  className="p-3 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-2xl border border-blue-100 flex items-center justify-center transition-all active:scale-95 shadow-sm"
+                  title="Compartilhar Link da Agenda"
+                >
+                  <Share2 size={20} />
+                </button>
+              )}
               {isBarberView && (
                 <button onClick={() => setShowNotifications(true)} className="p-3 bg-gray-50 rounded-2xl text-blue-950 relative border border-gray-100">
                   <Bell size={20} />
@@ -695,7 +708,7 @@ export default function Agenda() {
                   <Settings size={20} />
                 </button>
               )}
-            </div>
+             </div>
           </div>
 
           {/* DATE PICKER SLIDER (BARBER VIEW ONLY) */}

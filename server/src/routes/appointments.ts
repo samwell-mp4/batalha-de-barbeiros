@@ -56,6 +56,43 @@ router.post('/', async (req, res) => {
       }
     }
 
+    // Limit A: client cannot create a new appointment if they have one with status PENDING or PROPOSAL_SENT
+    const pendingAppointments = await prisma.appointment.findMany({
+      where: {
+        clientId,
+        status: {
+          in: ['PENDING', 'PROPOSAL_SENT']
+        }
+      }
+    });
+
+    if (pendingAppointments.length > 0) {
+      return res.status(400).json({ error: 'Você já possui um agendamento pendente aguardando resposta do barbeiro.' });
+    }
+
+    // Limit B: daily limit of 2 non-cancelled appointments per day
+    const startOfDay = new Date(parsedDate);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const endOfDay = new Date(parsedDate);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
+    const dailyAppointments = await prisma.appointment.findMany({
+      where: {
+        clientId,
+        date: {
+          gte: startOfDay,
+          lte: endOfDay
+        },
+        status: {
+          not: 'CANCELLED'
+        }
+      }
+    });
+
+    if (dailyAppointments.length >= 2) {
+      return res.status(400).json({ error: 'Você atingiu o limite de 2 agendamentos ativos para este dia.' });
+    }
+
     const appointment = await prisma.appointment.create({
       data: {
         clientId,

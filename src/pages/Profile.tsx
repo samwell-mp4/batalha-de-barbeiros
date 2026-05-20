@@ -138,16 +138,47 @@ export default function Profile() {
    const [bookingTime, setBookingTime] = useState<string>('');
    const [barberAppointments, setBarberAppointments] = useState<any[]>([]);
 
-   // Fetch appointments of the barber to block occupied slots
+   // Fetch appointments of the barber to block occupied slots (polled every 3s for real-time updates)
    useEffect(() => {
-      if (barber?.id) {
+      if (!barber?.id) return;
+
+      const fetchAppointments = () => {
          api.getBarberAppointments(barber.id.toString())
             .then(res => {
                setBarberAppointments(res || []);
             })
             .catch(err => console.error('Error fetching barber appointments:', err));
-      }
+      };
+
+      fetchAppointments();
+      const interval = setInterval(fetchAppointments, 3000);
+      return () => clearInterval(interval);
    }, [barber?.id]);
+
+   // Restore pending booking if returning from login redirect
+   useEffect(() => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('resumeBooking') === 'true' && loggedUser && barber?.id) {
+         const savedBooking = sessionStorage.getItem('pendingBooking');
+         if (savedBooking) {
+            try {
+               const parsed = JSON.parse(savedBooking);
+               if (parsed.barberId === barber.id) {
+                  setBookingDate(parsed.date);
+                  setBookingTime(parsed.time);
+                  setSelectedBookingServices(parsed.services);
+                  
+                  // Clear sessionStorage and query param
+                  sessionStorage.removeItem('pendingBooking');
+                  window.history.replaceState({}, '', window.location.pathname);
+                  alert('Dados do agendamento restaurados! Clique em "Confirmar Agendamento" para finalizar.');
+               }
+            } catch (e) {
+               console.error('Failed to restore pending booking:', e);
+            }
+         }
+      }
+   }, [barber?.id, loggedUser]);
 
    // Fetch all barbers for chat search
    useEffect(() => {
@@ -182,11 +213,6 @@ export default function Profile() {
    };
 
    const handleCreateBooking = async () => {
-      if (!loggedUser) {
-         alert('Você precisa estar logado para agendar!');
-         navigate('/auth');
-         return;
-      }
       if (selectedBookingServices.length === 0) {
          alert('Selecione pelo menos um serviço!');
          return;
@@ -195,6 +221,20 @@ export default function Profile() {
          alert('Selecione um horário!');
          return;
       }
+
+      if (!loggedUser) {
+         sessionStorage.setItem('pendingBooking', JSON.stringify({
+            date: bookingDate,
+            time: bookingTime,
+            services: selectedBookingServices,
+            barberId: barber.id
+         }));
+         sessionStorage.setItem('redirectAfterAuth', `/profile/${barber.id}?resumeBooking=true`);
+         alert('Você precisa estar logado para agendar. Redirecionando para login/registro.');
+         navigate('/auth');
+         return;
+      }
+
       try {
          setIsLoading(true);
          const total = selectedBookingServices.reduce((acc, s) => acc + s.price, 0);
