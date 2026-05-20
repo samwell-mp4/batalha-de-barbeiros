@@ -322,9 +322,12 @@ export default function Auth() {
       localStorage.removeItem('user');
 
       const response = await api.login(form.email, form.password);
+      const userData = response.user || response;
+      const token = response.token;
 
-      if (response && response.id) {
-        localStorage.setItem('user', JSON.stringify(response));
+      if (userData && userData.id) {
+        localStorage.setItem('user', JSON.stringify(userData));
+        if (token) localStorage.setItem('token', token);
         // Pequeno delay para garantir que o storage foi gravado antes do refresh
         setTimeout(() => {
           const redir = sessionStorage.getItem('redirectAfterAuth');
@@ -359,10 +362,13 @@ export default function Auth() {
         whatsapp: form.phone, // Mapeia phone para whatsapp para o banco
         schedule: JSON.stringify(form.schedule)
       });
+      const userData = response.user || response;
+      const token = response.token;
 
-      if (response && response.id) {
+      if (userData && userData.id) {
         // Salva dados básicos para o guia de boas-vindas
-        localStorage.setItem('user', JSON.stringify(response));
+        localStorage.setItem('user', JSON.stringify(userData));
+        if (token) localStorage.setItem('token', token);
         localStorage.setItem('justRegistered', 'true');
 
         // Vai direto para o mapa/home após o sucesso

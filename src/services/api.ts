@@ -1,6 +1,15 @@
 const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 const API_URL = isLocalhost ? 'http://localhost:3000/api' : '/api';
 
+function getAuthHeaders(headers?: Record<string, string>) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const h: Record<string, string> = { 'Content-Type': 'application/json', ...(headers || {}) };
+  if (token) {
+    h['Authorization'] = `Bearer ${token}`;
+  }
+  return h;
+}
+
 export const api = {
   // CHAMPIONSHIPS
   getChampionships: async () => {
@@ -10,7 +19,7 @@ export const api = {
   createChampionship: async (data: any) => {
     const res = await fetch(`${API_URL}/championships`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
     return res.json();
@@ -36,7 +45,7 @@ export const api = {
   register: async (data: any) => {
     const res = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
     return res.json();
@@ -44,7 +53,7 @@ export const api = {
   login: async (email: string, password?: string) => {
     const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ email, password }),
     });
     return res.json();
@@ -52,7 +61,7 @@ export const api = {
   updateProfile: async (id: string, data: any) => {
     const res = await fetch(`${API_URL}/auth/profile/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
     return res.json();
@@ -60,7 +69,7 @@ export const api = {
   changePassword: async (id: string, data: any) => {
     const res = await fetch(`${API_URL}/auth/password/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
     return res.json();
@@ -68,7 +77,7 @@ export const api = {
   createPost: async (data: any) => {
     const res = await fetch(`${API_URL}/posts`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
     return res.json();
@@ -82,7 +91,7 @@ export const api = {
   updatePost: async (id: string, data: any) => {
     const res = await fetch(`${API_URL}/posts/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
     return res.json();
@@ -98,7 +107,7 @@ export const api = {
   createAppointment: async (data: any) => {
     const res = await fetch(`${API_URL}/appointments`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
     return res.json();
@@ -116,7 +125,7 @@ export const api = {
   updateAppointmentStatus: async (id: string, status: string, barberId?: string, price?: number, date?: string, time?: string) => {
     const res = await fetch(`${API_URL}/appointments/${id}/status`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ status, barberId, price, date, time }),
     });
     return res.json();
@@ -143,7 +152,7 @@ export const api = {
   updateBarberProfile: async (id: string, data: any) => {
     const res = await fetch(`${API_URL}/barbers/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
     return res.json();
@@ -171,7 +180,7 @@ export const api = {
   voteMatch: async (championshipId: string, data: any) => {
     const res = await fetch(`${API_URL}/championships/${championshipId}/vote`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
     return res.json();
@@ -180,7 +189,7 @@ export const api = {
   acceptChallenge: async (id: string, photo2: string) => {
     const res = await fetch(`${API_URL}/championships/${id}/accept`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ photo2 }),
     });
     return res.json();
@@ -200,7 +209,7 @@ export const api = {
   toggleLike: async (id: string, userId: string) => {
     const res = await fetch(`${API_URL}/championships/${id}/like`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ userId })
     });
     return res.json();
@@ -208,7 +217,7 @@ export const api = {
   addComment: async (id: string, userId: string, content: string) => {
     const res = await fetch(`${API_URL}/championships/${id}/comment`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ userId, content })
     });
     return res.json();
@@ -218,7 +227,7 @@ export const api = {
   likePost: async (postId: string, userId: string) => {
     const res = await fetch(`${API_URL}/posts/${postId}/like`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ userId })
     });
     return res.json();
@@ -226,7 +235,7 @@ export const api = {
   commentPost: async (postId: string, userId: string, content: string) => {
     const res = await fetch(`${API_URL}/posts/${postId}/comment`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ userId, content })
     });
     return res.json();
@@ -235,7 +244,7 @@ export const api = {
   rateBarber: async (barberId: string, rating: number) => {
     const res = await fetch(`${API_URL}/barbers/${barberId}/rate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ rating })
     });
     return res.json();
@@ -250,7 +259,7 @@ export const api = {
   sendMessage: async (senderId: string, receiverId: string, content: string) => {
     const res = await fetch(`${API_URL}/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ senderId, receiverId, content })
     });
     return res.json();

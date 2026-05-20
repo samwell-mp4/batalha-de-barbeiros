@@ -1,43 +1,22 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
-import fs from 'fs';
-import path from 'path';
 
 const router = Router();
-const messagesFilePath = path.join(__dirname, 'messages.json');
-
-function loadMessages() {
-  try {
-    if (fs.existsSync(messagesFilePath)) {
-      const content = fs.readFileSync(messagesFilePath, 'utf-8');
-      return JSON.parse(content);
-    }
-  } catch (e) {
-    console.error('[CHAT ERROR] Error loading messages from file:', e);
-  }
-  return [];
-}
-
-function saveMessages(msgs: any[]) {
-  try {
-    fs.writeFileSync(messagesFilePath, JSON.stringify(msgs, null, 2));
-  } catch (e) {
-    console.error('[CHAT ERROR] Error saving messages to file:', e);
-  }
-}
-
-let messages: any[] = loadMessages();
 
 // Get messages between two users
 router.get('/:userId1/:userId2', async (req, res) => {
   try {
     const { userId1, userId2 } = req.params;
-    const filtered = messages.filter(
-      (m) =>
-        (m.senderId === userId1 && m.receiverId === userId2) ||
-        (m.senderId === userId2 && m.receiverId === userId1)
-    );
-    res.json(filtered);
+    const messages = await prisma.message.findMany({
+      where: {
+        OR: [
+          { senderId: userId1, receiverId: userId2 },
+          { senderId: userId2, receiverId: userId1 }
+        ]
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+    res.json(messages);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -50,16 +29,10 @@ router.post('/', async (req, res) => {
     if (!senderId || !receiverId || !content) {
       return res.status(400).json({ error: 'Missing parameters' });
     }
-    const newMessage = {
-      id: `msg-${Math.random().toString(36).substr(2, 9)}`,
-      senderId,
-      receiverId,
-      content,
-      createdAt: new Date().toISOString(),
-    };
-    messages.push(newMessage);
-    saveMessages(messages);
-    res.json(newMessage);
+    const message = await prisma.message.create({
+      data: { senderId, receiverId, content }
+    });
+    res.json(message);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -69,29 +42,40 @@ router.post('/', async (req, res) => {
 router.get('/conversations/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     // Find all unique users this user has chatted with
-    const chatUserIds = new Set<string>();
-    messages.forEach((m) => {
-      if (m.senderId === userId) chatUserIds.add(m.receiverId);
-      if (m.receiverId === userId) chatUserIds.add(m.senderId);
+    const sentMessages = await prisma.message.findMany({
+      where: { senderId: userId },
+      select: { receiverId: true }
     });
+    const receivedMessages = await prisma.message.findMany({
+      where: { receiverId: userId },
+      select: { senderId: true }
+    });
+
+    const chatUserIds = new Set<string>();
+    sentMessages.forEach(m => chatUserIds.add(m.receiverId));
+    receivedMessages.forEach(m => chatUserIds.add(m.senderId));
 
     const conversations = [];
     for (const otherUserId of chatUserIds) {
-      // Find user details
       const otherUser = await prisma.user.findUnique({
         where: { id: otherUserId },
       });
       if (!otherUser) continue;
 
       // Find last message
-      const userMsgs = messages.filter(
-        (m) =>
-          (m.senderId === userId && m.receiverId === otherUserId) ||
-          (m.senderId === otherUserId && m.receiverId === userId)
-      );
-      const lastMsg = userMsgs[userMsgs.length - 1];
+      const lastMsg = await prisma.message.findFirst({
+        where: {
+          OR: [
+            { senderId: userId, receiverId: otherUserId },
+            { senderId: otherUserId, receiverId: userId }
+          ]
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (!lastMsg) continue;
 
       conversations.push({
         otherUser: {

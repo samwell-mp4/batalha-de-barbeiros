@@ -3,27 +3,35 @@ import { prisma } from '../lib/prisma';
 
 const router = Router();
 
-// In-memory likes and comments store to guarantee 100% stability and persistence for the current process
-const matchLikesStore: Record<string, string[]> = {}; // matchId -> array of userIds
-const matchCommentsStore: Record<string, Array<{ id: string, userId: string, userName: string, userAvatar: string, content: string, createdAt: Date }>> = {}; // matchId -> comments
-
-function injectLikesAndComments(championship: any) {
+async function injectLikesAndComments(championship: any) {
   if (!championship) return championship;
   
   if (championship.matches && championship.matches.length > 0) {
-    championship.matches = championship.matches.map((m: any) => {
-      const likes = matchLikesStore[m.id] || [];
-      const comments = matchCommentsStore[m.id] || [];
+    championship.matches = await Promise.all(championship.matches.map(async (m: any) => {
+      const matchLikes = await prisma.matchLike.findMany({
+        where: { matchId: m.id }
+      });
+      const matchComments = await prisma.matchComment.findMany({
+        where: { matchId: m.id },
+        include: { user: true },
+        orderBy: { createdAt: 'asc' }
+      });
       return {
         ...m,
-        likes,
-        comments
+        likes: matchLikes.map(l => l.userId),
+        comments: matchComments.map(c => ({
+          id: c.id,
+          userId: c.userId,
+          userName: c.user.name,
+          userAvatar: c.user.avatar,
+          content: c.content,
+          createdAt: c.createdAt
+        }))
       };
-    });
+    }));
   }
   return championship;
 }
-
 
 // Helper to sync and self-heal championship states
 async function checkAndSyncChampionship(id: string, nowOverride?: Date) {
@@ -134,9 +142,9 @@ router.get('/', async (req, res) => {
     for (const c of championships) {
       if (c.status === 'WAITING' || c.status === 'ONGOING') {
         const synced = await checkAndSyncChampionship(c.id, simulatedNow);
-        if (synced) syncedList.push(injectLikesAndComments(synced));
+        if (synced) syncedList.push(await injectLikesAndComments(synced));
       } else {
-        syncedList.push(injectLikesAndComments(c));
+        syncedList.push(await injectLikesAndComments(c));
       }
     }
 
@@ -420,8 +428,7 @@ router.post('/:id/vote', async (req, res) => {
   }
 });
 
-
-// Like / unlike a match
+// Like / unlike a match (now persisted in PostgreSQL)
 router.post('/:id/like', async (req, res) => {
   try {
     const { id } = req.params; // championshipId
@@ -440,26 +447,46 @@ router.post('/:id/like', async (req, res) => {
     }
 
     const matchId = championship.matches[0].id;
-    if (!matchLikesStore[matchId]) {
-      matchLikesStore[matchId] = [];
-    }
 
-    const index = matchLikesStore[matchId].indexOf(userId);
-    if (index > -1) {
+    // Check if user already liked
+    const existingLike = await prisma.matchLike.findUnique({
+      where: {
+        matchId_userId: {
+          matchId,
+          userId
+        }
+      }
+    });
+
+    if (existingLike) {
       // Unlike
-      matchLikesStore[matchId].splice(index, 1);
+      await prisma.matchLike.delete({
+        where: {
+          matchId_userId: {
+            matchId,
+            userId
+          }
+        }
+      });
     } else {
       // Like
-      matchLikesStore[matchId].push(userId);
+      await prisma.matchLike.create({
+        data: { matchId, userId }
+      });
     }
 
-    res.json({ success: true, likes: matchLikesStore[matchId] });
+    // Get updated likes
+    const likes = await prisma.matchLike.findMany({
+      where: { matchId }
+    });
+
+    res.json({ success: true, likes: likes.map(l => l.userId) });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Add comment to a match
+// Add comment to a match (now persisted in PostgreSQL)
 router.post('/:id/comment', async (req, res) => {
   try {
     const { id } = req.params; // championshipId
@@ -478,25 +505,25 @@ router.post('/:id/comment', async (req, res) => {
     }
 
     const matchId = championship.matches[0].id;
-    if (!matchCommentsStore[matchId]) {
-      matchCommentsStore[matchId] = [];
-    }
 
     // Get user details for comment
     const user = await prisma.user.findUnique({
       where: { id: userId }
     });
 
+    const comment = await prisma.matchComment.create({
+      data: { matchId, userId, content }
+    });
+
     const newComment = {
-      id: `comment-${Math.random().toString(36).substr(2, 9)}`,
+      id: comment.id,
       userId,
       userName: user?.name || 'Anônimo',
       userAvatar: user?.avatar || `https://i.pravatar.cc/150?u=${userId}`,
       content,
-      createdAt: new Date()
+      createdAt: comment.createdAt
     };
 
-    matchCommentsStore[matchId].push(newComment);
     res.json({ success: true, comment: newComment });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -511,7 +538,7 @@ router.get('/:id', async (req, res) => {
     if (!championship) {
       return res.status(404).json({ error: 'Failed to fetch championship details' });
     }
-    res.json(injectLikesAndComments(championship));
+    res.json(await injectLikesAndComments(championship));
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch championship details' });
   }

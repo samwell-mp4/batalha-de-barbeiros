@@ -36,6 +36,10 @@ model User {
   likes         Like[]
   comments      Comment[]
   votes         Vote[]
+  sentMessages    Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+  matchLikes      MatchLike[]
+  matchComments   MatchComment[]
 }
 
 enum Role {
@@ -203,6 +207,8 @@ model Match {
 
   // Relations
   votes          Vote[]
+  matchLikes     MatchLike[]
+  matchComments  MatchComment[]
 }
 
 enum MatchStatus {
@@ -223,4 +229,40 @@ model Vote {
   createdAt DateTime @default(now())
 
   @@unique([matchId, userId])
+}
+
+// --- CHAT ---
+
+model Message {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  content    String
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("SentMessages", fields: [senderId], references: [id])
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id])
+}
+
+// --- MATCH LIKES & COMMENTS (persisted) ---
+
+model MatchLike {
+  id        String   @id @default(uuid())
+  matchId   String
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([matchId, userId])
+}
+
+model MatchComment {
+  id        String   @id @default(uuid())
+  matchId   String
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
 }

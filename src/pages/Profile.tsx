@@ -178,35 +178,35 @@ export default function Profile() {
 
    // Fetch appointments of the barber to block occupied slots (polled every 3s for real-time updates)
    useEffect(() => {
-       if (!barber?.id) return;
+      if (!barber?.id) return;
 
-       const pollData = async () => {
-          try {
-             const freshBarber = await api.getBarber(barber.id.toString());
-             if (freshBarber) {
-                setBarber((prev: any) => {
-                   if (!prev) return freshBarber;
-                   return {
-                      ...prev,
-                      schedule: freshBarber.schedule,
-                      servicesConfig: freshBarber.servicesConfig,
-                      latitude: freshBarber.latitude,
-                      longitude: freshBarber.longitude,
-                      isOnline: freshBarber.isOnline
-                   };
-                });
-             }
-             const freshApps = await api.getBarberAppointments(barber.id.toString());
-             setBarberAppointments(freshApps || []);
-          } catch (err) {
-             console.error('Error polling barber data:', err);
-          }
-       };
+      const pollData = async () => {
+         try {
+            const freshBarber = await api.getBarber(barber.id.toString());
+            if (freshBarber) {
+               setBarber((prev: any) => {
+                  if (!prev) return freshBarber;
+                  return {
+                     ...prev,
+                     schedule: freshBarber.schedule,
+                     servicesConfig: freshBarber.servicesConfig,
+                     latitude: freshBarber.latitude,
+                     longitude: freshBarber.longitude,
+                     isOnline: freshBarber.isOnline
+                  };
+               });
+            }
+            const freshApps = await api.getBarberAppointments(barber.id.toString());
+            setBarberAppointments(freshApps || []);
+         } catch (err) {
+            console.error('Error polling barber data:', err);
+         }
+      };
 
-       pollData();
-       const interval = setInterval(pollData, 3000);
-       return () => clearInterval(interval);
-    }, [barber?.id]);
+      pollData();
+      const interval = setInterval(pollData, 3000);
+      return () => clearInterval(interval);
+   }, [barber?.id]);
 
    // Restore pending booking if returning from login redirect
    useEffect(() => {
@@ -220,7 +220,7 @@ export default function Profile() {
                   setBookingDate(parsed.date);
                   setBookingTime(parsed.time);
                   setSelectedBookingServices(parsed.services);
-                  
+
                   // Clear sessionStorage and query param
                   sessionStorage.removeItem('pendingBooking');
                   window.history.replaceState({}, '', window.location.pathname);
@@ -246,48 +246,48 @@ export default function Profile() {
    }, []);
 
    const barberSchedule = useMemo(() => {
-       if (!barber?.schedule) return {};
-       try {
-          return JSON.parse(barber.schedule);
-       } catch (e) {
-          console.error('Error parsing barber schedule:', e);
-          return {};
-       }
-    }, [barber?.schedule]);
+      if (!barber?.schedule) return {};
+      try {
+         return JSON.parse(barber.schedule);
+      } catch (e) {
+         console.error('Error parsing barber schedule:', e);
+         return {};
+      }
+   }, [barber?.schedule]);
 
-    const timeSlots = useMemo(() => {
-       const key = `${barber?.id}_${bookingDate}`;
-       const dayData = barberSchedule[key] || {};
-       const workingHours = dayData.workingHours || { start: '08:00', end: '20:00' };
-       
-       const startHour = parseInt(workingHours.start.split(':')[0]);
-       const endHour = parseInt(workingHours.end.split(':')[0]);
-       
-       const arr = [];
-       for (let h = startHour; h <= endHour; h++) {
-          arr.push(`${h.toString().padStart(2, '0')}:00`);
-       }
-       return arr;
-    }, [barber?.id, bookingDate, barberSchedule]);
+   const timeSlots = useMemo(() => {
+      const key = `${barber?.id}_${bookingDate}`;
+      const dayData = barberSchedule[key] || {};
+      const workingHours = dayData.workingHours || { start: '08:00', end: '20:00' };
+
+      const startHour = parseInt(workingHours.start.split(':')[0]);
+      const endHour = parseInt(workingHours.end.split(':')[0]);
+
+      const arr = [];
+      for (let h = startHour; h <= endHour; h++) {
+         arr.push(`${h.toString().padStart(2, '0')}:00`);
+      }
+      return arr;
+   }, [barber?.id, bookingDate, barberSchedule]);
 
    const getSlotStatus = (time: string) => {
-       const app = barberAppointments.find(a => {
-          if (!a.date) return false;
-          const appDate = a.date.split('T')[0];
-          return appDate === bookingDate && a.time === time && a.status !== 'CANCELLED';
-       });
-       if (app) return 'occupied';
+      const app = barberAppointments.find(a => {
+         if (!a.date) return false;
+         const appDate = a.date.split('T')[0];
+         return appDate === bookingDate && a.time === time && a.status !== 'CANCELLED';
+      });
+      if (app) return 'occupied';
 
-       const key = `${barber?.id}_${bookingDate}`;
-       const dayData = barberSchedule[key] || {};
-       const slots = dayData.slots || [];
-       const localSlot = slots.find((s: any) => s.time === time);
-       if (localSlot && (localSlot.status === 'blocked' || localSlot.status === 'occupied')) {
-          return 'occupied';
-       }
+      const key = `${barber?.id}_${bookingDate}`;
+      const dayData = barberSchedule[key] || {};
+      const slots = dayData.slots || [];
+      const localSlot = slots.find((s: any) => s.time === time);
+      if (localSlot && (localSlot.status === 'blocked' || localSlot.status === 'occupied')) {
+         return 'occupied';
+      }
 
-       return 'free';
-    };
+      return 'free';
+   };
 
    const handleCreateBooking = async () => {
       if (selectedBookingServices.length === 0) {
@@ -316,7 +316,7 @@ export default function Profile() {
          setIsLoading(true);
          const total = selectedBookingServices.reduce((acc, s) => acc + s.price, 0);
          const sNames = selectedBookingServices.map(s => s.name);
-         
+
          const newBooking = await api.createAppointment({
             clientId: loggedUser.id,
             barberId: barber.id,
@@ -355,7 +355,7 @@ export default function Profile() {
          setTimeout(() => setDoubleTapHeart(false), 800);
 
          await api.likePost(postId, loggedUser.id);
-         
+
          const targetId = id || loggedUser?.id;
          if (targetId) {
             const fresh = await api.getBarber(targetId.toString());
@@ -389,7 +389,7 @@ export default function Profile() {
          const content = commentText;
          setCommentText('');
          await api.commentPost(postId, loggedUser.id, content);
-         
+
          const targetId = id || loggedUser?.id;
          if (targetId) {
             const fresh = await api.getBarber(targetId.toString());
@@ -541,7 +541,7 @@ export default function Profile() {
    const feedImages = barber.posts || [];
 
    const latitude = barber.latitude ?? -23.525;
-    const longitude = barber.longitude ?? -46.522;
+   const longitude = barber.longitude ?? -46.522;
 
    const openExternalMap = (type: 'google' | 'waze') => {
       const url = type === 'google'
@@ -612,16 +612,16 @@ export default function Profile() {
                {/* Estrelas de Avaliação Premium */}
                <div className="flex items-center space-x-1 bg-yellow-50/60 border border-yellow-100/50 px-3.5 py-1.5 rounded-full shadow-sm">
                   {[1, 2, 3, 4, 5].map((star) => (
-                     <Star 
-                        key={star} 
-                        size={11} 
-                        className={star <= Math.floor(parseFloat(barber.rating || '4.9')) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} 
+                     <Star
+                        key={star}
+                        size={11}
+                        className={star <= Math.floor(parseFloat(barber.rating || '4.9')) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
                      />
                   ))}
                   <span className="text-[10px] font-black text-yellow-600 font-orbitron pl-1.5">{barber.rating || '4.9'}</span>
                   <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest pl-1">({barber.reviewsCount || 128} avaliações)</span>
                </div>
-               
+
                <div className="flex items-center space-x-1.5 text-gray-400">
                   <Clock size={11} />
                   <span className="text-[9px] font-bold uppercase tracking-widest">Seg - Sáb: 09h às 20h</span>
@@ -720,7 +720,7 @@ export default function Profile() {
                >
                   {isFollowing ? 'Seguindo' : 'Seguir'}
                </button>
-               <button 
+               <button
                   onClick={() => navigate('/messages')}
                   className="flex-1 py-3.5 bg-white text-blue-950 border border-gray-100 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-colors"
                >
@@ -789,12 +789,12 @@ export default function Profile() {
                      const isFreestyle = srv.name.toLowerCase().includes('free') || srv.name.toLowerCase().includes('art') || srv.name.toLowerCase().includes('design');
                      const isPigment = srv.name.toLowerCase().includes('pigment');
                      return (
-                        <div 
-                           key={srv.id} 
+                        <div
+                           key={srv.id}
                            className="min-w-[155px] w-[155px] bg-white p-5 rounded-[30px] border border-gray-50 shadow-sm flex flex-col justify-between hover:border-blue-500/20 hover:shadow-md transition-all duration-300 flex-shrink-0 text-center relative overflow-hidden group"
                         >
                            <div className="absolute inset-0 bg-gradient-to-b from-blue-50/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                           
+
                            <div className="flex flex-col items-center">
                               <div className="w-14 h-14 rounded-2xl bg-blue-50/50 flex items-center justify-center text-2xl font-orbitron font-black shadow-inner mb-4">
                                  {isBarba ? '🪒' : isFade ? '✂️' : isFreestyle ? '🎨' : isPigment ? '🖍️' : '💈'}
@@ -814,121 +814,120 @@ export default function Profile() {
                   })}
                </div>
 
-                {/* INLINE AGENDA SCHEDULER */}
-                <div className="mt-8 bg-white p-6 rounded-[35px] border border-gray-50 shadow-sm text-left">
-                   <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] mb-4">
-                      {isOwnProfile ? 'Sua Agenda de Horários' : 'Escolha a Data do Desafio'}
-                   </h3>
-                   
-                   <div className="flex space-x-3 overflow-x-auto no-scrollbar py-2 mb-6">
-                      {bookingDates.map((date) => {
-                         const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
-                         const dayNum = date.getDate();
-                         const dateISO = date.toISOString().split('T')[0];
-                         const isSelected = bookingDate === dateISO;
+               {/* INLINE AGENDA SCHEDULER */}
+               <div className="mt-8 bg-white p-6 rounded-[35px] border border-gray-50 shadow-sm text-left">
+                  <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] mb-4">
+                     {isOwnProfile ? 'Sua Agenda de Horários' : 'Escolha a Data do Desafio'}
+                  </h3>
 
-                         return (
-                            <button
-                               key={dateISO}
-                               type="button"
-                               onClick={() => {
-                                  setBookingDate(dateISO);
-                                  setBookingTime('');
-                               }}
-                               className={`flex flex-col items-center min-w-[65px] p-4 rounded-[24px] border transition-all ${isSelected ? 'bg-gradient-to-br from-blue-600 to-blue-800 border-none text-white shadow-lg shadow-blue-200' : 'bg-gray-50 border-gray-100 text-blue-950 hover:bg-gray-100/50'}`}
-                            >
-                               <span className={`text-[8px] font-black uppercase tracking-widest ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>{dayName}</span>
-                               <span className="text-base font-black font-orbitron mt-1">{dayNum}</span>
-                            </button>
-                         );
-                      })}
-                   </div>
+                  <div className="flex space-x-3 overflow-x-auto no-scrollbar py-2 mb-6">
+                     {bookingDates.map((date) => {
+                        const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+                        const dayNum = date.getDate();
+                        const dateISO = date.toISOString().split('T')[0];
+                        const isSelected = bookingDate === dateISO;
 
-                   <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] mb-4">
-                      {isOwnProfile ? 'Status dos Horários' : 'Horários Disponíveis'}
-                   </h3>
-                   <div className="grid grid-cols-4 gap-2 mb-6">
-                      {timeSlots.map((time) => {
-                         const status = getSlotStatus(time);
-                         const isSelected = bookingTime === time;
-                         const isOccupied = status === 'occupied';
+                        return (
+                           <button
+                              key={dateISO}
+                              type="button"
+                              onClick={() => {
+                                 setBookingDate(dateISO);
+                                 setBookingTime('');
+                              }}
+                              className={`flex flex-col items-center min-w-[65px] p-4 rounded-[24px] border transition-all ${isSelected ? 'bg-gradient-to-br from-blue-600 to-blue-800 border-none text-white shadow-lg shadow-blue-200' : 'bg-gray-50 border-gray-100 text-blue-950 hover:bg-gray-100/50'}`}
+                           >
+                              <span className={`text-[8px] font-black uppercase tracking-widest ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>{dayName}</span>
+                              <span className="text-base font-black font-orbitron mt-1">{dayNum}</span>
+                           </button>
+                        );
+                     })}
+                  </div>
 
-                         return (
-                            <button
-                               key={time}
-                               type="button"
-                               disabled={isOccupied && !isOwnProfile}
-                               onClick={() => {
-                                  if (!isOwnProfile) setBookingTime(time);
-                               }}
-                               className={`py-3 rounded-xl font-orbitron text-xs font-black transition-all ${
-                                  isOccupied 
-                                     ? 'bg-red-50 text-red-500 border border-red-150 cursor-default' 
-                                     : isSelected 
-                                        ? 'bg-blue-600 text-white shadow-lg' 
-                                        : 'bg-gray-50 text-blue-950 border border-gray-100 hover:bg-gray-100'
-                               }`}
-                            >
-                               {time}
-                            </button>
-                         );
-                      })}
-                   </div>
+                  <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] mb-4">
+                     {isOwnProfile ? 'Status dos Horários' : 'Horários Disponíveis'}
+                  </h3>
+                  <div className="grid grid-cols-4 gap-2 mb-6">
+                     {timeSlots.map((time) => {
+                        const status = getSlotStatus(time);
+                        const isSelected = bookingTime === time;
+                        const isOccupied = status === 'occupied';
 
-                   {!isOwnProfile && (
-                      <>
-                         <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] mb-4">Selecione os Serviços</h3>
-                         <div className="grid grid-cols-1 gap-2 mb-6">
-                            {currentServices.map((srv: any) => {
-                               const isSelected = selectedBookingServices.some(s => s.id === srv.id);
-                               return (
-                                  <button
-                                     key={srv.id}
-                                     type="button"
-                                     onClick={() => {
-                                        if (isSelected) {
-                                           setSelectedBookingServices(prev => prev.filter(s => s.id !== srv.id));
-                                        } else {
-                                           setSelectedBookingServices(prev => [...prev, srv]);
-                                        }
-                                     }}
-                                     className={`p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${isSelected ? 'border-blue-600 bg-blue-50/30' : 'border-gray-100 bg-white hover:bg-gray-50'}`}
-                                  >
-                                     <div className="flex items-center space-x-3">
-                                        <div className={`w-5 h-5 rounded-md border flex items-center justify-center ${isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-200'}`}>
-                                           {isSelected && <Check size={12} strokeWidth={3} />}
-                                        </div>
-                                        <span className="text-xs font-bold text-blue-950 uppercase tracking-tight">{srv.name}</span>
-                                     </div>
-                                     <span className="text-xs font-black text-blue-600 font-orbitron">R$ {srv.price},00</span>
-                                  </button>
-                               );
-                            })}
-                         </div>
+                        return (
+                           <button
+                              key={time}
+                              type="button"
+                              disabled={isOccupied && !isOwnProfile}
+                              onClick={() => {
+                                 if (!isOwnProfile) setBookingTime(time);
+                              }}
+                              className={`py-3 rounded-xl font-orbitron text-xs font-black transition-all ${isOccupied
+                                    ? 'bg-red-50 text-red-500 border border-red-150 cursor-default'
+                                    : isSelected
+                                       ? 'bg-blue-600 text-white shadow-lg'
+                                       : 'bg-gray-50 text-blue-950 border border-gray-100 hover:bg-gray-100'
+                                 }`}
+                           >
+                              {time}
+                           </button>
+                        );
+                     })}
+                  </div>
 
-                         {selectedBookingServices.length > 0 && (
-                            <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/20 mb-6 flex justify-between items-center">
-                               <div>
-                                  <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Total do Desafio</span>
-                                  <p className="text-xs font-bold text-blue-950 uppercase mt-0.5">{selectedBookingServices.length} {selectedBookingServices.length === 1 ? 'Serviço' : 'Serviços'}</p>
-                               </div>
-                               <p className="text-xl font-black text-blue-600 font-orbitron">R$ {selectedBookingServices.reduce((acc, s) => acc + s.price, 0)},00</p>
-                            </div>
-                         )}
+                  {!isOwnProfile && (
+                     <>
+                        <h3 className="text-[10px] font-black text-blue-950 uppercase tracking-[0.2em] mb-4">Selecione os Serviços</h3>
+                        <div className="grid grid-cols-1 gap-2 mb-6">
+                           {currentServices.map((srv: any) => {
+                              const isSelected = selectedBookingServices.some(s => s.id === srv.id);
+                              return (
+                                 <button
+                                    key={srv.id}
+                                    type="button"
+                                    onClick={() => {
+                                       if (isSelected) {
+                                          setSelectedBookingServices(prev => prev.filter(s => s.id !== srv.id));
+                                       } else {
+                                          setSelectedBookingServices(prev => [...prev, srv]);
+                                       }
+                                    }}
+                                    className={`p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${isSelected ? 'border-blue-600 bg-blue-50/30' : 'border-gray-100 bg-white hover:bg-gray-50'}`}
+                                 >
+                                    <div className="flex items-center space-x-3">
+                                       <div className={`w-5 h-5 rounded-md border flex items-center justify-center ${isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-200'}`}>
+                                          {isSelected && <Check size={12} strokeWidth={3} />}
+                                       </div>
+                                       <span className="text-xs font-bold text-blue-950 uppercase tracking-tight">{srv.name}</span>
+                                    </div>
+                                    <span className="text-xs font-black text-blue-600 font-orbitron">R$ {srv.price},00</span>
+                                 </button>
+                              );
+                           })}
+                        </div>
 
-                         <button
-                            type="button"
-                            onClick={handleCreateBooking}
-                            className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center justify-center space-x-2 active:scale-95 transition-all animate-pulse"
-                         >
-                            <Calendar size={14} />
-                            <span>Confirmar Agendamento</span>
-                         </button>
-                      </>
-                   )}
-                </div>
-             </div>
-          )}
+                        {selectedBookingServices.length > 0 && (
+                           <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/20 mb-6 flex justify-between items-center">
+                              <div>
+                                 <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Total do Desafio</span>
+                                 <p className="text-xs font-bold text-blue-950 uppercase mt-0.5">{selectedBookingServices.length} {selectedBookingServices.length === 1 ? 'Serviço' : 'Serviços'}</p>
+                              </div>
+                              <p className="text-xl font-black text-blue-600 font-orbitron">R$ {selectedBookingServices.reduce((acc, s) => acc + s.price, 0)},00</p>
+                           </div>
+                        )}
+
+                        <button
+                           type="button"
+                           onClick={handleCreateBooking}
+                           className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center justify-center space-x-2 active:scale-95 transition-all animate-pulse"
+                        >
+                           <Calendar size={14} />
+                           <span>Confirmar Agendamento</span>
+                        </button>
+                     </>
+                  )}
+               </div>
+            </div>
+         )}
 
          {/* LOCALIZAÇÃO E ROTA */}
          <div className="px-6 mb-10">
@@ -948,14 +947,14 @@ export default function Profile() {
 
                {/* Premium Styled Map Preview */}
                <div className="w-full h-[180px] rounded-[24px] overflow-hidden border border-gray-150/50 shadow-inner relative">
-                  <iframe 
+                  <iframe
                      title="Localização do Barbeiro"
-                     width="100%" 
-                     height="100%" 
-                     frameBorder="0" 
-                     scrolling="no" 
-                     marginHeight={0} 
-                     marginWidth={0} 
+                     width="100%"
+                     height="100%"
+                     frameBorder="0"
+                     scrolling="no"
+                     marginHeight={0}
+                     marginWidth={0}
                      src={`https://maps.google.com/maps?q=${latitude || -23.525},${longitude || -46.522}&z=15&output=embed`}
                      className="grayscale opacity-90 contrast-[1.1] saturate-[0.9]"
                   />
@@ -1035,10 +1034,10 @@ export default function Profile() {
          <AnimatePresence>
             {showRouteOptions && (
                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1000] bg-blue-950/40 backdrop-blur-md flex items-end justify-center">
-                  <motion.div 
-                     initial={{ y: "100%" }} 
-                     animate={{ y: isRouteMinimized ? "calc(100% - 130px)" : 0 }} 
-                     exit={{ y: "100%" }} 
+                  <motion.div
+                     initial={{ y: "100%" }}
+                     animate={{ y: isRouteMinimized ? "calc(100% - 130px)" : 0 }}
+                     exit={{ y: "100%" }}
                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                      drag="y"
                      dragControls={routeDragControls}
@@ -1051,7 +1050,7 @@ export default function Profile() {
                      }}
                      className="w-full bg-white rounded-t-[45px] px-8 pb-12 shadow-[0_-20px_60px_rgba(0,0,0,0.2)]"
                   >
-                     <button 
+                     <button
                         onPointerDown={(e) => routeDragControls.start(e)}
                         onClick={() => setIsRouteMinimized(!isRouteMinimized)}
                         className="w-full py-4 mb-4 flex justify-center group pointer-events-auto touch-none"
@@ -1079,10 +1078,10 @@ export default function Profile() {
          <AnimatePresence>
             {showSettings && (
                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[7000] bg-blue-950/60 backdrop-blur-md flex items-end justify-center">
-                  <motion.div 
-                     initial={{ y: "100%" }} 
-                     animate={{ y: isSettingsMinimized ? "calc(100% - 130px)" : 0 }} 
-                     exit={{ y: "100%" }} 
+                  <motion.div
+                     initial={{ y: "100%" }}
+                     animate={{ y: isSettingsMinimized ? "calc(100% - 130px)" : 0 }}
+                     exit={{ y: "100%" }}
                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                      drag="y"
                      dragControls={settingsDragControls}
@@ -1095,7 +1094,7 @@ export default function Profile() {
                      }}
                      className="w-full bg-white rounded-t-[45px] max-h-[85vh] overflow-hidden flex flex-col shadow-2xl relative"
                   >
-                     <button 
+                     <button
                         onPointerDown={(e) => settingsDragControls.start(e)}
                         onClick={() => setIsSettingsMinimized(!isSettingsMinimized)}
                         className="w-full py-4 mb-2 flex justify-center group pointer-events-auto touch-none absolute top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md"
@@ -1217,11 +1216,11 @@ export default function Profile() {
                                        setIsLoading(true);
                                        try {
                                           await api.updateProfile(loggedUser.id, { name: editProfileData.name, bio: editProfileData.bio, avatar: editProfileData.avatar });
-                                          
+
                                           // Atualiza cache local para F5 persistir
                                           const currentCache = JSON.parse(localStorage.getItem('user') || '{}');
                                           localStorage.setItem('user', JSON.stringify({ ...currentCache, name: editProfileData.name, bio: editProfileData.bio, avatar: editProfileData.avatar }));
-                                          
+
                                           setBarber((prev: any) => ({ ...prev, name: editProfileData.name, bio: editProfileData.bio, avatar: editProfileData.avatar }));
                                           setSettingsView('menu');
                                        } catch (e) { alert('Erro ao atualizar perfil'); }
@@ -1283,7 +1282,7 @@ export default function Profile() {
                                  </div>
                                  <div className="bg-gray-50 rounded-[20px] p-8 flex flex-col items-center justify-center border border-dashed border-gray-200">
                                     <Heart size={32} className="text-gray-300 mb-3" />
-                                    <p className="text-xs font-bold text-gray-400 text-center uppercase tracking-widest">Nenhum favorito encontrado<br/>recentemente.</p>
+                                    <p className="text-xs font-bold text-gray-400 text-center uppercase tracking-widest">Nenhum favorito encontrado<br />recentemente.</p>
                                  </div>
                               </motion.div>
                            )}
@@ -1311,10 +1310,10 @@ export default function Profile() {
          <AnimatePresence>
             {showNewPost && (
                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[8000] bg-blue-950/40 backdrop-blur-md flex items-end justify-center">
-                  <motion.div 
-                     initial={{ y: "100%" }} 
-                     animate={{ y: isNewPostMinimized ? "calc(100% - 130px)" : 0 }} 
-                     exit={{ y: "100%" }} 
+                  <motion.div
+                     initial={{ y: "100%" }}
+                     animate={{ y: isNewPostMinimized ? "calc(100% - 130px)" : 0 }}
+                     exit={{ y: "100%" }}
                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                      drag="y"
                      dragControls={newPostDragControls}
@@ -1327,7 +1326,7 @@ export default function Profile() {
                      }}
                      className="w-full bg-white rounded-t-[45px] p-8 pb-12 shadow-2xl flex flex-col relative"
                   >
-                     <button 
+                     <button
                         onPointerDown={(e) => newPostDragControls.start(e)}
                         onClick={() => setIsNewPostMinimized(!isNewPostMinimized)}
                         className="w-full py-4 mb-2 flex justify-center group pointer-events-auto touch-none absolute top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md rounded-t-[45px]"
@@ -1530,9 +1529,9 @@ export default function Profile() {
 
                      {/* Image Body with Double Tap Area */}
                      <div className="relative aspect-square bg-black overflow-hidden flex items-center justify-center">
-                        <img 
-                           src={selectedPost.imageUrl || selectedPost.url} 
-                           className="w-full h-full object-cover select-none" 
+                        <img
+                           src={selectedPost.imageUrl || selectedPost.url}
+                           className="w-full h-full object-cover select-none"
                            onDoubleClick={() => handleLikePost(selectedPost.id)}
                         />
                         <AnimatePresence>

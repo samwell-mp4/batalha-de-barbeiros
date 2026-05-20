@@ -102,7 +102,10 @@ const db: Record<string, any[]> = {
   vote: [],
   post: [],
   like: [],
-  comment: []
+  comment: [],
+  message: [],
+  matchlike: [],
+  matchcomment: []
 };
 
 // Check if database is reachable on startup

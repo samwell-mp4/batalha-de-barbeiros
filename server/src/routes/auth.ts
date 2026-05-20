@@ -1,7 +1,18 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 const router = Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'elite_barber_secret_2026';
+
+function generateToken(user: any) {
+  return jwt.sign(
+    { id: user.id, email: user.email, role: user.role },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+}
 
 // Register a new user (Client or Barber)
 router.post('/register', async (req, res) => {
@@ -25,12 +36,15 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'E-mail já cadastrado' });
     }
 
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     // Create user
     const user = await prisma.user.create({
       data: {
         name,
         email,
-        password,
+        password: hashedPassword,
         role: role === 'BARBER' ? 'BARBER' : 'CLIENT',
         city,
         state,
@@ -48,7 +62,7 @@ router.post('/register', async (req, res) => {
             schedule,
             workingHours,
             bio: bio || '',
-            isOnline: true // Já começa online para aparecer no mapa
+            isOnline: true
           }
         } : undefined
       },
@@ -57,14 +71,15 @@ router.post('/register', async (req, res) => {
       }
     });
 
-    res.json(user);
+    const token = generateToken(user);
+    res.json({ user, token });
   } catch (error: any) {
     console.error('[API ERROR] Registration failed:', error.message);
     res.status(500).json({ error: `Registration failed: ${error.message}` });
   }
 });
 
-// Simple Login with Password
+// Login with Password
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -79,12 +94,17 @@ router.post('/login', async (req, res) => {
       return res.status(404).json({ error: 'E-mail não encontrado' });
     }
 
-    // Por enquanto conferência direta de texto (depois podemos usar bcrypt)
-    if (user.password && user.password !== password) {
+    if (!user.password) {
+      return res.status(401).json({ error: 'Senha não configurada' });
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
       return res.status(401).json({ error: 'Senha incorreta' });
     }
 
-    res.json(user);
+    const token = generateToken(user);
+    res.json({ user, token });
   } catch (error: any) {
     console.error('[API ERROR] Login failed:', error.message);
     res.status(500).json({ error: `Login failed: ${error.message}` });
@@ -109,15 +129,43 @@ router.get('/me/:id', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 // Atualizar Perfil do Usuário
 router.put('/profile/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, bio, avatar } = req.body;
     
+    let avatarToSave = avatar;
+
+    // Handle base64 avatar upload
+    if (avatar && avatar.startsWith('data:image/')) {
+      try {
+        const matches = avatar.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          const base64Data = matches[2];
+          const buffer = Buffer.from(base64Data, 'base64');
+          
+          const filename = `avatar-${id}-${Date.now()}.webp`;
+          
+          const uploadsDir = require('path').join(__dirname, '..', '..', '..', 'public', 'uploads');
+          if (!require('fs').existsSync(uploadsDir)) {
+            require('fs').mkdirSync(uploadsDir, { recursive: true });
+          }
+          
+          const filePath = require('path').join(uploadsDir, filename);
+          require('fs').writeFileSync(filePath, buffer);
+          
+          avatarToSave = `/uploads/${filename}`;
+        }
+      } catch (e: any) {
+        console.error('[UPLOAD ERROR] Failed to save avatar:', e.message);
+      }
+    }
+    
     const user = await prisma.user.update({
       where: { id },
-      data: { name, bio, avatar },
+      data: { name, bio, avatar: avatarToSave },
       include: { barberProfile: true }
     });
     
@@ -136,13 +184,20 @@ router.put('/password/:id', async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
     
-    if (user.password && user.password !== currentPassword) {
+    if (!user.password) {
+      return res.status(401).json({ error: 'Senha não configurada' });
+    }
+
+    const passwordMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!passwordMatch) {
       return res.status(401).json({ error: 'Senha atual incorreta' });
     }
     
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: { password: newPassword },
+      data: { password: hashedPassword },
       include: { barberProfile: true }
     });
     
