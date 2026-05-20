@@ -17,7 +17,7 @@ model User {
   name          String
   email         String    @unique
   password      String?
-  avatar        String?
+  avatar        String?   @db.Text
   bio           String?
   role          Role      @default(CLIENT)
   city          String?

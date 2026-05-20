@@ -636,15 +636,28 @@ export default function MapPage() {
 
   const filteredBarbers = useMemo(() => {
     // Somente barbeiros reais do banco de dados para experiência real
-    const allBarbers = dbBarbers.map(b => ({
-      id: b.id,
-      name: b.user.name,
-      avatar: b.user.avatar || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=100&h=100&fit=crop',
-      coordinates: { latitude: b.latitude, longitude: b.longitude },
-      status: b.isOnline ? STATUS.LIVRE : STATUS.FECHADO,
-      waitTime: 0,
-      rating: 4.9
-    }));
+    const allBarbers = dbBarbers.map(b => {
+      const activeApps = b.appointments || [];
+      let currentStatus = b.isOnline ? STATUS.LIVRE : STATUS.FECHADO;
+      
+      if (b.isOnline) {
+        if (activeApps.some((a: any) => a.status === 'IN_SERVICE')) {
+          currentStatus = STATUS.TRABALHANDO;
+        } else if (activeApps.some((a: any) => a.status === 'CONFIRMED' || a.status === 'PENDING')) {
+          currentStatus = STATUS.ULTIMAS_VAGAS;
+        }
+      }
+
+      return {
+        id: b.id,
+        name: b.user.name,
+        avatar: b.user.avatar || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=100&h=100&fit=crop',
+        coordinates: { latitude: b.latitude, longitude: b.longitude },
+        status: currentStatus,
+        waitTime: currentStatus === STATUS.TRABALHANDO ? 30 : 0,
+        rating: 4.9
+      };
+    });
 
     // Se o banco estiver vazio, não mostra nada (ou apenas o usuário atual)
     return allBarbers.filter(b => {

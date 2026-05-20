@@ -14,6 +14,13 @@ router.get('/locations', async (req, res) => {
             avatar: true,
             city: true
           }
+        },
+        appointments: {
+          where: {
+            status: {
+              in: ['IN_SERVICE', 'CONFIRMED', 'PENDING']
+            }
+          }
         }
       }
     });

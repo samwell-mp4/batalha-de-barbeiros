@@ -518,9 +518,11 @@ export default function Profile() {
                <button onClick={() => setIsFavorited(!isFavorited)} className={`p-2 rounded-2xl transition-all ${isFavorited ? 'bg-red-50 text-red-500 shadow-sm' : 'bg-gray-50 text-blue-950'}`}>
                   <Heart size={20} className={isFavorited ? 'fill-red-500' : ''} />
                </button>
-               <button onClick={() => setShowSettings(true)} className="p-2 bg-gray-50 rounded-2xl text-blue-950 transition-transform active:rotate-90">
-                  <Settings size={20} />
-               </button>
+               {isOwnProfile && (
+                  <button onClick={() => setShowSettings(true)} className="p-2 bg-gray-50 rounded-2xl text-blue-950 transition-transform active:rotate-90">
+                     <Settings size={20} />
+                  </button>
+               )}
             </div>
          </div>
 
@@ -1157,7 +1159,12 @@ export default function Profile() {
                                     <button onClick={async () => {
                                        setIsLoading(true);
                                        try {
-                                          await api.updateProfile(barber.id, { name: editProfileData.name, bio: editProfileData.bio, avatar: editProfileData.avatar });
+                                          await api.updateProfile(loggedUser.id, { name: editProfileData.name, bio: editProfileData.bio, avatar: editProfileData.avatar });
+                                          
+                                          // Atualiza cache local para F5 persistir
+                                          const currentCache = JSON.parse(localStorage.getItem('user') || '{}');
+                                          localStorage.setItem('user', JSON.stringify({ ...currentCache, name: editProfileData.name, bio: editProfileData.bio, avatar: editProfileData.avatar }));
+                                          
                                           setBarber((prev: any) => ({ ...prev, name: editProfileData.name, bio: editProfileData.bio, avatar: editProfileData.avatar }));
                                           setSettingsView('menu');
                                        } catch (e) { alert('Erro ao atualizar perfil'); }
