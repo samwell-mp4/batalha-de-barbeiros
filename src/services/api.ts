@@ -73,6 +73,26 @@ export const api = {
     });
     return res.json();
   },
+  deletePost: async (id: string) => {
+    const res = await fetch(`${API_URL}/posts/${id}`, {
+      method: 'DELETE',
+    });
+    return res.json();
+  },
+  updatePost: async (id: string, data: any) => {
+    const res = await fetch(`${API_URL}/posts/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+  deleteComment: async (postId: string, commentId: string) => {
+    const res = await fetch(`${API_URL}/posts/${postId}/comment/${commentId}`, {
+      method: 'DELETE',
+    });
+    return res.json();
+  },
 
   // APPOINTMENTS & MATCHMAKING
   createAppointment: async (data: any) => {

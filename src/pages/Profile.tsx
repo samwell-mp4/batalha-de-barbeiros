@@ -5,7 +5,7 @@ import {
    Settings, Play, ChevronDown, CheckCircle2, Zap, Clock, Heart,
    Star, MapPin, Calendar, ChevronRight, X,
    Navigation, Bookmark, Target, Plus, Camera, Send,
-   MessageSquare, MessageCircle, Check, Edit3, Eye, EyeOff, Key, ChevronLeft
+   MessageSquare, MessageCircle, Check, Edit3, Eye, EyeOff, Key, ChevronLeft, MoreVertical, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { calculateLevel } from '@/constants/xpSystem';
@@ -154,6 +154,9 @@ export default function Profile() {
    const [commentText, setCommentText] = useState('');
    const [doubleTapHeart, setDoubleTapHeart] = useState(false);
    const [showFullPortfolio, setShowFullPortfolio] = useState(false);
+   const [showPostOptions, setShowPostOptions] = useState(false);
+   const [isEditingPost, setIsEditingPost] = useState(false);
+   const [editPostData, setEditPostData] = useState('');
 
    // Drawer Minimization & Drag States
    const routeDragControls = useDragControls();
@@ -400,6 +403,60 @@ export default function Profile() {
          }
       } catch (err) {
          console.error('Failed to comment on post:', err);
+      }
+   };
+
+   const handleDeletePost = async (postId: string) => {
+      if (!confirm('Deseja realmente apagar esta postagem? Esta ação não pode ser desfeita.')) return;
+      try {
+         await api.deletePost(postId);
+         setBarber((prev: any) => ({
+            ...prev,
+            posts: prev.posts.filter((p: any) => p.id !== postId)
+         }));
+         setSelectedPost(null);
+         alert('Postagem apagada!');
+      } catch (e) {
+         console.error('Failed to delete post:', e);
+      }
+   };
+
+   const handleEditPost = async (postId: string) => {
+      try {
+         await api.updatePost(postId, { content: editPostData });
+         setBarber((prev: any) => ({
+            ...prev,
+            posts: prev.posts.map((p: any) => p.id === postId ? { ...p, content: editPostData } : p)
+         }));
+         setSelectedPost((prev: any) => ({ ...prev, content: editPostData }));
+         setIsEditingPost(false);
+      } catch (e) {
+         console.error('Failed to edit post:', e);
+      }
+   };
+
+   const handleDeleteComment = async (postId: string, commentId: string) => {
+      if (!confirm('Apagar este comentário?')) return;
+      try {
+         await api.deleteComment(postId, commentId);
+         setBarber((prev: any) => {
+            const newPosts = prev.posts.map((p: any) => {
+               if (p.id === postId) {
+                  return { ...p, comments: p.comments.filter((c: any) => c.id !== commentId) };
+               }
+               return p;
+            });
+            return { ...prev, posts: newPosts };
+         });
+         setSelectedPost((prev: any) => {
+            if (!prev) return prev;
+            return {
+               ...prev,
+               comments: prev.comments.filter((c: any) => c.id !== commentId)
+            };
+         });
+      } catch (e) {
+         console.error('Failed to delete comment:', e);
       }
    };
 
@@ -1422,7 +1479,7 @@ export default function Profile() {
                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6500] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
                   <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white w-full max-w-md rounded-[35px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
                      {/* Header */}
-                     <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                     <div className="p-4 border-b border-gray-100 flex items-center justify-between relative">
                         <div className="flex items-center space-x-3 text-left">
                            <img src={barber.avatar} className="w-9 h-9 rounded-xl object-cover border border-gray-100" />
                            <div>
@@ -1430,7 +1487,45 @@ export default function Profile() {
                               <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{selectedPost.category || 'Trabalho de Elite'}</p>
                            </div>
                         </div>
-                        <button onClick={() => setSelectedPost(null)} className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:bg-gray-100 transition-colors"><X size={18} /></button>
+                        <div className="flex items-center space-x-2">
+                           {isOwnProfile && (
+                              <div className="relative">
+                                 <button
+                                    onClick={() => { setShowPostOptions(!showPostOptions); setIsEditingPost(false); }}
+                                    className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:bg-gray-100 transition-colors"
+                                 >
+                                    <MoreVertical size={18} />
+                                 </button>
+                                 <AnimatePresence>
+                                    {showPostOptions && (
+                                       <motion.div
+                                          initial={{ opacity: 0, scale: 0.9, y: -5 }}
+                                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                                          exit={{ opacity: 0, scale: 0.9, y: -5 }}
+                                          className="absolute right-0 top-11 z-50 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-44"
+                                       >
+                                          <button
+                                             onClick={() => { setEditPostData(selectedPost.content || selectedPost.description || ''); setIsEditingPost(true); setShowPostOptions(false); }}
+                                             className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-bold text-blue-950 hover:bg-blue-50 transition-colors"
+                                          >
+                                             <Edit3 size={15} className="text-blue-500" />
+                                             <span>Editar Descrição</span>
+                                          </button>
+                                          <div className="h-px bg-gray-50 mx-3" />
+                                          <button
+                                             onClick={() => { setShowPostOptions(false); handleDeletePost(selectedPost.id); }}
+                                             className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-50 transition-colors"
+                                          >
+                                             <Trash2 size={15} />
+                                             <span>Apagar Postagem</span>
+                                          </button>
+                                       </motion.div>
+                                    )}
+                                 </AnimatePresence>
+                              </div>
+                           )}
+                           <button onClick={() => { setSelectedPost(null); setShowPostOptions(false); setIsEditingPost(false); }} className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:bg-gray-100 transition-colors"><X size={18} /></button>
+                        </div>
                      </div>
 
                      {/* Image Body with Double Tap Area */}
@@ -1465,28 +1560,62 @@ export default function Profile() {
                            </span>
                         </div>
 
-                        {selectedPost.description && (
-                           <div className="mb-4">
-                              <p className="text-xs text-blue-950 leading-relaxed">
-                                 <span className="font-black mr-2 uppercase italic">{barber.username}</span>
-                                 {selectedPost.description}
-                              </p>
+                        {isEditingPost ? (
+                           <div className="mb-4 space-y-2">
+                              <textarea
+                                 value={editPostData}
+                                 onChange={e => setEditPostData(e.target.value)}
+                                 rows={3}
+                                 className="w-full bg-gray-50 border border-blue-200 rounded-2xl py-3 px-4 text-xs font-semibold text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
+                                 placeholder="Escreva uma descrição..."
+                              />
+                              <div className="flex space-x-2">
+                                 <button
+                                    onClick={() => setIsEditingPost(false)}
+                                    className="flex-1 py-2.5 bg-gray-100 rounded-xl text-xs font-black text-gray-500 uppercase tracking-wide"
+                                 >Cancelar</button>
+                                 <button
+                                    onClick={() => handleEditPost(selectedPost.id)}
+                                    className="flex-1 py-2.5 bg-blue-600 rounded-xl text-xs font-black text-white uppercase tracking-wide shadow-lg shadow-blue-100"
+                                 >Salvar</button>
+                              </div>
                            </div>
+                        ) : (
+                           (selectedPost.content || selectedPost.description) && (
+                              <div className="mb-4">
+                                 <p className="text-xs text-blue-950 leading-relaxed">
+                                    <span className="font-black mr-2 uppercase italic">{barber.username}</span>
+                                    {selectedPost.content || selectedPost.description}
+                                 </p>
+                              </div>
+                           )
                         )}
 
                         {/* Comments List */}
                         <div className="border-t border-gray-50 pt-4 flex-1">
                            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-3">Comentários ({selectedPost.comments?.length || 0})</p>
                            <div className="space-y-3 max-h-[150px] overflow-y-auto no-scrollbar">
-                              {(selectedPost.comments || []).map((c: any) => (
-                                 <div key={c.id} className="flex items-start space-x-2 text-xs">
-                                    <img src={c.user?.avatar || `https://i.pravatar.cc/100?u=${c.userId}`} className="w-6 h-6 rounded-lg object-cover" />
-                                    <div className="bg-gray-50 p-2.5 rounded-2xl flex-1 text-left">
-                                       <span className="font-black uppercase tracking-wider text-[9px] text-blue-950 block mb-0.5">{c.user?.name || 'Cliente'}</span>
-                                       <p className="text-[11px] text-blue-900 leading-normal">{c.content}</p>
+                              {(selectedPost.comments || []).map((c: any) => {
+                                 const loggedUser = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+                                 const canDelete = isOwnProfile || c.userId === loggedUser?.id;
+                                 return (
+                                    <div key={c.id} className="flex items-start space-x-2 text-xs group">
+                                       <img src={c.user?.avatar || `https://i.pravatar.cc/100?u=${c.userId}`} className="w-6 h-6 rounded-lg object-cover flex-shrink-0" />
+                                       <div className="bg-gray-50 p-2.5 rounded-2xl flex-1 text-left">
+                                          <span className="font-black uppercase tracking-wider text-[9px] text-blue-950 block mb-0.5">{c.user?.name || 'Cliente'}</span>
+                                          <p className="text-[11px] text-blue-900 leading-normal">{c.content}</p>
+                                       </div>
+                                       {canDelete && (
+                                          <button
+                                             onClick={() => handleDeleteComment(selectedPost.id, c.id)}
+                                             className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-all mt-1"
+                                          >
+                                             <Trash2 size={12} />
+                                          </button>
+                                       )}
                                     </div>
-                                 </div>
-                              ))}
+                                 );
+                              })}
                               {(!selectedPost.comments || selectedPost.comments.length === 0) && (
                                  <p className="text-[10px] text-gray-300 italic text-center py-4">Seja o primeiro a comentar!</p>
                               )}

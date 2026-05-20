@@ -148,5 +148,42 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: `Failed to create post: ${error.message}` });
   }
 });
+// Update post
+router.put('/:id', async (req, res) => {
+  try {
+    const { content } = req.body;
+    const post = await prisma.post.update({
+      where: { id: req.params.id },
+      data: { content }
+    });
+    res.json(post);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to update post' });
+  }
+});
+
+// Delete post
+router.delete('/:id', async (req, res) => {
+  try {
+    await prisma.post.delete({
+      where: { id: req.params.id }
+    });
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to delete post' });
+  }
+});
+
+// Delete comment
+router.delete('/:postId/comment/:commentId', async (req, res) => {
+  try {
+    await prisma.comment.delete({
+      where: { id: req.params.commentId }
+    });
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to delete comment' });
+  }
+});
 
 export default router;
