@@ -6,7 +6,7 @@ import {
    Star, MapPin, Calendar, ChevronRight, X,
    Navigation, Bookmark, Target, Plus, Camera, Send,
    MessageSquare, MessageCircle, Check, Edit3, Eye, EyeOff, Key, ChevronLeft, MoreVertical, Trash2,
-   Link2, Copy, ExternalLink, Share2
+   Link2, Copy, Share2
 } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { calculateLevel } from '@/constants/xpSystem';
@@ -1290,178 +1290,195 @@ export default function Profile() {
                               </motion.div>
                            )}
 
-                           {settingsView === 'instagram_bio' && (
-                               <motion.div key="ig-bio" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-5">
-                                  <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 rounded-[30px] p-6 text-white relative overflow-hidden">
-                                     <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-                                     <div className="absolute bottom-0 left-0 w-24 h-24 bg-cyan-400/10 rounded-full translate-y-1/2 -translate-x-1/2" />
-                                     <div className="flex items-center space-x-4 relative z-10">
-                                        <div className="w-16 h-16 rounded-[20px] overflow-hidden border-2 border-white/30 shadow-lg flex-shrink-0">
-                                           <img src={barber.avatar} className="w-full h-full object-cover" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                           <h4 className="text-lg font-black uppercase italic tracking-tight truncate">{barber.name}</h4>
-                                           <div className="flex items-center space-x-2 mt-1">
-                                              <span className="text-[10px] font-black bg-white/20 px-2.5 py-1 rounded-lg uppercase tracking-widest">
-                                                 Nível {calculateLevel(barber.xp || 0, true).level}
-                                              </span>
-                                              <span className="text-[10px] font-black bg-yellow-400/20 text-yellow-300 px-2.5 py-1 rounded-lg">
-                                                 ★ {barber.rating || '4.9'}
-                                              </span>
-                                           </div>
-                                        </div>
-                                     </div>
-                                  </div>
+                            {settingsView === 'instagram_bio' && (
+                                <motion.div key="ig-bio" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-5">
+                                   {(() => {
+                                      const level = calculateLevel(barber.xp || 0, true);
+                                      const today = new Date();
+                                      const dateStr = today.toISOString().split('T')[0];
+                                      const freeSlots = timeSlots.filter(t => getSlotStatus(t) === 'free');
+                                      const occupiedSlots = timeSlots.filter(t => getSlotStatus(t) === 'occupied');
+                                      const totalSlots = timeSlots.length;
 
-                                  {(() => {
-                                     const level = calculateLevel(barber.xp || 0, true);
-                                     const scheduleSummary = (() => {
-                                        const schedule = barberSchedule || {};
-                                        const days = Object.keys(schedule);
-                                        if (days.length === 0) return 'Seg - Sáb: 09h às 20h';
-                                        const hours = days.map(d => {
-                                           const day = schedule[d];
-                                           if (day?.workingHours) return `${day.workingHours.start}-${day.workingHours.end}`;
-                                           return '09h-20h';
-                                        }).filter(Boolean);
-                                        const unique = [...new Set(hours)];
-                                        return `Seg - Sáb: ${unique[0] || '09h às 20h'}`;
-                                     })();
+                                      const fullBio = [
+                                         `⚡ ${barber.name} • Nível ${level.level}`,
+                                         `⭐ ${barber.rating || '4.9'} • ${barber.city || 'Sua Cidade'}, ${barber.state || 'BR'}`,
+                                         ``,
+                                         `${barber.bio || '✂️ Especialista em cortes masculinos | Transformando visões em estilo'}`,
+                                         ``,
+                                         `📅 AGENDA • ${today.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}`,
+                                         `✅ ${freeSlots.length} horários livres • ${occupiedSlots.length} ocupados`,
+                                         ``,
+                                         `📋 SERVIÇOS:`,
+                                         currentServices.slice(0, 4).map(s => `✂️ ${s.name}: R$ ${s.price},00`).join('\n'),
+                                         ``,
+                                         `📍 ${barber.city || 'Sua Cidade'}`,
+                                         ``,
+                                         `👇 Agende seu horário:`,
+                                         `${window.location.origin}/profile/${barber.id}`,
+                                         ``,
+                                         `#Barbeiro #CorteMasculino #Degradê #Barbearia`
+                                      ].join('\n');
 
-                                     const servicesText = currentServices.slice(0, 4).map(s =>
-                                        `✂️ ${s.name}: R$ ${s.price},00`
-                                     ).join('\n');
+                                      return (
+                                         <>
+                                            <div className="relative overflow-hidden rounded-[35px] p-[2px]">
+                                               <div className="absolute inset-0 bg-gradient-to-br from-neon-cyan via-blue-600 to-neon-pink animate-pulse rounded-[35px]" />
+                                               <div className="relative bg-[#030303] rounded-[33px] p-5">
+                                                  <div className="text-center mb-5">
+                                                     <div className="w-20 h-20 rounded-[25px] p-[2px] bg-gradient-to-br from-neon-cyan to-neon-pink mx-auto mb-3 shadow-[0_0_30px_rgba(0,243,255,0.2)]">
+                                                        <img src={barber.avatar} className="w-full h-full rounded-[23px] object-cover border-2 border-[#030303]" />
+                                                     </div>
+                                                     <h3 className="text-lg font-black text-white uppercase italic tracking-tight">{barber.name}</h3>
+                                                     <div className="flex items-center justify-center space-x-2 mt-1.5">
+                                                        <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black text-neon-cyan uppercase tracking-widest">Nível {level.level}</span>
+                                                        <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black text-yellow-400">★ {barber.rating || '4.9'}</span>
+                                                     </div>
+                                                     <p className="text-[11px] text-gray-400 mt-3 leading-relaxed max-w-xs mx-auto">{barber.bio || '✂️ Especialista em cortes masculinos | Transformando visões em estilo'}</p>
+                                                  </div>
 
-                                     const fullBio = [
-                                        `⚡ ${barber.name} • Nível ${level.level} ${level.title}`,
-                                        `⭐ ${barber.rating || '4.9'} • ${barber.city || 'Sua Cidade'}, ${barber.state || 'BR'}`,
-                                        ``,
-                                        `${barber.bio || '✂️ Especialista em cortes masculinos | Transformando visões em estilo'}`,
-                                        ``,
-                                        `📋 SERVIÇOS:`,
-                                        servicesText,
-                                        ``,
-                                        `📅 AGENDA:`,
-                                        `${scheduleSummary}`,
-                                        `📍 Localização: ${barber.city || 'Sua Cidade'}`,
-                                        ``,
-                                        `👇 Agende seu horário:`,
-                                        `${window.location.origin}/profile/${barber.id}`,
-                                        ``,
-                                        `#Barbeiro #CorteMasculino #Degradê #Barbearia #Estilo`
-                                     ].join('\n');
+                                                  <div className="grid grid-cols-3 gap-2 mb-5">
+                                                     {[
+                                                        { l: 'Atendimentos', v: appointmentsCount, c: 'text-neon-cyan' },
+                                                        { l: 'Avaliações', v: reviewsCount, c: 'text-yellow-400' },
+                                                        { l: 'Seguidores', v: followersCount, c: 'text-neon-pink' }
+                                                     ].map(s => (
+                                                        <div key={s.l} className="bg-white/5 rounded-2xl border border-white/10 py-3 text-center">
+                                                           <p className={`text-base font-black ${s.c}`}>{s.v}</p>
+                                                           <p className="text-[7px] font-black text-gray-500 uppercase tracking-widest">{s.l}</p>
+                                                        </div>
+                                                     ))}
+                                                  </div>
 
-                                     return (
-                                        <>
-                                           <div className="bg-gray-50 rounded-[25px] p-5 border border-gray-100">
-                                              <div className="flex items-center justify-between mb-3">
-                                                 <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Prévia da Bio</h4>
-                                                 <div className="flex items-center space-x-2">
-                                                    <button
-                                                       onClick={() => {
-                                                          navigator.clipboard.writeText(fullBio).then(() => {
-                                                             setBioCopied(true);
-                                                             setTimeout(() => setBioCopied(false), 2000);
-                                                          }).catch(() => {
-                                                             const ta = document.createElement('textarea');
-                                                             ta.value = fullBio;
-                                                             document.body.appendChild(ta);
-                                                             ta.select();
-                                                             document.execCommand('copy');
-                                                             document.body.removeChild(ta);
-                                                             setBioCopied(true);
-                                                             setTimeout(() => setBioCopied(false), 2000);
-                                                          });
-                                                       }}
-                                                       className="flex items-center space-x-1.5 px-4 py-2 bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
-                                                    >
-                                                       {bioCopied ? <><Check size={14} /> <span>Copiado!</span></> : <><Copy size={14} /> <span>Copiar Bio</span></>}
-                                                    </button>
-                                                    <button
-                                                       onClick={() => {
-                                                          const igUrl = `https://instagram.com`;
-                                                          window.open(igUrl, '_blank');
-                                                       }}
-                                                       className="p-2 bg-gray-100 rounded-xl text-gray-400 hover:text-pink-500 transition-colors"
-                                                       title="Abrir Instagram"
-                                                    >
-                                                       <ExternalLink size={16} />
-                                                    </button>
-                                                 </div>
-                                              </div>
+                                                  <div className="bg-white/5 rounded-[25px] border border-white/10 p-5 mb-4">
+                                                     <div className="flex items-center justify-between mb-4">
+                                                        <div className="flex items-center space-x-2">
+                                                           <Calendar size={14} className="text-neon-cyan" />
+                                                           <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Agenda em Tempo Real</h4>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                           <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                                                           <span className="text-[8px] text-gray-500 font-bold uppercase tracking-wider">Ao vivo</span>
+                                                        </div>
+                                                     </div>
 
-                                              <div className="bg-white rounded-[20px] p-5 border border-gray-100 shadow-sm text-left">
-                                                 <div className="flex items-center space-x-3 mb-4 pb-4 border-b border-gray-50">
-                                                    <img src={barber.avatar} className="w-12 h-12 rounded-[15px] object-cover border border-gray-100" />
-                                                    <div>
-                                                       <h5 className="text-sm font-black text-blue-950 uppercase italic">{barber.name}</h5>
-                                                       <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Nível {level.level} • ★ {barber.rating || '4.9'}</p>
-                                                    </div>
-                                                 </div>
+                                                     <div className="flex space-x-2 overflow-x-auto no-scrollbar mb-4 pb-1">
+                                                        {bookingDates.slice(0, 7).map((date) => {
+                                                           const dStr = date.toISOString().split('T')[0];
+                                                           const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+                                                           const dayNum = date.getDate();
+                                                           const isToday = dStr === dateStr;
+                                                           return (
+                                                              <button
+                                                                 key={dStr}
+                                                                 type="button"
+                                                                 onClick={() => setBookingDate(dStr)}
+                                                                 className={`flex flex-col items-center min-w-[52px] py-2.5 px-3 rounded-[18px] border transition-all ${dStr === bookingDate
+                                                                     ? 'bg-neon-cyan/20 border-neon-cyan text-white shadow-[0_0_15px_rgba(0,243,255,0.15)]'
+                                                                     : isToday
+                                                                        ? 'bg-white/10 border-white/20 text-white'
+                                                                        : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                                                                    }`}
+                                                              >
+                                                                 <span className={`text-[7px] font-black uppercase tracking-widest ${dStr === bookingDate ? 'text-neon-cyan' : 'text-gray-500'}`}>{dayName}</span>
+                                                                 <span className="text-sm font-black font-orbitron mt-0.5">{dayNum}</span>
+                                                              </button>
+                                                           );
+                                                        })}
+                                                     </div>
 
-                                                 <div className="space-y-3">
-                                                    <div className="flex items-start space-x-2.5">
-                                                       <Zap size={14} className="text-blue-600 mt-0.5 flex-shrink-0" />
-                                                       <p className="text-[11px] text-blue-950 font-medium leading-relaxed">{barber.bio || '✂️ Especialista em cortes masculinos | Transformando visões em estilo'}</p>
-                                                    </div>
-                                                    <div className="flex items-start space-x-2.5">
-                                                       <Calendar size={14} className="text-blue-600 mt-0.5 flex-shrink-0" />
-                                                       <div>
-                                                          <p className="text-[11px] font-bold text-blue-950">{scheduleSummary}</p>
-                                                          <p className="text-[9px] text-gray-400 font-medium">Horários disponíveis</p>
-                                                       </div>
-                                                    </div>
-                                                    <div className="flex items-start space-x-2.5">
-                                                       <MapPin size={14} className="text-blue-600 mt-0.5 flex-shrink-0" />
-                                                       <p className="text-[11px] text-blue-950 font-medium">{barber.city || 'Sua Cidade'}, {barber.state || 'BR'}</p>
-                                                    </div>
-                                                    <div className="flex items-start space-x-2.5">
-                                                       <Star size={14} className="text-blue-600 mt-0.5 flex-shrink-0" />
-                                                       <div className="flex flex-wrap gap-1.5">
-                                                          {currentServices.slice(0, 4).map(s => (
-                                                             <span key={s.id} className="text-[9px] bg-blue-50 text-blue-700 font-bold px-2.5 py-1 rounded-lg">{s.name}</span>
-                                                          ))}
-                                                          {currentServices.length > 4 && (
-                                                             <span className="text-[9px] bg-blue-50 text-blue-700 font-bold px-2.5 py-1 rounded-lg">+{currentServices.length - 4}</span>
-                                                          )}
-                                                       </div>
-                                                    </div>
-                                                 </div>
-                                              </div>
-                                           </div>
+                                                     <div className="flex items-center justify-between mb-3">
+                                                        <h5 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                                                           {totalSlots > 0 ? `${freeSlots.length} de ${totalSlots} horários livres` : 'Nenhum horário hoje'}
+                                                        </h5>
+                                                        <div className="flex items-center space-x-2">
+                                                           <span className="flex items-center space-x-1 text-[8px] text-gray-500"><span className="w-2 h-2 rounded-sm bg-green-500/50" /><span>Livre</span></span>
+                                                           <span className="flex items-center space-x-1 text-[8px] text-gray-500"><span className="w-2 h-2 rounded-sm bg-red-500/50" /><span>Ocupado</span></span>
+                                                        </div>
+                                                     </div>
 
-                                           <div>
-                                              <div className="flex items-center justify-between mb-2 px-1">
-                                                 <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Texto para Copiar</h4>
-                                                 <span className="text-[8px] text-gray-300 font-medium">{fullBio.split('\n').length} linhas</span>
-                                              </div>
-                                              <div className="bg-gray-900 text-gray-100 rounded-[20px] p-5 text-[11px] font-mono leading-relaxed whitespace-pre-wrap select-all border border-gray-800 max-h-[280px] overflow-y-auto no-scrollbar">
-                                                 {fullBio}
-                                              </div>
-                                           </div>
+                                                     <div className="grid grid-cols-4 gap-1.5">
+                                                        {timeSlots.map((time) => {
+                                                           const status = getSlotStatus(time);
+                                                           return (
+                                                              <div
+                                                                 key={time}
+                                                                 className={`py-2 rounded-lg text-center font-orbitron text-[10px] font-bold transition-all ${status === 'occupied'
+                                                                     ? 'bg-red-500/15 text-red-400 border border-red-500/20'
+                                                                     : 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                                                    }`}
+                                                              >
+                                                                 {time}
+                                                              </div>
+                                                           );
+                                                        })}
+                                                     </div>
+                                                  </div>
 
-                                           <button
-                                              onClick={() => {
-                                                 const shareText = fullBio;
-                                                 if (navigator.share) {
-                                                    navigator.share({ title: 'Minha Bio Battle Barber', text: shareText }).catch(() => {});
-                                                 } else {
-                                                    navigator.clipboard.writeText(shareText).then(() => {
-                                                       setBioCopied(true);
-                                                       setTimeout(() => setBioCopied(false), 2000);
-                                                    });
-                                                 }
-                                              }}
-                                              className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-[20px] font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center space-x-2 active:scale-95 transition-all"
-                                           >
-                                              <Share2 size={16} />
-                                              <span>Compartilhar Bio</span>
-                                           </button>
-                                        </>
-                                     );
-                                  })()}
-                               </motion.div>
-                            )}
+                                                  <div className="bg-white/5 rounded-[25px] border border-white/10 p-5 mb-4">
+                                                     <div className="flex items-center space-x-2 mb-3">
+                                                        <Star size={14} className="text-neon-cyan" />
+                                                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Serviços</h4>
+                                                     </div>
+                                                     <div className="space-y-2">
+                                                        {currentServices.map(s => (
+                                                           <div key={s.id} className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-2.5 border border-white/5">
+                                                              <span className="text-[11px] font-bold text-gray-200">{s.name}</span>
+                                                              <span className="text-[11px] font-black text-neon-cyan font-orbitron">R$ {s.price},00</span>
+                                                           </div>
+                                                        ))}
+                                                     </div>
+                                                  </div>
+
+                                                  <div className="bg-white/5 rounded-[25px] border border-white/10 p-5 mb-4">
+                                                     <div className="flex items-center space-x-2 mb-3">
+                                                        <MapPin size={14} className="text-neon-cyan" />
+                                                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Localização</h4>
+                                                     </div>
+                                                     <p className="text-[11px] text-gray-300 font-medium">{barber.city || 'Sua Cidade'}, {barber.state || 'BR'}</p>
+                                                  </div>
+                                               </div>
+                                            </div>
+
+                                            <div className="flex space-x-3">
+                                               <button
+                                                  onClick={() => {
+                                                     navigator.clipboard.writeText(fullBio).then(() => {
+                                                        setBioCopied(true);
+                                                        setTimeout(() => setBioCopied(false), 2000);
+                                                     }).catch(() => {
+                                                        const ta = document.createElement('textarea');
+                                                        ta.value = fullBio;
+                                                        document.body.appendChild(ta);
+                                                        ta.select();
+                                                        document.execCommand('copy');
+                                                        document.body.removeChild(ta);
+                                                        setBioCopied(true);
+                                                        setTimeout(() => setBioCopied(false), 2000);
+                                                     });
+                                                  }}
+                                                  className="flex-1 py-4 bg-gradient-to-r from-neon-cyan to-blue-600 text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest shadow-lg shadow-neon-cyan/20 flex items-center justify-center space-x-2 active:scale-95 transition-all"
+                                               >
+                                                  {bioCopied ? <><Check size={16} /> <span>Copiado!</span></> : <><Copy size={16} /> <span>Copiar Bio</span></>}
+                                               </button>
+                                               <button
+                                                  onClick={() => {
+                                                     if (navigator.share) {
+                                                        navigator.share({ title: 'Minha Bio Battle Barber', text: fullBio }).catch(() => {});
+                                                     } else {
+                                                        navigator.clipboard.writeText(fullBio);
+                                                     }
+                                                  }}
+                                                  className="px-6 py-4 bg-white/10 border border-white/20 text-white rounded-[20px] font-black text-[10px] uppercase tracking-widest flex items-center justify-center space-x-2 active:scale-95 transition-all hover:bg-white/20"
+                                               >
+                                                  <Share2 size={16} />
+                                               </button>
+                                            </div>
+                                         </>
+                                      );
+                                   })()}
+                                </motion.div>
+                             )}
 
                            {settingsView === 'push_alerts' && (
                                <motion.div key="push" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-4">
