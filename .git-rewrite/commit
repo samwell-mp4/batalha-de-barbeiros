@@ -1,0 +1,6 @@
+tree c97340c0b2768b6b96ca1bb2ca7499b1901a36ef
+parent ac7c36f61e133899b52bd99faf4ce61cd87ea556
+author samwellmidia.mp4 <samwellmidia@gmail.com> 1778952315 -0300
+committer samwellmidia.mp4 <samwellmidia@gmail.com> 1778952315 -0300
+
+fix: resolve production build errors for easypanel deployment
