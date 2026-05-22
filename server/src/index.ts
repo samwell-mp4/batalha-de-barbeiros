@@ -1,5 +1,7 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
+import { execSync } from 'child_process';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
@@ -32,13 +34,36 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-const publicPath = path.join(__dirname, '..', '..', 'dist');
-console.log(`[SERVER] public path: ${publicPath}`);
+// Resolve paths relative to built server (server/dist)
+const rootPath = path.join(__dirname, '..', '..');
+const distPath = path.join(rootPath, 'dist');
 
-app.use(express.static(publicPath, {
-  maxAge: '1d',
-  immutable: true,
-}));
+// Auto-build frontend if dist is missing (useful on cPanel where only server is installed)
+if (!fs.existsSync(path.join(distPath, 'index.html'))) {
+  try {
+    console.warn('[SERVER] dist/index.html not found. Building frontend...');
+    execSync('npm run build', { cwd: rootPath, stdio: 'inherit' });
+  } catch (e) {
+    console.error('[SERVER] Frontend build failed:', e);
+  }
+}
+
+const assetsPath = fs.existsSync(path.join(distPath, 'index.html'))
+  ? distPath
+  : path.join(rootPath, 'public');
+
+console.log(`[SERVER] static assets path: ${assetsPath}`);
+
+// Serve built assets (dist) with fallback to public/
+for (const p of [assetsPath, path.join(rootPath, 'public')]) {
+  if (fs.existsSync(p)) {
+    app.use(express.static(p, { maxAge: '1d', immutable: true }));
+  }
+}
+
+const indexFile = fs.existsSync(path.join(distPath, 'index.html'))
+  ? path.join(distPath, 'index.html')
+  : path.join(rootPath, 'index.html');
 
 const CRAWLER_REGEX = /googlebot|bingbot|yandexbot|duckduckbot|baiduspider|slurp|facebookexternalhit|twitterbot|whatsapp|facebot|telegrambot|slackbot|discordbot/i;
 
@@ -142,23 +167,23 @@ async function fetchBarberData(slug: string) {
 app.get('/barbearias/:stateSlug/:citySlug', async (req, res) => {
   try {
     if (!isCrawler(req.headers['user-agent'])) {
-      return res.sendFile(path.join(publicPath, 'index.html'));
+      return res.sendFile(indexFile);
     }
 
     const data = await fetchCityData(req.params.stateSlug, req.params.citySlug);
     if (!data) {
-      return res.sendFile(path.join(publicPath, 'index.html'));
+      return res.sendFile(indexFile);
     }
 
     if (!data.city.seo_enabled) {
-      return res.sendFile(path.join(publicPath, 'index.html'));
+      return res.sendFile(indexFile);
     }
 
     const html = renderCityPage(data);
     res.set('Cache-Control', 'public, max-age=3600');
     res.send(html);
   } catch {
-    res.sendFile(path.join(publicPath, 'index.html'));
+    res.sendFile(indexFile);
   }
 });
 
@@ -166,7 +191,7 @@ app.get('/barbearias/:stateSlug/:citySlug', async (req, res) => {
 app.get('/barbearias/:stateSlug/:citySlug/:neighborhoodSlug', async (req, res) => {
   try {
     if (!isCrawler(req.headers['user-agent'])) {
-      return res.sendFile(path.join(publicPath, 'index.html'));
+      return res.sendFile(indexFile);
     }
 
     const { stateSlug, citySlug, neighborhoodSlug } = req.params;
@@ -174,12 +199,12 @@ app.get('/barbearias/:stateSlug/:citySlug/:neighborhoodSlug', async (req, res) =
       where: { slug: citySlug, state: { slug: stateSlug } },
       include: { state: true },
     });
-    if (!city || !city.seo_enabled) return res.sendFile(path.join(publicPath, 'index.html'));
+    if (!city || !city.seo_enabled) return res.sendFile(indexFile);
 
     const hood = await (prisma as any).neighborhood.findFirst({
       where: { slug: neighborhoodSlug, cityId: city.id },
     });
-    if (!hood) return res.sendFile(path.join(publicPath, 'index.html'));
+    if (!hood) return res.sendFile(indexFile);
 
     const barbers = await (prisma as any).barber.findMany({
       where: { neighborhoodId: hood.id, isOnline: true },
@@ -205,7 +230,7 @@ app.get('/barbearias/:stateSlug/:citySlug/:neighborhoodSlug', async (req, res) =
     res.set('Cache-Control', 'public, max-age=3600');
     res.send(html);
   } catch {
-    res.sendFile(path.join(publicPath, 'index.html'));
+    res.sendFile(indexFile);
   }
 });
 
@@ -213,19 +238,19 @@ app.get('/barbearias/:stateSlug/:citySlug/:neighborhoodSlug', async (req, res) =
 app.get('/barbeiro/:slug', async (req, res) => {
   try {
     if (!isCrawler(req.headers['user-agent'])) {
-      return res.sendFile(path.join(publicPath, 'index.html'));
+      return res.sendFile(indexFile);
     }
 
     const data = await fetchBarberData(req.params.slug);
     if (!data) {
-      return res.sendFile(path.join(publicPath, 'index.html'));
+      return res.sendFile(indexFile);
     }
 
     const html = renderBarberPage(data);
     res.set('Cache-Control', 'public, max-age=3600');
     res.send(html);
   } catch {
-    res.sendFile(path.join(publicPath, 'index.html'));
+    res.sendFile(indexFile);
   }
 });
 
@@ -233,7 +258,7 @@ app.get('/barbeiro/:slug', async (req, res) => {
 app.get('/servicos/:service/:stateSlug/:citySlug', async (req, res) => {
   try {
     if (!isCrawler(req.headers['user-agent'])) {
-      return res.sendFile(path.join(publicPath, 'index.html'));
+      return res.sendFile(indexFile);
     }
 
     const { service, stateSlug, citySlug } = req.params;
@@ -249,7 +274,7 @@ app.get('/servicos/:service/:stateSlug/:citySlug', async (req, res) => {
       where: { slug: citySlug, state: { slug: stateSlug } },
       include: { state: true },
     });
-    if (!city || !city.seo_enabled) return res.sendFile(path.join(publicPath, 'index.html'));
+    if (!city || !city.seo_enabled) return res.sendFile(indexFile);
 
     const barbers = await (prisma as any).barber.findMany({
       where: {
@@ -278,7 +303,7 @@ app.get('/servicos/:service/:stateSlug/:citySlug', async (req, res) => {
     res.set('Cache-Control', 'public, max-age=3600');
     res.send(html);
   } catch {
-    res.sendFile(path.join(publicPath, 'index.html'));
+    res.sendFile(indexFile);
   }
 });
 
@@ -306,7 +331,7 @@ app.get(/.*/, (req, res) => {
     return res.status(404).send('File not found');
   }
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-  res.sendFile(path.join(publicPath, 'index.html'));
+  res.sendFile(indexFile);
 });
 
 app.listen(port, () => {
