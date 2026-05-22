@@ -84,8 +84,10 @@ async function importIBGE() {
       .map(([s]) => s);
 
     // Calculate average lat/lng from barbers in this city
+    // In current schema latitude/longitude are non-nullable on Barber,
+    // so filtering with `{ not: null }` throws in Prisma. Just filter by cityId.
     const barbers = await prisma.barber.findMany({
-      where: { cityId: city.id, latitude: { not: null }, longitude: { not: null } },
+      where: { cityId: city.id },
       select: { latitude: true, longitude: true },
     });
     const lat = barbers.length > 0
