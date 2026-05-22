@@ -550,15 +550,64 @@ export default function MapPage() {
     }
   };
 
-  const handleFinalizePayment = () => {
+  const [pixPaymentData, setPixPaymentData] = useState<{ qrCodeBase64: string; copiaECola: string; amount: number; status: string } | null>(null);
+  const [paymentPollInterval, setPaymentPollInterval] = useState<any>(null);
+
+  const handleFinalizePayment = async () => {
+    if (paymentMethod !== 'pix' || !currentAppointmentId) {
+      setIsProcessingPayment(true);
+      setTimeout(() => {
+        setIsProcessingPayment(false);
+        setMatchSession((prev: any) => ({ ...prev, status: 'finished' }));
+        if (currentAppointmentId) {
+          api.updateAppointmentStatus(currentAppointmentId, 'COMPLETED');
+        }
+      }, 2500);
+      return;
+    }
+
     setIsProcessingPayment(true);
-    setTimeout(() => { 
-      setIsProcessingPayment(false); 
-      setMatchSession((prev: any) => ({ ...prev, status: 'finished' })); 
-      if (currentAppointmentId) {
-        api.updateAppointmentStatus(currentAppointmentId, 'COMPLETED');
+    try {
+      const result = await api.createPixPayment(currentAppointmentId);
+      if (result.error) {
+        alert('Erro ao gerar PIX: ' + result.error);
+        setIsProcessingPayment(false);
+        return;
       }
-    }, 2500);
+      setPixPaymentData({
+        qrCodeBase64: result.mpQrCodeBase64,
+        copiaECola: result.mpCopiaECola,
+        amount: result.amount,
+        status: result.status,
+      });
+
+      const interval = setInterval(async () => {
+        const payment = await api.getPayment(currentAppointmentId);
+        if (payment?.status === 'APPROVED') {
+          clearInterval(interval);
+          setPaymentPollInterval(null);
+          setPixPaymentData(null);
+          setMatchSession((prev: any) => ({ ...prev, status: 'finished' }));
+        }
+      }, 3000);
+      setPaymentPollInterval(interval);
+    } catch (e: any) {
+      alert('Erro ao gerar PIX: ' + e.message);
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (paymentPollInterval) clearInterval(paymentPollInterval);
+    };
+  }, [paymentPollInterval]);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Código PIX copiado!');
+    });
   };
 
   const handleFinalCancel = async () => {
@@ -1573,7 +1622,7 @@ export default function MapPage() {
                     </div>
                     {isRadarOpen && <p className="text-[7px] text-blue-100 font-bold uppercase tracking-tighter text-center">VocÃƒÂª estÃƒÂ¡ visÃƒÂ­vel para chamados de "Match Expresso" num raio de 5km.</p>}
                   </div>
-                  <button onClick={() => navigate('/agenda')} className="w-full py-5 bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest rounded-3xl shadow-xl mt-3 flex items-center justify-center space-x-2">
+                  <button onClick={() => navigate('/app/agenda')} className="w-full py-5 bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest rounded-3xl shadow-xl mt-3 flex items-center justify-center space-x-2">
                     <CalendarDays size={18} className="text-cyan-400" /> <span>Gerenciar Minha Agenda</span>
                   </button>
                 </>
@@ -1975,19 +2024,86 @@ export default function MapPage() {
           </motion.div>
         )}
 
-        {/* MÃ“DULO DE PAGAMENTO */}
+        {/* MÓDULO DE PAGAMENTO */}
         {matchSession?.status === 'payment' && (
           <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2000] bg-[#0f172a] rounded-t-[40px] px-8 pb-28 shadow-2xl border-t-4 border-green-500">
             <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto my-4" />
             {!isBarberView ? (
               <div className="text-center">
                 <h3 className="text-2xl font-black text-white uppercase italic mb-6">Pagar Atendimento</h3>
-                <div className="bg-white/5 p-6 rounded-[32px] border border-white/10 mb-8 text-left"><p className="text-xl font-black text-green-400 italic">Total: R$ {matchSession.activeMatch.price},00</p></div>
-                <div className="grid grid-cols-3 gap-3 mb-8">{[{ id: 'pix', icon: Zap, label: 'PIX' }, { id: 'credit', icon: CreditCard, label: 'CrÃ©dito' }, { id: 'debit', icon: Wallet, label: 'DÃ©bito' }].map(method => (<button key={method.id} onClick={() => setPaymentMethod(method.id as any)} className={`flex flex-col items-center p-5 rounded-[24px] border-2 transition-all ${paymentMethod === method.id ? 'border-green-500 bg-green-500/20' : 'border-white/5 bg-white/5'}`}><method.icon size={28} className={paymentMethod === method.id ? 'text-green-400' : 'text-white/20'} /><span className="text-[10px] font-black uppercase mt-2">{method.label}</span></button>))}</div>
-                <button disabled={!paymentMethod || isProcessingPayment} onClick={handleFinalizePayment} className="w-full py-6 bg-green-500 text-white rounded-[30px] font-black text-sm uppercase shadow-xl flex items-center justify-center space-x-3">{isProcessingPayment ? <><Loader2 size={20} className="animate-spin" /> <span>Processando...</span></> : <span>Confirmar Pagamento</span>}</button>
+                <div className="bg-white/5 p-6 rounded-[32px] border border-white/10 mb-8 text-left">
+                  <p className="text-xl font-black text-green-400 italic">Total: R$ {matchSession.activeMatch.price},00</p>
+                  <p className="text-[10px] text-white/30 mt-1">Taxa: R$ 1,00 · Barbeiro recebe R$ {Math.max(0, (matchSession.activeMatch.price || 0) - 1)},00</p>
+                </div>
+
+                {pixPaymentData ? (
+                  <div className="mb-8">
+                    <div className="bg-white p-4 rounded-[24px] inline-block mx-auto mb-4">
+                      {pixPaymentData.qrCodeBase64 ? (
+                        <img src={`data:image/png;base64,${pixPaymentData.qrCodeBase64}`} alt="QR Code PIX" className="w-48 h-48 mx-auto" />
+                      ) : (
+                        <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center">
+                          <QrCode size={64} className="text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="bg-white/5 rounded-[20px] p-4 border border-white/10 mb-4">
+                      <p className="text-[9px] text-white/40 font-bold uppercase mb-2">Código PIX Copia e Cola</p>
+                      <code className="text-[9px] font-mono text-green-300 break-all bg-white/5 p-3 rounded-xl block select-all">
+                        {pixPaymentData.copiaECola}
+                      </code>
+                      <button
+                        onClick={() => copyToClipboard(pixPaymentData.copiaECola)}
+                        className="mt-3 text-[10px] text-blue-400 font-bold uppercase hover:text-blue-300"
+                      >
+                        Copiar Código
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-white/30">Pagamento sendo processado...</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-3 mb-8">
+                      {[
+                        { id: 'pix', icon: Zap, label: 'PIX' },
+                        { id: 'credit', icon: CreditCard, label: 'Crédito' },
+                        { id: 'debit', icon: Wallet, label: 'Débito' },
+                      ].map(method => (
+                        <button
+                          key={method.id}
+                          onClick={() => setPaymentMethod(method.id as any)}
+                          className={`flex flex-col items-center p-5 rounded-[24px] border-2 transition-all ${paymentMethod === method.id ? 'border-green-500 bg-green-500/20' : 'border-white/5 bg-white/5'}`}
+                        >
+                          <method.icon size={28} className={paymentMethod === method.id ? 'text-green-400' : 'text-white/20'} />
+                          <span className="text-[10px] font-black uppercase mt-2">{method.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      disabled={!paymentMethod || isProcessingPayment}
+                      onClick={handleFinalizePayment}
+                      className="w-full py-6 bg-green-500 text-white rounded-[30px] font-black text-sm uppercase shadow-xl flex items-center justify-center space-x-3"
+                    >
+                      {isProcessingPayment ? (
+                        <><Loader2 size={20} className="animate-spin" /> <span>Gerando PIX...</span></>
+                      ) : (
+                        <span>Confirmar Pagamento</span>
+                      )}
+                    </button>
+                  </>
+                )}
               </div>
             ) : (
-              <div className="text-center py-10"><motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6"><Clock size={32} className="text-green-400" /></motion.div><h3 className="text-2xl font-black text-white uppercase italic mb-2">Aguardando Pagamento</h3><button onClick={() => console.log('Reportar problema')} className="w-full flex items-center justify-center space-x-2 bg-red-500/10 text-red-400 py-6 rounded-[30px] font-black text-xs uppercase mt-12 border border-red-500/20"><AlertTriangle size={18} /> <span>Reportar Problema</span></button></div>
+              <div className="text-center py-10">
+                <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Clock size={32} className="text-green-400" />
+                </motion.div>
+                <h3 className="text-2xl font-black text-white uppercase italic mb-2">Aguardando Pagamento</h3>
+                <p className="text-xs text-white/30">O cliente está realizando o PIX</p>
+                <button onClick={() => console.log('Reportar problema')} className="w-full flex items-center justify-center space-x-2 bg-red-500/10 text-red-400 py-6 rounded-[30px] font-black text-xs uppercase mt-12 border border-red-500/20">
+                  <AlertTriangle size={18} /> <span>Reportar Problema</span>
+                </button>
+              </div>
             )}
           </motion.div>
         )}
@@ -2205,7 +2321,7 @@ export default function MapPage() {
                     setShowQueueSuccessModal(false);
                     setIsBookingAgenda(false);
                     // Navigate directly to the client's Agenda/Meus Agendamentos
-                    navigate('/agenda');
+                    navigate('/app/agenda');
                   }} 
                   className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-100 active:scale-95 transition-transform"
                 >

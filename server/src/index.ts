@@ -17,6 +17,7 @@ import postRoutes from './routes/posts';
 import authRoutes from './routes/auth';
 import appointmentRoutes from './routes/appointments';
 import messageRoutes from './routes/messages';
+import paymentRoutes from './routes/payments';
 
 const app = express();
 import { prisma } from './lib/prisma';
@@ -56,6 +57,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Wildcard route to serve index.html for client-side routing
 app.get(/.*/, (req, res) => {

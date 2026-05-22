@@ -571,7 +571,7 @@ export default function Profile() {
                      <span className="text-[10px] font-black uppercase italic">Postar</span>
                   </button>
                )}
-               <button onClick={() => navigate('/messages')} className="p-2 bg-gray-50 rounded-2xl text-blue-950 transition-transform active:scale-95 relative" title="Mensagens">
+               <button onClick={() => navigate('/app/messages')} className="p-2 bg-gray-50 rounded-2xl text-blue-950 transition-transform active:scale-95 relative" title="Mensagens">
                   <MessageSquare size={20} />
                </button>
                <button onClick={() => setIsFavorited(!isFavorited)} className={`p-2 rounded-2xl transition-all ${isFavorited ? 'bg-red-50 text-red-500 shadow-sm' : 'bg-gray-50 text-blue-950'}`}>
@@ -723,10 +723,10 @@ export default function Profile() {
                   {isFollowing ? 'Seguindo' : 'Seguir'}
                </button>
                <button
-                  onClick={() => navigate('/messages')}
-                  className="flex-1 py-3.5 bg-white text-blue-950 border border-gray-100 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-colors"
-               >
-                  Mensagem
+                   onClick={() => navigate('/app/messages')}
+                   className="flex-1 py-3.5 bg-white text-blue-950 border border-gray-100 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-colors"
+                >
+                   Mensagem
                </button>
             </div>
          </div>

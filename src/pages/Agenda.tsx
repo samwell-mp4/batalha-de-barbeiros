@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, ChevronRight, ChevronLeft, Plus, X, Zap, Bell, ShieldOff, Check, Scissors as ScissorsIcon, Star, Settings, Calendar, CalendarDays, Clock, Navigation, Trash2, Filter, Share2 } from 'lucide-react';
+import { User, ChevronRight, ChevronLeft, Plus, X, Zap, Bell, ShieldOff, Check, Scissors as ScissorsIcon, Star, Settings, Calendar, CalendarDays, Clock, Navigation, Trash2, Filter, Share2, QrCode, Copy, Loader2 } from 'lucide-react';
 import { api } from '../services/api';
 
 const getDatesRange = () => {
@@ -1410,25 +1410,7 @@ export default function Agenda() {
                               )}
 
                               {app.status === 'PAYMENT' && (
-                                <div className="flex flex-col space-y-4 bg-gray-50 p-4 rounded-3xl border border-gray-100">
-                                  <p className="text-[10px] text-orange-600 font-bold uppercase tracking-wider text-center">Fase de Pagamento Ativa</p>
-                                  <div className="bg-white text-blue-950 p-4 rounded-2xl text-center flex flex-col items-center border border-gray-100">
-                                    <div className="w-24 h-24 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-100 mb-2">
-                                      <Zap size={48} className="text-blue-600 animate-pulse" />
-                                    </div>
-                                    <p className="text-[9px] font-black uppercase text-blue-950">Chave Pix Copia e Cola:</p>
-                                    <code className="text-[7px] font-mono bg-gray-50 p-1.5 rounded border border-gray-100 block w-full select-all overflow-x-auto whitespace-nowrap mt-1 text-gray-500">00020126360014BR.GOV.BCB.PIX0114battlebarberpix</code>
-                                    <span className="text-[7px] font-bold text-gray-400 mt-1">Clique acima para copiar</span>
-                                  </div>
-                                  <button
-                                    onClick={() => {
-                                      alert('Pagamento enviado! Aguardando o barbeiro confirmar o recebimento na tela dele.');
-                                    }}
-                                    className="w-full py-4 bg-green-500 hover:bg-green-600 text-white rounded-2xl font-black text-[10px] uppercase italic tracking-widest shadow-md flex items-center justify-center space-x-2 active:scale-95 transition-transform"
-                                  >
-                                    <Check size={14} /> <span>Já realizei o pagamento</span>
-                                  </button>
-                                </div>
+                                <PaymentPixView appId={app.id} appPrice={app.price} />
                               )}
 
                               {app.status === 'COMPLETED' && (
@@ -1914,7 +1896,8 @@ export default function Agenda() {
 
                     {app.status === 'PAYMENT' && (
                       <div className="flex flex-col space-y-3 text-center">
-                        <p className="text-[10px] text-yellow-600 font-bold uppercase tracking-wider bg-yellow-50 py-3 rounded-2xl">Aguardando o cliente realizar o pagamento Pix e confirmar.</p>
+                        <p className="text-[10px] text-yellow-600 font-bold uppercase tracking-wider bg-yellow-50 py-3 rounded-2xl">Aguardando pagamento via PIX</p>
+                        <p className="text-xs text-gray-500">Valor: R$ {app.price},00 | Taxa: R$ 1,00 | Você recebe: R$ {Math.max(0, (app.price || 0) - 1)},00</p>
                         <button
                           onClick={async () => {
                             try {
@@ -2104,6 +2087,101 @@ export default function Agenda() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function PaymentPixView({ appId, appPrice }: { appId: string; appPrice: number }) {
+  const [pixData, setPixData] = useState<{ qrCodeBase64: string; copiaECola: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [paid, setPaid] = useState(false);
+
+  const generatePix = async () => {
+    setLoading(true);
+    try {
+      const result = await api.createPixPayment(appId);
+      if (result.error) {
+        alert('Erro ao gerar PIX: ' + result.error);
+      } else {
+        setPixData({ qrCodeBase64: result.mpQrCodeBase64, copiaECola: result.mpCopiaECola });
+      }
+    } catch (e: any) {
+      alert('Erro ao gerar PIX: ' + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyPix = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('Código PIX copiado!');
+    } catch {
+      alert('Clique no código para copiar manualmente');
+    }
+  };
+
+  return (
+    <div className="flex flex-col space-y-4 bg-gray-50 p-4 rounded-3xl border border-gray-100">
+      <p className="text-[10px] text-orange-600 font-bold uppercase tracking-wider text-center">
+        Fase de Pagamento Ativa
+      </p>
+
+      {!pixData ? (
+        <div className="text-center">
+          <p className="text-sm font-bold text-gray-900 mb-1">Total: R$ {appPrice},00</p>
+          <p className="text-[9px] text-gray-400 mb-4">Taxa de R$ 1,00 — Barbeiro recebe R$ {Math.max(0, appPrice - 1)},00</p>
+          <button
+            onClick={generatePix}
+            disabled={loading}
+            className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-[10px] uppercase italic tracking-widest shadow-md flex items-center justify-center space-x-2 active:scale-95 transition-transform"
+          >
+            {loading ? (
+              <><Loader2 size={14} className="animate-spin" /> <span>Gerando...</span></>
+            ) : (
+              <><QrCode size={14} /> <span>Pagar com PIX</span></>
+            )}
+          </button>
+        </div>
+      ) : (
+        <div className="bg-white text-blue-950 p-4 rounded-2xl text-center flex flex-col items-center border border-gray-100">
+          {pixData.qrCodeBase64 ? (
+            <img src={`data:image/png;base64,${pixData.qrCodeBase64}`} alt="QR Code PIX" className="w-40 h-40 mb-2" />
+          ) : (
+            <div className="w-40 h-40 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-100 mb-2">
+              <QrCode size={48} className="text-blue-600 animate-pulse" />
+            </div>
+          )}
+          <p className="text-[9px] font-black uppercase text-blue-950">PIX Copia e Cola</p>
+          <code
+            onClick={() => copyPix(pixData.copiaECola)}
+            className="text-[7px] font-mono bg-gray-50 p-1.5 rounded border border-gray-100 block w-full select-all overflow-x-auto whitespace-nowrap mt-1 text-gray-500 cursor-pointer hover:bg-gray-100"
+          >
+            {pixData.copiaECola}
+          </code>
+          <span className="text-[7px] font-bold text-gray-400 mt-1 flex items-center gap-1">
+            <Copy size={8} /> Clique para copiar
+          </span>
+        </div>
+      )}
+
+      {pixData && !paid && (
+        <button
+          onClick={() => {
+            setPaid(true);
+            alert('Pagamento enviado! Assim que o Mercado Pago confirmar, o status será atualizado automaticamente.');
+          }}
+          className="w-full py-4 bg-green-500 hover:bg-green-600 text-white rounded-2xl font-black text-[10px] uppercase italic tracking-widest shadow-md flex items-center justify-center space-x-2 active:scale-95 transition-transform"
+        >
+          <Check size={14} /> <span>Já realizei o pagamento</span>
+        </button>
+      )}
+
+      {paid && (
+        <p className="text-[9px] text-green-600 font-bold text-center">
+          ✅ Pagamento enviado! Aguardando confirmação...
+        </p>
+      )}
     </div>
   );
 }

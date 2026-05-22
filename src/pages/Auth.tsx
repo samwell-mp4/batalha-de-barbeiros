@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Scissors, Mail, Lock, MapPin, ChevronRight,
-  ChevronLeft, Check, Target, Rocket, ChevronDown, Clock
+  ChevronLeft, Check, Target, Rocket, ChevronDown, Clock,
+  Bell, Calendar, Trophy, MessageSquare, Heart, Star
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
@@ -85,6 +86,17 @@ export default function Auth() {
   const [isLocating, setIsLocating] = useState(false);
   const [states, setStates] = useState<{ sigla: string, nome: string }[]>([]);
   const [cities, setCities] = useState<string[]>([]);
+  const [notifications, setNotifications] = useState<{ id: number; icon: any; title: string; desc: string; color: string }[]>([]);
+  const [toastIdx, setToastIdx] = useState(0);
+
+  const TOASTS = [
+    { icon: Calendar, title: 'Novo Agendamento', desc: 'João Silva confirmou — Corte Degradê às 14h', color: 'text-emerald-600' },
+    { icon: Trophy, title: 'Desafio Recebido', desc: 'Corte Premium te desafiou para uma batalha 1x1!', color: 'text-amber-600' },
+    { icon: Heart, title: 'Novo Seguidor', desc: 'Maria Santos começou a seguir você', color: 'text-rose-600' },
+    { icon: MessageSquare, title: 'Mensagem Recebida', desc: 'Pedro Alves: "Tem horário amanhã às 10h?"', color: 'text-blue-600' },
+    { icon: Star, title: 'Avaliação Recebida', desc: 'Carlos Lima te avaliou com 5 estrelas ⭐', color: 'text-yellow-600' },
+    { icon: Bell, title: 'Lembrete', desc: 'Você tem um agendamento em 30 minutos!', color: 'text-violet-600' },
+  ];
 
   useEffect(() => {
     // Carregar Estados do IBGE
@@ -101,6 +113,16 @@ export default function Auth() {
         .then(data => setCities(data.map((c: any) => c.nome)));
     }
   }, [form.state]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const toast = TOASTS[toastIdx % TOASTS.length];
+      const id = Date.now();
+      setNotifications(prev => [...prev.slice(-2), { ...toast, id }]);
+      setToastIdx(i => i + 1);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [toastIdx]);
 
   const formatPhone = (value: string) => {
     if (!value) return value;
@@ -393,34 +415,34 @@ export default function Auth() {
   };
 
   const renderStepRole = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-black text-blue-950 font-orbitron uppercase tracking-tighter">Escolha seu Perfil</h2>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Como você deseja utilizar a plataforma?</p>
+    <div className="space-y-5">
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Escolha seu Perfil</h2>
+        <p className="text-sm text-gray-500 mt-1.5">Como você deseja usar a plataforma?</p>
       </div>
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-3">
         <button
           onClick={() => setForm({ ...form, role: 'CLIENT' })}
-          className={`p-8 rounded-[40px] border-4 transition-all flex items-center space-x-6 ${form.role === 'CLIENT' ? 'border-blue-600 bg-blue-50 shadow-2xl' : 'border-gray-100 bg-white opacity-60'}`}
+          className={`group p-5 rounded-2xl border-2 transition-all flex items-center gap-5 ${form.role === 'CLIENT' ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'}`}
         >
-          <div className={`w-20 h-20 rounded-3xl flex items-center justify-center ${form.role === 'CLIENT' ? 'bg-blue-600 text-white shadow-xl' : 'bg-gray-100 text-gray-400'}`}>
-            <User size={40} strokeWidth={2.5} />
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${form.role === 'CLIENT' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'bg-gray-100 text-gray-400 group-hover:bg-gray-200'}`}>
+            <User size={26} strokeWidth={2} />
           </div>
           <div className="text-left">
-            <h3 className="text-xl font-black text-blue-950 font-orbitron uppercase">Cliente</h3>
-            <p className="text-[10px] font-bold text-gray-400 uppercase">Encontrar profissionais e agendar serviços</p>
+            <h3 className="text-base font-semibold text-gray-900">Cliente</h3>
+            <p className="text-xs text-gray-500 mt-0.5">Encontrar profissionais e agendar serviços</p>
           </div>
         </button>
         <button
           onClick={() => setForm({ ...form, role: 'BARBER' })}
-          className={`p-8 rounded-[40px] border-4 transition-all flex items-center space-x-6 ${form.role === 'BARBER' ? 'border-blue-600 bg-blue-50 shadow-2xl' : 'border-gray-100 bg-white opacity-60'}`}
+          className={`group p-5 rounded-2xl border-2 transition-all flex items-center gap-5 ${form.role === 'BARBER' ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'}`}
         >
-          <div className={`w-20 h-20 rounded-3xl flex items-center justify-center ${form.role === 'BARBER' ? 'bg-blue-600 text-white shadow-xl' : 'bg-gray-100 text-gray-400'}`}>
-            <Scissors size={40} strokeWidth={2.5} />
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${form.role === 'BARBER' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'bg-gray-100 text-gray-400 group-hover:bg-gray-200'}`}>
+            <Scissors size={26} strokeWidth={2} />
           </div>
           <div className="text-left">
-            <h3 className="text-xl font-black text-blue-950 font-orbitron uppercase">Profissional</h3>
-            <p className="text-[10px] font-bold text-gray-400 uppercase">Gerenciar agenda e participar da liga</p>
+            <h3 className="text-base font-semibold text-gray-900">Profissional</h3>
+            <p className="text-xs text-gray-500 mt-0.5">Gerenciar agenda e participar da liga</p>
           </div>
         </button>
       </div>
@@ -428,77 +450,80 @@ export default function Auth() {
   );
 
   const renderStepBasic = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-black text-blue-950 font-orbitron uppercase tracking-tighter">Dados Pessoais</h2>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Suas informações básicas de contato</p>
+    <div className="space-y-5">
+      <div className="text-center mb-4">
+        <h2 className="text-2xl font-bold text-gray-900">Dados Pessoais</h2>
+        <p className="text-sm text-gray-500 mt-1.5">Suas informações de contato</p>
       </div>
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="relative">
-          <User className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-600" size={20} />
+          <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
-            placeholder="NOME COMPLETO"
+            placeholder="Nome completo"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full bg-gray-50 border-2 border-gray-100 rounded-[25px] py-6 pl-16 pr-6 font-black uppercase text-sm focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 placeholder-gray-400"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-4 pl-12 pr-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none text-gray-900 placeholder-gray-400"
           />
         </div>
         <div className="relative">
-          <div className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-600 font-bold text-sm">TEL</div>
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">📞</div>
           <input
             type="tel"
             placeholder="(00) 00000-0000"
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: formatPhone(e.target.value) })}
             maxLength={15}
-            className="w-full bg-gray-50 border-2 border-gray-100 rounded-[25px] py-6 pl-16 pr-6 font-black uppercase text-sm focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 placeholder-gray-400"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-4 pl-12 pr-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none text-gray-900 placeholder-gray-400"
           />
         </div>
         <div className="relative">
-          <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-600" size={20} />
+          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="email"
-            placeholder="EMAIL DE CONTATO"
+            placeholder="Seu e-mail"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className="w-full bg-gray-50 border-2 border-gray-100 rounded-[25px] py-6 pl-16 pr-6 font-black uppercase text-sm focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 placeholder-gray-400"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-4 pl-12 pr-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none text-gray-900 placeholder-gray-400"
           />
         </div>
         <div className="relative">
-          <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-600" size={20} />
+          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="password"
-            placeholder="CRIAR SENHA"
+            placeholder="Criar senha"
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
-            className="w-full bg-gray-50 border-2 border-gray-100 rounded-[25px] py-6 pl-16 pr-6 font-black uppercase text-sm focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 placeholder-gray-400"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-4 pl-12 pr-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none text-gray-900 placeholder-gray-400"
           />
+          {form.password.length > 0 && form.password.length < 6 && (
+            <p className="text-xs text-amber-600 mt-1.5 ml-1">Mínimo de 6 caracteres</p>
+          )}
         </div>
       </div>
     </div>
   );
 
   const renderStepLocation = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-black text-blue-950 font-orbitron uppercase tracking-tighter">Localização</h2>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Onde você quer encontrar um barbeiro? </p>
+    <div className="space-y-5">
+      <div className="text-center mb-4">
+        <h2 className="text-2xl font-bold text-gray-900">Localização</h2>
+        <p className="text-sm text-gray-500 mt-1.5">Onde você quer encontrar um barbeiro?</p>
       </div>
-      <div className="space-y-4 mb-6">
-        <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-3 mb-4">
+        <div className="grid grid-cols-2 gap-3">
           <div className="relative">
             <select
               value={form.state}
               onChange={(e) => setForm({ ...form, state: e.target.value, city: '' })}
-              className="w-full bg-gray-50 border-2 border-gray-100 rounded-[20px] py-4 px-6 font-black uppercase text-[10px] focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 appearance-none"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none text-gray-900 appearance-none"
             >
-              <option value="">ESTADO (UF)</option>
+              <option value="">Estado (UF)</option>
               {states.map(s => (
                 <option key={s.sigla} value={s.sigla}>{s.nome}</option>
               ))}
             </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
               <ChevronDown size={14} />
             </div>
           </div>
@@ -508,14 +533,14 @@ export default function Auth() {
               value={form.city}
               onChange={(e) => setForm({ ...form, city: e.target.value })}
               disabled={!form.state}
-              className="w-full bg-gray-50 border-2 border-gray-100 rounded-[20px] py-4 px-6 font-black uppercase text-[10px] focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 appearance-none disabled:opacity-50"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none text-gray-900 appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <option value="">CIDADE</option>
+              <option value="">Cidade</option>
               {cities.map(c => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
               <ChevronDown size={14} />
             </div>
           </div>
@@ -524,34 +549,34 @@ export default function Auth() {
         <div className="relative">
           <input
             type="text"
-            placeholder="SEU BAIRRO"
+            placeholder="Seu bairro"
             value={form.neighborhood}
             onChange={(e) => setForm({ ...form, neighborhood: e.target.value })}
-            className="w-full bg-gray-50 border-2 border-gray-100 rounded-[20px] py-4 px-6 font-black uppercase text-xs focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 placeholder-gray-400"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none text-gray-900 placeholder-gray-400"
           />
         </div>
 
         {form.role === 'BARBER' && (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-3">
             <input
               type="text"
-              placeholder="ENDEREÇO / RUA"
+              placeholder="Endereço / Rua"
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
-              className="col-span-2 w-full bg-gray-50 border-2 border-gray-100 rounded-[20px] py-4 px-6 font-black uppercase text-xs focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 placeholder-gray-400"
+              className="col-span-2 w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none text-gray-900 placeholder-gray-400"
             />
             <input
               type="text"
               placeholder="Nº"
               value={form.number}
               onChange={(e) => setForm({ ...form, number: e.target.value })}
-              className="col-span-1 w-full bg-gray-50 border-2 border-gray-100 rounded-[20px] py-4 px-6 font-black uppercase text-xs focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 placeholder-gray-400"
+              className="col-span-1 w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none text-gray-900 placeholder-gray-400"
             />
           </div>
         )}
       </div>
-      <div className="relative rounded-[32px] overflow-hidden border border-gray-100 shadow-xl bg-white p-2">
-        <div style={{ height: '240px', width: '100%' }} className="rounded-[24px] overflow-hidden z-0">
+      <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+        <div style={{ height: '220px', width: '100%' }} className="rounded-xl overflow-hidden z-0">
           <MapContainer 
             center={[form.latitude, form.longitude]} 
             zoom={16} 
@@ -568,26 +593,26 @@ export default function Auth() {
             />
           </MapContainer>
         </div>
-        <div className="p-4 flex items-center justify-between bg-gray-50/50 rounded-b-[24px] border-t border-gray-100">
+        <div className="p-3 flex items-center justify-between bg-gray-50 border-t border-gray-100">
           <div className="flex flex-col text-left">
-            <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest">Coordenadas QG</span>
-            <p className="text-[9px] font-black text-blue-950 uppercase tracking-wider">
+            <span className="text-xs text-gray-400">Coordenadas</span>
+            <p className="text-sm font-medium text-gray-700">
               {form.latitude.toFixed(5)}, {form.longitude.toFixed(5)}
             </p>
           </div>
           <button
             onClick={detectLocation}
             disabled={isLocating}
-            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center space-x-1 active:scale-95 transition-transform shadow-md shadow-blue-100"
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl text-xs font-medium transition-all shadow-sm flex items-center gap-1.5"
           >
             {isLocating ? (
               <>
-                <div className="w-2.5 h-2.5 border border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 <span>Buscando...</span>
               </>
             ) : (
               <>
-                <MapPin size={10} />
+                <MapPin size={12} />
                 <span>Minha Posição</span>
               </>
             )}
@@ -598,60 +623,60 @@ export default function Auth() {
   );
 
   const renderStepSocial = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-black text-blue-950 font-orbitron italic uppercase tracking-tighter">Conexões de Elite</h2>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Suas redes para atrair novos desafios</p>
+    <div className="space-y-5">
+      <div className="text-center mb-4">
+        <h2 className="text-2xl font-bold text-gray-900">Redes Profissionais</h2>
+        <p className="text-sm text-gray-500 mt-1.5">Conecte suas redes para atrair clientes</p>
       </div>
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="relative">
-          <Target className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-600" size={20} />
+          <Target className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
-            placeholder="NOME DA SUA BARBEARIA"
+            placeholder="Nome da sua barbearia"
             value={form.barberShop}
             onChange={(e) => setForm({ ...form, barberShop: e.target.value })}
-            className="w-full bg-gray-50 border-2 border-gray-100 rounded-[25px] py-6 pl-16 pr-6 font-black uppercase text-sm focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 placeholder-gray-400"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-4 pl-12 pr-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none text-gray-900 placeholder-gray-400"
           />
         </div>
         <div className="relative">
-          <div className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-600 font-bold text-lg">@</div>
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-base font-medium">@</div>
           <input
             type="text"
-            placeholder="INSTAGRAM (EX: SEUNOME)"
+            placeholder="Instagram (ex: seu_nome)"
             value={form.instagram}
             onChange={(e) => setForm({ ...form, instagram: e.target.value.toLowerCase().replace('@', '') })}
-            className="w-full bg-gray-50 border-2 border-gray-100 rounded-[25px] py-6 pl-16 pr-6 font-black uppercase text-sm focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 placeholder-gray-400"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-4 pl-12 pr-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none text-gray-900 placeholder-gray-400"
           />
           {form.instagram.length > 2 && (
-            <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center space-x-2 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 animate-pulse">
-              <div className="w-4 h-4 bg-blue-600 rounded-full animate-spin border-2 border-white border-t-transparent" />
-              <span className="text-[8px] font-black text-blue-600 uppercase">Validando @{form.instagram}</span>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+              <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <span className="text-[10px] font-medium text-blue-600">Validando @{form.instagram}</span>
             </div>
           )}
         </div>
         {form.instagram.length > 3 && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-4 rounded-3xl border border-blue-50 shadow-sm flex items-center space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 rounded-full p-0.5">
-              <div className="w-full h-full bg-white rounded-full p-0.5">
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 p-[2px] flex-shrink-0">
+              <div className="w-full h-full bg-white rounded-full p-[2px]">
                 <img src={`https://unavatar.io/instagram/${form.instagram}`} className="w-full h-full rounded-full object-cover" onError={(e: any) => e.target.src = 'https://ui-avatars.com/api/?name=' + form.instagram} alt="profile" />
               </div>
             </div>
             <div>
-              <p className="text-[10px] font-black text-blue-950 uppercase tracking-tighter">@{form.instagram}</p>
-              <p className="text-[8px] font-bold text-gray-400 uppercase">Perfil Detectado na Rede</p>
+              <p className="text-sm font-medium text-gray-900">@{form.instagram}</p>
+              <p className="text-xs text-gray-400">Perfil detectado</p>
             </div>
           </motion.div>
         )}
         <div className="relative">
-          <div className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-600 font-bold text-sm">WPP</div>
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-base font-medium">💬</div>
           <input
             type="text"
             placeholder="(00) 00000-0000"
             value={form.whatsapp}
             onChange={(e) => setForm({ ...form, whatsapp: formatPhone(e.target.value) })}
             maxLength={15}
-            className="w-full bg-gray-50 border-2 border-gray-100 rounded-[25px] py-6 pl-16 pr-6 font-black uppercase text-sm focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 placeholder-gray-400"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-4 pl-12 pr-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none text-gray-900 placeholder-gray-400"
           />
         </div>
       </div>
@@ -659,29 +684,27 @@ export default function Auth() {
   );
 
   const renderStepProfessional = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-4">
-        <h2 className="text-3xl font-black text-blue-950 font-orbitron uppercase tracking-tighter">Especialidades</h2>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Selecione suas habilidades ({form.specialties.length})</p>
+    <div className="space-y-5">
+      <div className="text-center mb-3">
+        <h2 className="text-2xl font-bold text-gray-900">Especialidades</h2>
+        <p className="text-sm text-gray-500 mt-1.5">Selecione suas habilidades ({form.specialties.length})</p>
       </div>
 
       {/* Categorias - Paginadas/Slider */}
-      <div className="flex space-x-2 overflow-x-auto no-scrollbar pb-4 scroll-smooth">
-        <div className="flex space-x-2 min-w-max px-1">
-          {Object.keys(allServices).map(category => (
-            <button
-              key={category}
-              onClick={() => setActiveServiceTab(category)}
-              className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${activeServiceTab === category ? 'bg-blue-600 text-white shadow-lg' : 'bg-white border border-gray-100 text-gray-400'}`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
+      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-3 scroll-smooth">
+        {Object.keys(allServices).map(category => (
+          <button
+            key={category}
+            onClick={() => setActiveServiceTab(category)}
+            className={`px-4 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap ${activeServiceTab === category ? 'bg-blue-600 text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-300'}`}
+          >
+            {category}
+          </button>
+        ))}
       </div>
 
       {/* Lista de Serviços por Categoria */}
-      <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-2 no-scrollbar border-y border-gray-50 py-4">
+      <div className="grid grid-cols-1 gap-1.5 max-h-[260px] overflow-y-auto pr-1 no-scrollbar border-y border-gray-100 py-3">
         {(allServices as any)[activeServiceTab].map((spec: string) => (
           <button
             key={spec}
@@ -692,41 +715,41 @@ export default function Auth() {
                 setForm({ ...form, specialties: [...form.specialties, spec] });
               }
             }}
-            className={`flex items-center justify-between p-5 rounded-[25px] font-bold text-xs uppercase transition-all ${form.specialties.includes(spec) ? 'bg-blue-50 border-2 border-blue-600 text-blue-950' : 'bg-gray-50 border-2 border-transparent text-gray-400'}`}
+            className={`flex items-center justify-between p-3.5 rounded-xl text-sm transition-all ${form.specialties.includes(spec) ? 'bg-blue-50 border border-blue-200 text-gray-900' : 'bg-gray-50 border border-transparent text-gray-500 hover:bg-gray-100'}`}
           >
-            <span className="text-left leading-tight">{spec}</span>
-            <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${form.specialties.includes(spec) ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200'}`}>
-              {form.specialties.includes(spec) && <Check size={14} strokeWidth={4} />}
+            <span className="text-left">{spec}</span>
+            <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${form.specialties.includes(spec) ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200'}`}>
+              {form.specialties.includes(spec) && <Check size={12} strokeWidth={3} />}
             </div>
           </button>
         ))}
       </div>
 
       {/* Horário de Funcionamento Semanal */}
-      <div className="mt-8">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><Clock size={20} /></div>
+      <div className="pt-2">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Clock size={18} /></div>
           <div>
-            <h3 className="text-sm font-black text-blue-950 uppercase italic tracking-tight">Horários de Atendimento</h3>
-            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Defina sua jornada semanal</p>
+            <h3 className="text-sm font-semibold text-gray-900">Horários de Atendimento</h3>
+            <p className="text-xs text-gray-500">Defina sua jornada semanal</p>
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2">
           {Object.entries(form.schedule).map(([day, data]: [string, any]) => (
-            <div key={day} className={`p-4 rounded-[25px] border-2 transition-all flex items-center justify-between ${data.active ? 'bg-white border-blue-100 shadow-sm' : 'bg-gray-50 border-transparent opacity-60'}`}>
-              <div className="flex items-center space-x-4">
+            <div key={day} className={`p-3 rounded-xl border transition-all flex items-center justify-between ${data.active ? 'bg-white border-gray-200 shadow-sm' : 'bg-gray-50 border-transparent opacity-55'}`}>
+              <div className="flex items-center gap-3">
                 <button
                   onClick={() => setForm({
                     ...form,
                     schedule: { ...form.schedule, [day]: { ...data, active: !data.active } }
                   })}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${data.active ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-white border border-gray-200 text-gray-300'}`}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${data.active ? 'bg-blue-600 text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-300'}`}
                 >
-                  <span className="text-[10px] font-black">{day}</span>
+                  <span className="text-[9px] font-semibold">{day}</span>
                 </button>
                 {data.active ? (
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-1.5">
                     <input
                       type="text"
                       value={data.start}
@@ -734,9 +757,9 @@ export default function Auth() {
                         ...form,
                         schedule: { ...form.schedule, [day]: { ...data, start: e.target.value } }
                       })}
-                      className="w-16 bg-gray-50 border-none rounded-lg py-1 px-2 text-[10px] font-black text-center text-blue-950"
+                      className="w-14 bg-gray-50 border border-gray-200 rounded-lg py-1 px-1.5 text-xs text-center text-gray-700"
                     />
-                    <span className="text-[10px] font-bold text-gray-300">às</span>
+                    <span className="text-xs text-gray-300">às</span>
                     <input
                       type="text"
                       value={data.end}
@@ -744,173 +767,405 @@ export default function Auth() {
                         ...form,
                         schedule: { ...form.schedule, [day]: { ...data, end: e.target.value } }
                       })}
-                      className="w-16 bg-gray-50 border-none rounded-lg py-1 px-2 text-[10px] font-black text-center text-blue-950"
+                      className="w-14 bg-gray-50 border border-gray-200 rounded-lg py-1 px-1.5 text-xs text-center text-gray-700"
                     />
                   </div>
                 ) : (
-                  <span className="text-[10px] font-black text-gray-300 uppercase italic">Fechado</span>
+                  <span className="text-xs text-gray-400 italic">Fechado</span>
                 )}
               </div>
-              {data.active && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
+              {data.active && <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />}
             </div>
           ))}
         </div>
       </div>
 
       <textarea
-        placeholder="BIO PROFISSIONAL / SLOGAN"
+        placeholder="Bio profissional / Slogan"
         value={form.bio}
         onChange={(e) => setForm({ ...form, bio: e.target.value })}
-        className="w-full bg-gray-50 border-2 border-gray-100 rounded-[25px] py-6 px-6 font-black uppercase text-[10px] focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none min-h-[80px] resize-none text-blue-950 placeholder-gray-400 mt-6"
+        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none min-h-[70px] resize-none text-gray-900 placeholder-gray-400"
       />
     </div>
   );
 
   const renderSuccess = () => (
-    <div className="text-center space-y-8">
-      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-32 h-32 bg-green-500 rounded-full flex items-center justify-center mx-auto text-white shadow-2xl shadow-green-200">
-        <Rocket size={60} strokeWidth={3} />
+    <div className="text-center space-y-6">
+      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center mx-auto text-white shadow-lg shadow-blue-200">
+        <Rocket size={40} strokeWidth={2.5} />
       </motion.div>
       <div>
-        <h2 className="text-4xl font-black text-blue-950 font-orbitron italic uppercase tracking-tighter">PRONTO PARA A GUERRA!</h2>
-        <p className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mt-4">Sua conta foi criada com sucesso na elite dos barbeiros.</p>
+        <h2 className="text-2xl font-bold text-gray-900">Conta Criada!</h2>
+        <p className="text-sm text-gray-500 mt-2">Sua conta foi criada com sucesso. Bem-vindo à arena!</p>
       </div>
       <button
-        onClick={() => navigate('/profile')}
-        className="w-full py-6 bg-blue-600 text-white rounded-[30px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center space-x-3"
+        onClick={() => navigate('/app/profile')}
+        className="w-full py-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2 shadow-sm"
       >
-        <span>ENTRAR NA ARENA</span>
-        <ChevronRight size={20} />
+        <span>Entrar no App</span>
+        <ChevronRight size={16} />
       </button>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* BACKGROUND DECORATION */}
-      <div className="absolute -top-20 -right-20 w-80 h-80 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
-
-      {/* MODO TOGGLE */}
-      <div className="flex bg-gray-100 p-1 rounded-2xl mb-8 relative z-10 w-full max-w-[300px]">
-        <button
-          onClick={() => setMode('login')}
-          className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'login' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400'}`}
-        >
-          Entrar
-        </button>
-        <button
-          onClick={() => setMode('register')}
-          className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${mode === 'register' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400'}`}
-        >
-          Criar Conta
-        </button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 relative overflow-hidden">
+      {/* BACKGROUND — clean */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 right-0 w-[700px] h-[700px] bg-gradient-to-bl from-blue-100/50 to-transparent rounded-full blur-3xl -translate-y-1/4 translate-x-1/4" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-violet-100/25 via-cyan-100/20 to-transparent rounded-full blur-3xl translate-y-1/4 -translate-x-1/4" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-r from-amber-100/10 to-rose-100/10 rounded-full blur-[120px]" />
+        <div className="absolute top-1/4 left-1/3 w-[300px] h-[300px] bg-gradient-to-br from-blue-50/30 to-transparent rounded-full blur-[80px]" />
+        <div className="absolute bottom-1/3 right-1/4 w-[200px] h-[200px] bg-gradient-to-tl from-emerald-50/20 to-transparent rounded-full blur-[60px]" />
       </div>
 
-      <div className="bg-white rounded-[60px] p-10 shadow-[0_40px_100px_rgba(0,0,0,0.08)] relative z-10 border border-gray-100 w-full max-w-md">
-        {loading && <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-50 rounded-[60px] flex items-center justify-center"><div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" /></div>}
+      <div className="relative z-10 min-h-screen flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-16 p-6 max-w-6xl mx-auto">
 
-        {mode === 'login' ? (
-          <div className="space-y-8">
-            <div className="text-center">
-              <h2 className="text-3xl font-black text-blue-950 font-orbitron uppercase tracking-tighter">Bem-vindo de Volta</h2>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Acesse sua conta na Arena</p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-[10px] font-black text-blue-950 uppercase tracking-widest ml-1 mb-2 block text-center">Digite seu E-mail</label>
-                <div className="relative">
-                  <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-600" size={20} />
-                  <input
-                    type="email"
-                    placeholder="EXEMPLO@EMAIL.COM"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="w-full bg-gray-50 border-2 border-gray-100 rounded-[30px] py-6 pl-16 pr-6 font-black uppercase text-[12px] focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 placeholder-gray-400"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black text-blue-950 uppercase tracking-widest ml-1 mb-2 block text-center">Digite sua Senha</label>
-                <div className="relative">
-                  <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-600" size={20} />
-                  <input
-                    type="password"
-                    placeholder="SUA SENHA DE ACESSO"
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    className="w-full bg-gray-50 border-2 border-gray-100 rounded-[30px] py-6 pl-16 pr-6 font-black uppercase text-[12px] focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all outline-none text-blue-950 placeholder-gray-400"
-                  />
-                </div>
-              </div>
-            </div>
-
+        {/* LEFT COLUMN — AUTH */}
+        <div className="flex flex-col items-center w-full max-w-md">
+          {/* MODO TOGGLE */}
+          <div className="flex bg-white border border-gray-200 p-1 rounded-xl mb-6 w-full max-w-[280px] shadow-sm">
             <button
-              onClick={handleLogin}
-              disabled={loading}
-              className="w-full py-6 bg-blue-600 text-white rounded-[30px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center space-x-3"
+              onClick={() => setMode('login')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'login' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
-              <span>Acessar Arena</span>
-              <Rocket size={20} />
+              Entrar
+            </button>
+            <button
+              onClick={() => setMode('register')}
+              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'register' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Criar Conta
             </button>
           </div>
-        ) : (
-          <>
-            {step !== 'success' && (
-              <div className="flex items-center justify-between mb-12">
-                <button
-                  onClick={handleBack}
-                  disabled={step === 'role'}
-                  className={`p-4 rounded-2xl bg-gray-50 text-blue-950 transition-all ${step === 'role' ? 'opacity-0' : 'opacity-100 active:scale-95'}`}
-                >
-                  <ChevronLeft size={24} />
-                </button>
-                <div className="flex space-x-2">
-                  {['role', 'basic', 'location', form.role === 'BARBER' ? 'social' : null, form.role === 'BARBER' ? 'professional' : null].filter(Boolean).map((s, i) => (
-                    <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${step === s ? 'w-8 bg-blue-600 shadow-lg shadow-blue-100' : 'w-2 bg-gray-100'}`} />
-                  ))}
+
+          <div className="bg-white rounded-2xl p-8 shadow-lg shadow-gray-200/50 border border-gray-100 w-full">
+            {loading && <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-50 rounded-2xl flex items-center justify-center"><div className="w-8 h-8 border-[3px] border-blue-600/20 border-t-blue-600 rounded-full animate-spin" /></div>}
+
+            {mode === 'login' ? (
+              <div className="space-y-6">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                    <User size={22} className="text-white" />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">Bem-vindo de Volta</h2>
+                  <p className="text-sm text-gray-500 mt-1">Acesse sua conta</p>
                 </div>
-                <div className="w-12" />
-              </div>
-            )}
 
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={step}
-                initial={{ x: 20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: -20, opacity: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                {step === 'role' && renderStepRole()}
-                {step === 'basic' && renderStepBasic()}
-                {step === 'location' && renderStepLocation()}
-                {step === 'social' && renderStepSocial()}
-                {step === 'professional' && renderStepProfessional()}
-                {step === 'success' && renderSuccess()}
-              </motion.div>
-            </AnimatePresence>
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                      type="email"
+                      placeholder="Seu e-mail"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-4 pl-12 pr-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none text-gray-900 placeholder-gray-400"
+                    />
+                  </div>
 
-            {step !== 'success' && (
-              <div className="mt-12">
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                      type="password"
+                      placeholder="Sua senha"
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-4 pl-12 pr-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none text-gray-900 placeholder-gray-400"
+                    />
+                  </div>
+                </div>
+
                 <button
-                  onClick={handleNext}
-                  className="w-full py-6 bg-blue-600 text-white rounded-[30px] font-black uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center space-x-3"
+                  onClick={handleLogin}
+                  disabled={loading}
+                  className="w-full py-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-60"
                 >
-                  <span>{step === 'professional' || (step === 'location' && form.role === 'CLIENT') ? 'Finalizar Cadastro' : 'Próximo Passo'}</span>
-                  <ChevronRight size={20} />
+                  <span>Entrar</span>
+                  <Rocket size={16} />
                 </button>
-                <p className="text-center mt-6 text-[10px] font-bold text-gray-300 uppercase tracking-widest">Passo {step === 'role' ? 1 : step === 'basic' ? 2 : step === 'location' ? 3 : step === 'social' ? 4 : 5} de {form.role === 'BARBER' ? 5 : 3}</p>
               </div>
-            )}
-          </>
-        )}
-      </div>
+            ) : (
+              <>
+                {step !== 'success' && (
+                  <div className="flex items-center justify-between mb-8">
+                    <button
+                      onClick={handleBack}
+                      disabled={step === 'role'}
+                      className={`p-2.5 rounded-xl transition-all ${step === 'role' ? 'opacity-0 pointer-events-none' : 'opacity-100 hover:bg-gray-100 active:scale-95 text-gray-600'}`}
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <div className="flex gap-1.5">
+                      {['role', 'basic', 'location', form.role === 'BARBER' ? 'social' : null, form.role === 'BARBER' ? 'professional' : null].filter(Boolean).map((s, i) => (
+                        <div key={i} className={`h-2 rounded-full transition-all duration-500 ${step === s ? 'w-6 bg-blue-600 shadow-sm' : 'w-2 bg-gray-200'}`} />
+                      ))}
+                    </div>
+                    <div className="w-9" />
+                  </div>
+                )}
 
-      <div className="mt-12 text-center">
-        <p className="text-[10px] font-black text-blue-950/20 uppercase tracking-[0.4em] italic font-orbitron">Battle Barber League 2026</p>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={step}
+                    initial={{ x: 20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: -20, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {step === 'role' && renderStepRole()}
+                    {step === 'basic' && renderStepBasic()}
+                    {step === 'location' && renderStepLocation()}
+                    {step === 'social' && renderStepSocial()}
+                    {step === 'professional' && renderStepProfessional()}
+                    {step === 'success' && renderSuccess()}
+                  </motion.div>
+                </AnimatePresence>
+
+                {step !== 'success' && (
+                  <div className="mt-8">
+                    <button
+                      onClick={handleNext}
+                      className="w-full py-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2 shadow-sm"
+                    >
+                      <span>{step === 'professional' || (step === 'location' && form.role === 'CLIENT') ? 'Finalizar Cadastro' : 'Próximo Passo'}</span>
+                      <ChevronRight size={16} />
+                    </button>
+                    <p className="text-center mt-4 text-xs text-gray-400">Passo {step === 'role' ? 1 : step === 'basic' ? 2 : step === 'location' ? 3 : step === 'social' ? 4 : 5} de {form.role === 'BARBER' ? 5 : 3}</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="mt-6 text-center">
+            <p className="text-xs text-gray-300 tracking-wider font-orbitron">Battle Barber League 2026</p>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN — INTERACTIVE APP PREVIEW (desktop only) */}
+        <div className="hidden lg:flex flex-col w-full max-w-lg gap-6 relative">
+          {/* NOTIFICATION TOASTS */}
+          <div className="absolute -top-2 right-0 z-20 w-72 space-y-2">
+            <AnimatePresence>
+              {notifications.map((n, i) => (
+                <motion.div
+                  key={n.id}
+                  initial={{ opacity: 0, x: 60, scale: 0.95 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: 60, scale: 0.95 }}
+                  transition={{ duration: 0.4, ease: 'easeOut' }}
+                  className="bg-white rounded-xl shadow-lg border border-gray-100 p-3 flex items-start gap-3"
+                  style={{ zIndex: 20 - i }}
+                >
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${n.color.replace('text-', 'bg-').replace('600', '50')}`}>
+                    <n.icon size={16} className={n.color} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-gray-900">{n.title}</p>
+                    <p className="text-[11px] text-gray-500 truncate">{n.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+
+          {/* LIVE MAP — realistic city style */}
+          <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-lg bg-[#e3ded7] mt-10">
+            <div className="h-[420px] w-full relative">
+              <svg className="w-full h-full" viewBox="0 0 400 360" preserveAspectRatio="xMidYMid meet">
+                {/* Base terrain */}
+                <rect width="400" height="360" fill="#e3ded7" />
+
+                {/* Park / green area */}
+                <rect x="175" y="8" width="70" height="52" rx="6" fill="#c3d5b5" />
+                <rect x="18" y="200" width="50" height="40" rx="5" fill="#c8d8b8" />
+                <rect x="320" y="255" width="55" height="45" rx="5" fill="#c8d8b8" />
+                <rect x="230" y="290" width="38" height="30" rx="4" fill="#c8d8b8" />
+
+                {/* River */}
+                <path d="M0 310 Q60 295 120 308 T220 300 T320 312 T400 305 L400 360 L0 360 Z" fill="#bad7df" opacity="0.6" />
+                <path d="M0 315 Q60 300 120 313 T220 305 T320 317 T400 310" stroke="#9bc4cc" strokeWidth="1.5" fill="none" opacity="0.5" />
+
+                {/* Building blocks — residential */}
+                {[
+                  // Grid blocks — each rect is a "block" of buildings
+                  { x: 8, y: 10, w: 28, h: 24 }, { x: 42, y: 10, w: 32, h: 24 }, { x: 80, y: 10, w: 40, h: 24 },
+                  { x: 130, y: 10, w: 36, h: 24 }, { x: 256, y: 10, w: 34, h: 24 }, { x: 298, y: 10, w: 36, h: 24 }, { x: 342, y: 10, w: 48, h: 24 },
+                  { x: 8, y: 45, w: 28, h: 28 }, { x: 42, y: 45, w: 32, h: 28 }, { x: 80, y: 45, w: 40, h: 28 },
+                  { x: 130, y: 45, w: 36, h: 28 }, { x: 256, y: 45, w: 34, h: 28 }, { x: 298, y: 45, w: 36, h: 28 }, { x: 342, y: 45, w: 48, h: 28 },
+                  { x: 8, y: 88, w: 28, h: 30 }, { x: 42, y: 88, w: 32, h: 30 }, { x: 80, y: 88, w: 40, h: 30 },
+                  { x: 130, y: 88, w: 36, h: 30 }, { x: 256, y: 88, w: 34, h: 30 }, { x: 298, y: 88, w: 36, h: 30 }, { x: 342, y: 88, w: 48, h: 30 },
+                  { x: 8, y: 135, w: 28, h: 28 }, { x: 42, y: 135, w: 32, h: 28 },
+                  { x: 130, y: 135, w: 36, h: 28 }, { x: 256, y: 135, w: 34, h: 28 }, { x: 298, y: 135, w: 36, h: 28 },
+                  { x: 8, y: 175, w: 28, h: 24 }, { x: 42, y: 175, w: 32, h: 24 },
+                  { x: 130, y: 175, w: 36, h: 24 }, { x: 256, y: 175, w: 34, h: 24 }, { x: 298, y: 175, w: 36, h: 24 },
+                  { x: 342, y: 135, w: 48, h: 64 },
+                  { x: 8, y: 250, w: 28, h: 28 }, { x: 42, y: 250, w: 32, h: 28 }, { x: 80, y: 250, w: 40, h: 28 },
+                  { x: 130, y: 250, w: 36, h: 28 }, { x: 256, y: 250, w: 34, h: 28 }, { x: 298, y: 250, w: 36, h: 28 },
+                  { x: 80, y: 288, w: 40, h: 24 }, { x: 130, y: 288, w: 36, h: 24 },
+                  { x: 8, y: 288, w: 28, h: 24 }, { x: 42, y: 288, w: 32, h: 24 },
+                  { x: 298, y: 288, w: 36, h: 24 },
+                  { x: 342, y: 288, w: 48, h: 24 },
+                ].map((b, i) => (
+                  <rect key={`block${i}`} x={b.x} y={b.y} width={b.w} height={b.h} rx="3" fill="#dbd6cd" stroke="#d1ccc3" strokeWidth="0.5" />
+                ))}
+
+                {/* Major avenues - wide */}
+                <rect x="0" y="78" width="400" height="3" fill="#e8e4dc" />
+                <rect x="0" y="128" width="400" height="2.5" fill="#e8e4dc" />
+                <rect x="0" y="170" width="400" height="3" fill="#e8e4dc" />
+                <rect x="0" y="246" width="400" height="2.5" fill="#e8e4dc" />
+                <rect x="76" y="0" width="2.5" height="360" fill="#e8e4dc" />
+                <rect x="174" y="0" width="3" height="360" fill="#e8e4dc" />
+                <rect x="252" y="0" width="2.5" height="360" fill="#e8e4dc" />
+                <rect x="342" y="0" width="2" height="360" fill="#e8e4dc" />
+
+                {/* Minor streets - thin */}
+
+                {/* Horizontal minor streets */}
+                {[38, 120, 158, 210, 240, 280, 320, 335].map(y => (
+                  <rect key={`hstr${y}`} x="0" y={y} width="400" height="1" fill="rgba(255,255,255,0.35)" />
+                ))}
+
+                {/* Vertical minor streets */}
+                {[38, 120, 220, 295, 370].map(x => (
+                  <rect key={`vstr${x}`} x={x} y="0" width="1" height="360" fill="rgba(255,255,255,0.35)" />
+                ))}
+
+                {/* Diagonal road */}
+                <path d="M252 0 L400 130" stroke="#e8e4dc" strokeWidth="2" fill="none" />
+                <path d="M252 0 L400 130" stroke="rgba(255,255,255,0.2)" strokeWidth="0.8" fill="none" />
+
+                {/* Smaller inner blocks details */}
+                {[
+                  { x: 12, y: 14, w: 20, h: 6 }, { x: 12, y: 22, w: 7, h: 8 },
+                  { x: 48, y: 14, w: 22, h: 16 },
+                  { x: 86, y: 14, w: 10, h: 6 }, { x: 86, y: 22, w: 14, h: 8 }, { x: 104, y: 14, w: 12, h: 16 },
+                  { x: 136, y: 14, w: 14, h: 7 }, { x: 136, y: 23, w: 8, h: 7 },
+                  { x: 260, y: 14, w: 18, h: 6 }, { x: 260, y: 22, w: 10, h: 8 },
+                  { x: 304, y: 14, w: 12, h: 6 }, { x: 304, y: 22, w: 12, h: 8 },
+                  { x: 348, y: 14, w: 16, h: 8 }, { x: 368, y: 14, w: 12, h: 16 },
+                  // more building fills for realism
+                  { x: 12, y: 50, w: 8, h: 8 }, { x: 24, y: 50, w: 8, h: 12 },
+                  { x: 48, y: 50, w: 10, h: 6 }, { x: 62, y: 50, w: 8, h: 10 },
+                  { x: 86, y: 50, w: 12, h: 8 }, { x: 102, y: 50, w: 14, h: 6 },
+                  { x: 136, y: 50, w: 10, h: 6 }, { x: 136, y: 58, w: 10, h: 8 },
+                  { x: 260, y: 50, w: 12, h: 10 }, { x: 276, y: 50, w: 10, h: 6 },
+                  { x: 304, y: 50, w: 14, h: 8 }, { x: 348, y: 50, w: 14, h: 10 },
+                  { x: 12, y: 92, w: 10, h: 8 }, { x: 26, y: 92, w: 6, h: 12 },
+                  { x: 48, y: 92, w: 12, h: 6 }, { x: 64, y: 92, w: 8, h: 10 },
+                  { x: 86, y: 92, w: 14, h: 8 }, { x: 104, y: 92, w: 12, h: 6 },
+                  { x: 136, y: 92, w: 10, h: 8 }, { x: 150, y: 92, w: 10, h: 6 },
+                  { x: 260, y: 92, w: 14, h: 8 }, { x: 278, y: 92, w: 8, h: 10 },
+                  { x: 304, y: 92, w: 12, h: 8 }, { x: 320, y: 92, w: 8, h: 6 },
+                  { x: 348, y: 92, w: 16, h: 8 }, { x: 368, y: 92, w: 12, h: 10 },
+                  { x: 12, y: 140, w: 20, h: 8 }, { x: 48, y: 140, w: 14, h: 10 },
+                  { x: 136, y: 140, w: 12, h: 8 }, { x: 152, y: 140, w: 8, h: 10 },
+                  { x: 260, y: 140, w: 16, h: 8 }, { x: 304, y: 140, w: 12, h: 10 },
+                  { x: 12, y: 180, w: 12, h: 8 }, { x: 28, y: 180, w: 8, h: 6 },
+                  { x: 48, y: 180, w: 14, h: 8 }, { x: 66, y: 180, w: 6, h: 10 },
+                  { x: 136, y: 180, w: 14, h: 8 }, { x: 154, y: 180, w: 8, h: 6 },
+                  { x: 260, y: 180, w: 12, h: 8 }, { x: 276, y: 180, w: 10, h: 6 },
+                  { x: 304, y: 180, w: 14, h: 8 }, { x: 348, y: 180, w: 14, h: 10 },
+                  { x: 12, y: 255, w: 10, h: 8 }, { x: 26, y: 255, w: 6, h: 12 },
+                  { x: 48, y: 255, w: 12, h: 8 }, { x: 64, y: 255, w: 8, h: 10 },
+                  { x: 86, y: 255, w: 14, h: 8 }, { x: 104, y: 255, w: 12, h: 6 },
+                  { x: 136, y: 255, w: 10, h: 8 }, { x: 150, y: 255, w: 10, h: 6 },
+                  { x: 260, y: 255, w: 14, h: 8 }, { x: 278, y: 255, w: 8, h: 10 },
+                  { x: 304, y: 255, w: 12, h: 8 }, { x: 320, y: 255, w: 8, h: 6 },
+                ].map((b, i) => (
+                  <rect key={`bldg${i}`} x={b.x} y={b.y} width={b.w} height={b.h} rx="1.5" fill="#cdc8bf" stroke="#c5c0b7" strokeWidth="0.3" />
+                ))}
+
+                {/* Labels */}
+                <rect x="112" y="82" width="56" height="14" rx="4" fill="white" stroke="#d1d5db" strokeWidth="0.5" />
+                <text x="140" y="93" fill="#374151" fontSize="9" fontFamily="sans-serif" textAnchor="middle" fontWeight="bold">Centro</text>
+                <rect x="280" y="132" width="44" height="10" rx="3" fill="white" stroke="#d1d5db" strokeWidth="0.5" />
+                <text x="302" y="140" fill="#374151" fontSize="8" fontFamily="sans-serif" textAnchor="middle" fontWeight="bold">Asa Sul</text>
+                <rect x="20" y="230" width="36" height="10" rx="3" fill="white" stroke="#d1d5db" strokeWidth="0.5" />
+                <text x="38" y="238" fill="#374151" fontSize="8" fontFamily="sans-serif" textAnchor="middle" fontWeight="bold">Taguá</text>
+
+                {/* Barber pins - main */}
+                <circle cx="195" cy="105" r="34" fill="rgba(59,130,246,0.11)" stroke="rgba(59,130,246,0.35)" strokeWidth="2.5">
+                  <animate attributeName="r" values="34;42;34" dur="3s" repeatCount="indefinite" />
+                </circle>
+                <circle cx="195" cy="105" r="9" fill="#3b82f6" stroke="white" strokeWidth="3">
+                  <animate attributeName="r" values="9;10;9" dur="2s" repeatCount="indefinite" />
+                </circle>
+                <rect x="158" y="138" width="74" height="22" rx="5" fill="#3b82f6" />
+                <text x="195" y="154" fill="white" fontSize="9" fontFamily="sans-serif" textAnchor="middle" fontWeight="bold">BK ★ 4.9</text>
+
+                <circle cx="100" cy="195" r="28" fill="rgba(16,185,129,0.11)" stroke="rgba(16,185,129,0.35)" strokeWidth="2.5">
+                  <animate attributeName="r" values="28;35;28" dur="2.8s" repeatCount="indefinite" />
+                </circle>
+                <circle cx="100" cy="195" r="7" fill="#10b981" stroke="white" strokeWidth="3" />
+                <rect x="66" y="224" width="68" height="22" rx="5" fill="#10b981" />
+                <text x="100" y="239" fill="white" fontSize="8" fontFamily="sans-serif" textAnchor="middle" fontWeight="bold">Corte P ★ 5.0</text>
+
+                <circle cx="300" cy="155" r="26" fill="rgba(250,204,21,0.11)" stroke="rgba(250,204,21,0.35)" strokeWidth="2.5">
+                  <animate attributeName="r" values="26;32;26" dur="3.2s" repeatCount="indefinite" />
+                </circle>
+                <circle cx="300" cy="155" r="7" fill="#facc15" stroke="white" strokeWidth="3" />
+                <rect x="266" y="180" width="68" height="22" rx="5" fill="#facc15" />
+                <text x="300" y="195" fill="#374151" fontSize="8" fontFamily="sans-serif" textAnchor="middle" fontWeight="bold">Estilo ★ 4.7</text>
+
+                {/* Secondary pins */}
+                <circle cx="45" cy="60" r="20" fill="rgba(59,130,246,0.10)" stroke="rgba(59,130,246,0.3)" strokeWidth="2" />
+                <circle cx="45" cy="60" r="5" fill="#3b82f6" stroke="white" strokeWidth="2.5" />
+                <circle cx="350" cy="215" r="20" fill="rgba(59,130,246,0.10)" stroke="rgba(59,130,246,0.3)" strokeWidth="2" />
+                <circle cx="350" cy="215" r="5" fill="#3b82f6" stroke="white" strokeWidth="2.5" />
+                <circle cx="340" cy="285" r="20" fill="rgba(168,85,247,0.10)" stroke="rgba(168,85,247,0.3)" strokeWidth="2" />
+                <circle cx="340" cy="285" r="5" fill="#a855f7" stroke="white" strokeWidth="2.5" />
+              </svg>
+
+              {/* Overlay badges */}
+              <div className="absolute top-3 right-3 px-3 py-1.5 bg-blue-600 rounded-lg text-xs text-white font-bold shadow-md">EXPRESS</div>
+              <div className="absolute top-3 left-3 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
+                <span className="text-xs font-bold text-emerald-600">12 ONLINE</span>
+              </div>
+              <div className="absolute bottom-3 left-3 right-3 bg-white/90 backdrop-blur-sm rounded-xl px-4 py-3 border border-gray-200 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <MapPin size={16} className="text-blue-600" />
+                  <span className="text-sm text-gray-600"><span className="text-gray-900 font-bold">5 barbeiros</span> disponíveis próximo a você</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* DOWNLOAD */}
+          <div className="bg-white rounded-2xl p-5 shadow-lg shadow-gray-200/50 border border-gray-100">
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => navigate('/auth')}
+                className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-gray-900 hover:bg-gray-800 text-white transition-all active:scale-[0.98]"
+              >
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17.523 12.065c.012 2.42 2.127 3.226 2.15 3.237-.017.058-.336 1.154-1.11 2.285-.668.982-1.364 1.96-2.456 1.98-1.075.02-1.42-.637-2.647-.637s-1.603.617-2.614.657c-1.08.04-1.903-1.062-2.574-2.04-1.402-2.027-2.474-5.728-1.035-8.228.714-1.24 1.992-2.023 3.38-2.043 1.055-.02 2.05.708 2.695.708.643 0 1.85-.875 3.118-.746.531.021 2.02.214 2.977 1.614-.077.046-1.777 1.038-1.758 3.095m-2.007-5.927c.56-.677.937-1.618.834-2.555-.807.032-1.784.537-2.364 1.215-.52.604-.974 1.567-.851 2.492.9.07 1.82-.457 2.38-1.152"/>
+                  <path d="M11.645 0c.43.007 1.628.05 2.46.7.48.377.868.881 1.1 1.451.24.578.293 1.2.2 1.798h-.003a3.35 3.35 0 0 0-.03.12c-.63-.04-1.575-.25-2.256-.82-.65-.547-1.073-1.29-1.128-2.116a2.53 2.53 0 0 1 .133-.9c.158-.12.32-.23.523-.232z"/>
+                </svg>
+                <div className="text-left">
+                  <div className="text-[9px] text-gray-400 leading-tight">Baixar para</div>
+                  <div className="text-sm font-semibold leading-tight">Android</div>
+                </div>
+              </button>
+              <button
+                onClick={() => navigate('/auth')}
+                className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-gray-900 hover:bg-gray-800 text-white transition-all active:scale-[0.98]"
+              >
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current shrink-0" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                </svg>
+                <div className="text-left">
+                  <div className="text-[9px] text-gray-400 leading-tight">Baixar para</div>
+                  <div className="text-sm font-semibold leading-tight">iOS</div>
+                </div>
+              </button>
+            </div>
+            <p className="text-[10px] text-gray-400 text-center mt-3">PWA — Instalação direta pelo navegador</p>
+          </div>
+        </div>
       </div>
     </div>
   );

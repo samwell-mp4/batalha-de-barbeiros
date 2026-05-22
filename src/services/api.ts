@@ -269,4 +269,27 @@ export const api = {
     if (!res.ok) return [];
     return res.json();
   },
+
+  // PAYMENTS — Mercado Pago PIX
+  createPixPayment: async (appointmentId: string) => {
+    const res = await fetch(`${API_URL}/payments/create-pix`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ appointmentId }),
+    });
+    return res.json();
+  },
+  getPayment: async (appointmentId: string) => {
+    const res = await fetch(`${API_URL}/payments/${appointmentId}`);
+    if (!res.ok) return null;
+    return res.json();
+  },
+  updatePixKey: async (barberId: string, pixKey: string) => {
+    const res = await fetch(`${API_URL}/payments/barber-pix-key`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ barberId, pixKey }),
+    });
+    return res.json();
+  },
 };

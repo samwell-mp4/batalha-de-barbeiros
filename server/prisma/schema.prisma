@@ -40,6 +40,7 @@ model User {
   receivedMessages Message[] @relation("ReceivedMessages")
   matchLikes      MatchLike[]
   matchComments   MatchComment[]
+  payments       Payment[] @relation("ClientPayments")
 }
 
 enum Role {
@@ -68,11 +69,13 @@ model Barber {
   statsLosses   Int       @default(0)
   followersCount Int     @default(0)
   servicesConfig String?   @db.Text
-  
+  pixKey        String?
+
   // Relations
   appointments  Appointment[] @relation("BarberAppointments")
   posts         Post[]
   championships Championship[] @relation("BarberParticipants")
+  payments      Payment[] @relation("BarberPayments")
 }
 
 model Appointment {
@@ -92,6 +95,8 @@ model Appointment {
   latitude      Float?
   longitude     Float?
   createdAt     DateTime          @default(now())
+
+  payment       Payment?
 }
 
 enum AppointmentStatus {
@@ -103,6 +108,41 @@ enum AppointmentStatus {
   PAYMENT
   COMPLETED
   CANCELLED
+}
+
+// --- PAGAMENTOS ---
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REFUNDED
+  CANCELLED
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  appointmentId  String        @unique
+  appointment    Appointment   @relation(fields: [appointmentId], references: [id])
+  clientId       String
+  client         User          @relation("ClientPayments", fields: [clientId], references: [id])
+  barberId       String
+  barber         Barber        @relation("BarberPayments", fields: [barberId], references: [id])
+  amount         Float
+  fee            Float         @default(1.0)
+  barberAmount   Float
+  status         PaymentStatus @default(PENDING)
+  mpPaymentId    Int?
+  mpQrCode       String?       @db.Text
+  mpQrCodeBase64 String?       @db.Text
+  mpCopiaECola   String?       @db.Text
+  pixKey         String?
+  barberPixKey   String?
+  mpTransferId   String?
+  transferStatus String?       @default("PENDING")
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 }
 
 // --- MAP & REAL-TIME ---

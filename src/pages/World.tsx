@@ -281,7 +281,7 @@ export default function World() {
                         {/* Feed Card Header */}
                         <div className="p-4 flex items-center justify-between">
                           <div 
-                            onClick={() => navigate(`/profile/${post.barberId}`)}
+                            onClick={() => navigate(`/app/profile/${post.barberId}`)}
                             className="flex items-center space-x-3 cursor-pointer"
                           >
                             <img 

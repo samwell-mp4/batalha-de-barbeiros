@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
+import Landing from './pages/Landing';
 import World from './pages/World';
 import MapPage from './pages/Map';
 import League from './pages/League';
@@ -7,13 +8,20 @@ import Agenda from './pages/Agenda';
 import Profile from './pages/Profile';
 import Auth from './pages/Auth';
 import Messages from './pages/Messages';
+import Financeiro from './pages/Financeiro';
+import Notificacoes from './pages/Notificacoes';
+import Seguranca from './pages/Seguranca';
+import Configuracoes from './pages/Configuracoes';
+import Aparencia from './pages/Aparencia';
+import Ajuda from './pages/Ajuda';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<Landing />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/" element={<Layout />}>
+        <Route path="/app" element={<Layout />}>
           <Route index element={<World />} />
           <Route path="map" element={<MapPage />} />
           <Route path="league" element={<League />} />
@@ -21,6 +29,12 @@ function App() {
           <Route path="profile" element={<Profile />} />
           <Route path="profile/:id" element={<Profile />} />
           <Route path="messages" element={<Messages />} />
+          <Route path="financeiro" element={<Financeiro />} />
+          <Route path="notificacoes" element={<Notificacoes />} />
+          <Route path="seguranca" element={<Seguranca />} />
+          <Route path="configuracoes" element={<Configuracoes />} />
+          <Route path="aparencia" element={<Aparencia />} />
+          <Route path="ajuda" element={<Ajuda />} />
         </Route>
       </Routes>
     </BrowserRouter>
