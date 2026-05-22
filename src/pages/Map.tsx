@@ -5,7 +5,7 @@ import L from 'leaflet';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { MOCK_BARBERS, STATUS } from '@/constants/mockData';
-import { MapPin, Star, Navigation, X, Share2, ChevronRight, Clock, CheckCircle2, Zap, Flame, Calendar, Trash2, LayoutGrid, Loader2, Eye, EyeOff, User, Camera, Scissors, Share, Plus, ChevronLeft, Radar, Check, DollarSign, QrCode, CalendarDays, List, Heart, MessageCircle, Info, CreditCard, Wallet, Swords, AlertTriangle } from 'lucide-react';
+import { MapPin, Star, Navigation, X, Share2, ChevronRight, Clock, CheckCircle2, Zap, Flame, Calendar, Trash2, LayoutGrid, Loader2, Eye, EyeOff, User, Camera, Scissors, Share, Plus, ChevronLeft, Radar, Check, DollarSign, QrCode, CalendarDays, List, Heart, MessageCircle, Info, CreditCard, Wallet, Swords, AlertTriangle, SlidersHorizontal, Search, Map } from 'lucide-react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 
 // Fix for default marker icons
@@ -161,6 +161,10 @@ export default function MapPage() {
   const [dbBarbers, setDbBarbers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [serviceFilter, setServiceFilter] = useState('ALL');
+  const [showFilterPopup, setShowFilterPopup] = useState(false);
+  const [citySearchQuery, setCitySearchQuery] = useState('');
+  const [searchedCities, setSearchedCities] = useState<any[]>([]);
+  const [citySearchLoading, setCitySearchLoading] = useState(false);
   
   // EVALUATION & PAYMENT STATE
   const [stars, setStars] = useState(0);
@@ -274,6 +278,7 @@ export default function MapPage() {
   // POLLING SYSTEM FOR LIVE MATCHMAKING
   useEffect(() => {
     let interval: any;
+    let barberInterval: any;
 
     const poll = async () => {
       // 1. BARBER RADAR POLLING: Fetch active Express & Queue requests within 5km of mapCenter
@@ -393,7 +398,24 @@ export default function MapPage() {
 
     poll();
     interval = setInterval(poll, 3500);
-    return () => clearInterval(interval);
+
+    // 3. BARBER LOCATIONS REFRESH every 15s to update status icons
+    const refreshBarbers = async () => {
+      try {
+        const data = await api.getBarberLocations();
+        if (data && data.length > 0) {
+          setDbBarbers(data);
+        }
+      } catch (e) {
+        // silent
+      }
+    };
+    barberInterval = setInterval(refreshBarbers, 15000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(barberInterval);
+    };
   }, [isBarberView, isRadarOpen, clientMode, matchSession?.status, currentAppointmentId, mapCenter, user?.id]);
 
   const fetchBarberLocations = async () => {
@@ -684,34 +706,90 @@ export default function MapPage() {
   }, [matchSession.globalAgenda, dbBarbers]);
 
   const filteredBarbers = useMemo(() => {
-    // Somente barbeiros reais do banco de dados para experiência real
-    const allBarbers = dbBarbers.map(b => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentDay = now.getDay(); // 0=Sun, 6=Sat
+    const globalAgenda = matchSession.globalAgenda || {};
+
+    const allBarbers = dbBarbers.map((b: any) => {
       const activeApps = b.appointments || [];
-      let currentStatus = b.isOnline ? STATUS.LIVRE : STATUS.FECHADO;
-      
-      if (b.isOnline) {
-        if (activeApps.some((a: any) => a.status === 'IN_SERVICE')) {
-          currentStatus = STATUS.TRABALHANDO;
-        } else if (activeApps.some((a: any) => a.status === 'CONFIRMED' || a.status === 'PENDING')) {
-          currentStatus = STATUS.ULTIMAS_VAGAS;
+
+      // 1. Check if in service right now
+      if (activeApps.some((a: any) => a.status === 'IN_SERVICE')) {
+        return {
+          id: b.id, name: b.user.name,
+          avatar: b.user.avatar || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=100&h=100&fit=crop',
+          coordinates: { latitude: b.latitude, longitude: b.longitude },
+          status: STATUS.TRABALHANDO, waitTime: 30, rating: 4.9
+        };
+      }
+
+      // 2. Check schedule/agenda to determine availability
+      let totalSlots = 0;
+      let filledSlots = 0;
+      let hasSchedule = false;
+
+      // Try schedule from barber's schedule JSON
+      if (b.schedule) {
+        try {
+          const schedule = JSON.parse(b.schedule);
+          Object.entries(schedule).forEach(([key, dayData]: [string, any]) => {
+            const dayNum = parseInt(key.split('_')[1]);
+            if (dayNum === currentDay && dayData.slots) {
+              hasSchedule = true;
+              dayData.slots.forEach((slot: any) => {
+                const slotHour = parseInt(slot.time);
+                if (slotHour >= currentHour) {
+                  totalSlots++;
+                  if (slot.status !== 'empty' && slot.status !== 'radar') filledSlots++;
+                }
+              });
+            }
+          });
+        } catch (e) { /* ignore */ }
+      }
+
+      // Fallback: check globalAgenda
+      if (!hasSchedule) {
+        const key = `${b.id}_${currentDay}`;
+        const dayData = globalAgenda[key];
+        if (dayData?.slots) {
+          hasSchedule = true;
+          dayData.slots.forEach((slot: any) => {
+            const slotHour = parseInt(slot.time);
+            if (slotHour >= currentHour) {
+              totalSlots++;
+              if (slot.status !== 'empty' && slot.status !== 'radar') filledSlots++;
+            }
+          });
         }
       }
 
+      // 3. Determine final status
+      let currentStatus: any;
+      if (!hasSchedule) {
+        currentStatus = b.isOnline ? STATUS.LIVRE : STATUS.FECHADO;
+      } else if (totalSlots === 0) {
+        currentStatus = STATUS.FECHADO;
+      } else if (filledSlots >= totalSlots) {
+        currentStatus = STATUS.LOTADO;
+      } else if (filledSlots > 0) {
+        currentStatus = STATUS.ULTIMAS_VAGAS;
+      } else {
+        currentStatus = STATUS.LIVRE;
+      }
+
       return {
-        id: b.id,
-        name: b.user.name,
+        id: b.id, name: b.user.name,
         avatar: b.user.avatar || 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=100&h=100&fit=crop',
         coordinates: { latitude: b.latitude, longitude: b.longitude },
-        status: currentStatus,
-        waitTime: currentStatus === STATUS.TRABALHANDO ? 30 : 0,
-        rating: 4.9
+        status: currentStatus, waitTime: currentStatus === STATUS.TRABALHANDO ? 30 : 0, rating: 4.9
       };
     });
 
-    // Se o banco estiver vazio, não mostra nada (ou apenas o usuário atual)
     return allBarbers.filter(b => {
       if (!b.coordinates?.latitude || !b.coordinates?.longitude) return false;
-      
+
       if (statusFilter === 'radar') {
         return radarBarbers.some((rb: any) => rb.id === b.id);
       }
@@ -719,12 +797,12 @@ export default function MapPage() {
       const isLivre = b.status?.id === STATUS.LIVRE.id;
       const isOcupado = b.status?.id === STATUS.TRABALHANDO.id;
       const isAcabando = isOcupado && b.waitTime <= 10;
-      
+
       let statusMatch = true;
       if (statusFilter === 'livre') statusMatch = isLivre;
       if (statusFilter === 'ocupado') statusMatch = isOcupado;
       if (statusFilter === 'acabando') statusMatch = isAcabando;
-      
+
       let serviceMatch = true;
       if (serviceFilter !== 'ALL') {
         const bAny = b as any;
@@ -733,7 +811,7 @@ export default function MapPage() {
 
       return statusMatch && serviceMatch;
     });
-  }, [statusFilter, radarBarbers, dbBarbers, serviceFilter]);
+  }, [statusFilter, radarBarbers, dbBarbers, serviceFilter, matchSession.globalAgenda]);
 
   const searchedBarbers = useMemo(() => {
     if (!searchQuery.trim()) return [];
@@ -754,6 +832,22 @@ export default function MapPage() {
       return text.includes(query);
     });
   }, [searchQuery, dbBarbers]);
+
+  useEffect(() => {
+    if (!citySearchQuery || citySearchQuery.length < 2) {
+      setSearchedCities([]);
+      return;
+    }
+    let cancelled = false;
+    setCitySearchLoading(true);
+    api.searchCities(citySearchQuery).then((res) => {
+      if (!cancelled) {
+        setSearchedCities(res || []);
+        setCitySearchLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [citySearchQuery]);
 
   const activeBarberCoords = useMemo(() => {
     if (!matchSession?.activeMatch?.barberId) return null;
@@ -809,7 +903,7 @@ export default function MapPage() {
   }, [selectedBookingDate, matchSession.globalAgenda, selectedBarber, selectedBarberAppointments]);
 
   return (
-    <div className="flex flex-col w-full h-full bg-[#f8fafc] font-inter overflow-hidden relative" style={{ height: 'calc(100vh - 6rem)' }}>
+    <div className="flex flex-col w-full h-full bg-[#f8fafc] font-inter overflow-hidden relative">
       {loading && <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-[999] flex items-center justify-center"><div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" /></div>}
       <style>{`
         .leaflet-container {
@@ -839,29 +933,30 @@ export default function MapPage() {
       {/* FILTROS FLUTUANTES E BUSCA */}
       <div className="absolute top-4 left-0 right-0 z-[1000] pointer-events-none flex flex-col items-center space-y-2">
         <div className="w-full max-w-2xl px-6 pointer-events-auto relative">
-          <div className="bg-white/95 backdrop-blur-xl p-2 rounded-[22px] shadow-2xl border border-white/20 flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 relative z-10">
+          <div className="bg-white/95 backdrop-blur-xl p-2 rounded-[22px] shadow-2xl border border-white/20 flex items-center space-x-2 relative z-10">
             <div className="flex-1 flex items-center bg-gray-50 rounded-xl px-3 border border-gray-100">
-               <input 
-                  type="text" 
-                  placeholder="Buscar Barbeiro, Barbearia, Cidade..." 
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full bg-transparent border-none py-2.5 text-[11px] font-bold text-blue-950 focus:outline-none placeholder-gray-400"
-               />
+              <Search size={14} className="text-gray-400 mr-2 shrink-0" />
+              <input 
+                type="text" 
+                placeholder="Buscar barbeiro..." 
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full bg-transparent border-none py-2.5 text-[11px] font-bold text-blue-950 focus:outline-none placeholder-gray-400"
+              />
             </div>
-            <select 
-               value={serviceFilter}
-               onChange={e => setServiceFilter(e.target.value)}
-               className="bg-gray-50 rounded-xl border border-gray-100 py-2.5 px-3 text-[11px] font-bold text-blue-950 focus:outline-none outline-none appearance-none cursor-pointer"
+            <button
+              onClick={() => setShowFilterPopup(true)}
+              className={`flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${serviceFilter !== 'ALL' || citySearchQuery ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
             >
-               <option value="ALL">Todos os Serviços</option>
-               {['Cabelo', 'Barba', 'Fade', 'Navalhado', 'Pigmentação', 'Sobrancelha', 'Platinado', 'Luzes', 'Freestyle', 'Pézinho'].map(s => (
-                 <option key={s} value={s}>{s}</option>
-               ))}
-            </select>
+              <SlidersHorizontal size={14} />
+              <span>Filtros</span>
+              {(serviceFilter !== 'ALL' || citySearchQuery) && (
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              )}
+            </button>
           </div>
 
-          {/* SEARCH DROPDOWN */}
+          {/* SEARCH DROPDOWN (barbers) */}
           <AnimatePresence>
             {searchQuery.trim() && (
               <motion.div 
@@ -902,7 +997,7 @@ export default function MapPage() {
                   ))
                 ) : (
                   <div className="p-6 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    Nenhum resultado encontrado.
+                    Nenhum barbeiro encontrado.
                   </div>
                 )}
               </motion.div>
@@ -910,37 +1005,191 @@ export default function MapPage() {
           </AnimatePresence>
         </div>
 
+        {/* STATUS FILTER TABS */}
         <div className="w-full pointer-events-auto overflow-x-auto no-scrollbar py-1 px-6 flex justify-center">
           <motion.div 
             initial={{ y: -20, opacity: 0 }} 
             animate={{ y: 0, opacity: 1 }} 
-            className="flex bg-white/95 backdrop-blur-xl p-1.5 rounded-[22px] shadow-2xl border border-white/20 space-x-1 min-w-max"
+            className="flex bg-white/95 backdrop-blur-xl p-1 rounded-2xl shadow-2xl border border-white/20 space-x-0.5 min-w-max"
           >
             {[
-              { id: 'all', label: 'Todos', icon: LayoutGrid },
-              { id: 'radar', label: 'Radar', icon: Zap },
-              { id: 'livre', label: 'Disponíveis', icon: CheckCircle2 },
-              { id: 'ocupado', label: 'Ocupados', icon: Clock },
-              { id: 'acabando', label: 'Finalizando', icon: Flame }
+              { id: 'all', label: 'Todos', icon: LayoutGrid, color: '#64748b', count: filteredBarbers.length },
+              { id: 'radar', label: 'Radar', icon: Zap, color: '#8b5cf6', count: radarBarbers.length },
+              { id: 'livre', label: 'Disponíveis', icon: CheckCircle2, color: '#22c55e', count: filteredBarbers.filter(b => b.status?.id === STATUS.LIVRE.id).length },
+              { id: 'ocupado', label: 'Em Corte', icon: Clock, color: '#3b82f6', count: filteredBarbers.filter(b => b.status?.id === STATUS.TRABALHANDO.id).length },
+              { id: 'acabando', label: 'Finalizando', icon: Flame, color: '#eab308', count: filteredBarbers.filter(b => b.status?.id === STATUS.TRABALHANDO.id && b.waitTime <= 10).length },
             ].map(filter => (
               <button
                 key={filter.id}
                 onClick={() => setStatusFilter(filter.id as any)}
-                className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all active:scale-95 shrink-0 ${statusFilter === filter.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-gray-500 hover:bg-gray-50'}`}
+                className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl transition-all active:scale-95 shrink-0 ${
+                  statusFilter === filter.id
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-100'
+                    : 'text-gray-500 hover:bg-gray-50'
+                }`}
               >
-                <filter.icon size={14} fill={statusFilter === filter.id ? 'white' : 'none'} />
-                <span className="text-[10px] font-black uppercase tracking-widest">{filter.label}</span>
+                <filter.icon size={13} fill={statusFilter === filter.id ? 'white' : 'none'} />
+                <span className="text-[9px] font-black uppercase tracking-widest">{filter.label}</span>
+                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md ${
+                  statusFilter === filter.id
+                    ? 'bg-white/20 text-white'
+                    : 'bg-gray-100 text-gray-400'
+                }`}>
+                  {filter.count}
+                </span>
               </button>
             ))}
           </motion.div>
         </div>
       </div>
 
-      <div className="absolute top-32 right-4 z-[1000] flex flex-col space-y-2">
+      {/* FILTER POPUP */}
+      <AnimatePresence>
+        {showFilterPopup && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[3000]"
+              onClick={() => setShowFilterPopup(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm z-[4000] bg-white rounded-[40px] p-6 shadow-2xl border border-gray-100"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-black text-blue-950 uppercase italic tracking-tight">Filtros</h3>
+                <button onClick={() => setShowFilterPopup(false)} className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:bg-gray-100 transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* LOCALIZAÇÃO */}
+              <div className="mb-6">
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center space-x-2">
+                  <Map size={12} />
+                  <span>Localização</span>
+                </h4>
+                <div className="relative">
+                  <MapPin size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar cidade..."
+                    value={citySearchQuery}
+                    onChange={e => setCitySearchQuery(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-3 pl-10 pr-4 text-xs font-bold text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder-gray-400"
+                  />
+                </div>
+
+                {/* CITY SEARCH RESULTS */}
+                {citySearchQuery.length >= 2 && (
+                  <div className="mt-2 max-h-48 overflow-y-auto no-scrollbar space-y-1">
+                    {citySearchLoading ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader2 size={18} className="animate-spin text-blue-600" />
+                      </div>
+                    ) : searchedCities.length > 0 ? (
+                      searchedCities.map((c: any) => (
+                        <button
+                          key={c.id}
+                          onClick={() => {
+                            if (c.latitude && c.longitude) {
+                              setMapCenter([c.latitude, c.longitude]);
+                              setCitySearchQuery('');
+                              setSearchedCities([]);
+                              setShowFilterPopup(false);
+                            }
+                          }}
+                          disabled={!c.latitude || !c.longitude}
+                          className="w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl hover:bg-blue-50 transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                            <MapPin size={14} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-black text-blue-950 uppercase tracking-tight truncate">{c.name}</p>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-[9px] font-bold text-gray-400">{c.state.sigla}</span>
+                              <span className="text-[9px] font-bold text-gray-300">{c.barbers_count} barbeiros</span>
+                            </div>
+                          </div>
+                          {c.latitude && c.longitude && (
+                            <div className="text-[9px] font-black text-blue-600 bg-blue-50 px-2.5 py-1.5 rounded-xl uppercase tracking-widest shrink-0">
+                              Ir
+                            </div>
+                          )}
+                        </button>
+                      ))
+                    ) : (
+                      <p className="text-center py-4 text-[10px] font-bold text-gray-400">Nenhuma cidade encontrada</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* SERVIÇOS */}
+              <div className="mb-2">
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center space-x-2">
+                  <Scissors size={12} />
+                  <span>Tipo de Serviço</span>
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: 'ALL', label: 'Todos' },
+                    { value: 'Cabelo', label: 'Cabelo' },
+                    { value: 'Barba', label: 'Barba' },
+                    { value: 'Fade', label: 'Fade' },
+                    { value: 'Navalhado', label: 'Navalhado' },
+                    { value: 'Pigmentação', label: 'Pigment' },
+                    { value: 'Sobrancelha', label: 'Sobrancelha' },
+                    { value: 'Platinado', label: 'Platinado' },
+                    { value: 'Luzes', label: 'Luzes' },
+                    { value: 'Freestyle', label: 'Freestyle' },
+                    { value: 'Pézinho', label: 'Pézinho' },
+                  ].map(s => (
+                    <button
+                      key={s.value}
+                      onClick={() => setServiceFilter(s.value)}
+                      className={`px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                        serviceFilter === s.value
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ACTIVE FILTERS INDICATOR */}
+              {(serviceFilter !== 'ALL' || citySearchQuery.length >= 2) && (
+                <div className="mt-6 pt-4 border-t border-gray-100">
+                  <button
+                    onClick={() => {
+                      setServiceFilter('ALL');
+                      setCitySearchQuery('');
+                      setSearchedCities([]);
+                    }}
+                    className="w-full py-3 bg-red-50 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-colors"
+                  >
+                    Limpar todos os filtros
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <div className="absolute top-16 right-4 z-[1000] flex flex-col space-y-2">
         <button onClick={() => setShowRadius(!showRadius)} className={`p-3 rounded-2xl shadow-xl border border-gray-100 transition-all active:scale-95 ${showRadius ? 'bg-blue-600 text-white' : 'bg-white text-blue-600'}`}>{showRadius ? <Eye size={20} /> : <EyeOff size={20} />}</button>
       </div>
 
-      <div className="flex-1 relative z-0 w-full bg-[#f8fafc]" style={{ minHeight: '400px' }}>
+      <div className="flex-1 relative z-0 w-full bg-[#f8fafc] mx-auto" style={{ minHeight: '400px' }}>
         <MapContainer 
           key={`${mapCenter[0]}-${mapCenter[1]}`}
           center={mapCenter} 
@@ -954,31 +1203,27 @@ export default function MapPage() {
           {!isBarberView && matchSession.status === 'searching' && (
             <Marker position={mapCenter} icon={L.divIcon({ className: 'radar-pulse', html: '<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-blue-500/20 rounded-full border-2 border-blue-500/40 animate-ping"></div>', iconSize: [0, 0] })} />
           )}
-          {filteredBarbers.map((barber) => (
+          {filteredBarbers.map(barber => (
             <Marker 
-              key={barber.id} 
-              position={[barber.coordinates.latitude, barber.coordinates.longitude]} 
-              icon={createBarberIcon(barber)} 
-              eventHandlers={{ 
-                click: () => { 
-                  if (matchSession.status === 'idle') { 
-                    setSelectedBarber(barber); 
-                    setIsBookingAgenda(false); 
-                    setIsDrawerMinimized(false); 
-                  } 
-                } 
-              }} 
+              key={barber.id}
+              position={[barber.coordinates.latitude, barber.coordinates.longitude]}
+              icon={createBarberIcon(barber)}
+              eventHandlers={{ click: () => { setSelectedBarber(barber); setIsDrawerMinimized(false); } }}
             />
           ))}
-          {activeBarberCoords && <Polyline positions={[initialPosition, activeBarberCoords]} pathOptions={{ color: '#2563eb', weight: 6, opacity: 0.5, dashArray: '10, 10' }} />}
+          {matchSession.activeMatch && matchSession.activeMatch.barber && matchSession.status === 'in_service' && activeBarberCoords && (
+            <Polyline positions={[mapCenter, activeBarberCoords]} color="#3b82f6" weight={2} dashArray="8, 8" opacity={0.3} />
+          )}
+          {matchSession.activeMatch && matchSession.activeMatch.barber && (matchSession.status === 'accepted' || matchSession.status === 'arrived') && activeBarberCoords && (
+            <Polyline positions={[mapCenter, activeBarberCoords]} color="#22c55e" weight={2} dashArray="8, 8" opacity={0.5} />
+          )}
           <RecenterButton coords={initialPosition} />
         </MapContainer>
       </div>
-
       <AnimatePresence>
         {/* STORY VIEWER FULLSCREEN */}
         {viewingStory && selectedBarber && (
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[6000] bg-black flex flex-col p-4 overflow-hidden">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="fixed inset-0 w-full z-[6000] bg-black flex flex-col p-4 overflow-hidden">
             <div className="flex items-center justify-between mt-8 mb-4">
               <div className="flex items-center space-x-3">
                 <img src={selectedBarber.avatar} className="w-10 h-10 rounded-full border-2 border-blue-500" />
@@ -1013,7 +1258,7 @@ export default function MapPage() {
               if (info.offset.y > 50) setIsDrawerMinimized(true);
               else if (info.offset.y < -50) setIsDrawerMinimized(false);
             }}
-            className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2005] bg-white rounded-t-[50px] px-0 pb-28 shadow-[0_-20px_80px_rgba(0,0,0,0.3)] border-t border-gray-100 max-h-[85vh] overflow-y-auto no-scrollbar"
+            className="fixed bottom-0 left-0 right-0 w-full md:left-1/2 md:-translate-x-1/2 md:max-w-2xl z-[2005] bg-white rounded-t-[50px] px-0 pb-28 shadow-[0_-20px_80px_rgba(0,0,0,0.3)] border-t border-gray-100 max-h-[85vh] overflow-y-auto no-scrollbar"
           >
             <div className="sticky top-0 bg-white/90 backdrop-blur-md z-10 pt-4 pb-2 px-8 flex flex-col">
               <button 
@@ -1589,7 +1834,7 @@ export default function MapPage() {
               if (info.offset.y > 50) setIsDrawerMinimized(true);
               else if (info.offset.y < -50) setIsDrawerMinimized(false);
             }}
-            className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[1001] bg-white rounded-t-[40px] px-8 pb-28 shadow-[0_-20px_60px_rgba(0,0,0,0.1)] border-t border-gray-100 max-h-[85vh] overflow-y-auto no-scrollbar"
+            className="fixed bottom-0 left-0 right-0 w-full md:left-1/2 md:-translate-x-1/2 md:max-w-2xl z-[1001] bg-white rounded-t-[40px] px-8 pb-28 shadow-[0_-20px_60px_rgba(0,0,0,0.1)] border-t border-gray-100 max-h-[85vh] overflow-y-auto no-scrollbar"
           >
             <button 
               onPointerDown={(e) => dragControls.start(e)}
@@ -1761,7 +2006,7 @@ export default function MapPage() {
 
         {/* PRO ATENDIMENTO DRAWER */}
         {(matchSession?.status === 'searching' || matchSession?.status === 'proposal_sent' || matchSession?.status === 'accepted' || matchSession?.status === 'arrived' || matchSession?.status === 'in_service') && matchSession?.activeMatch && (
-          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2000] bg-white rounded-t-[40px] px-8 pb-28 shadow-2xl border-t-4 border-blue-600">
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="fixed bottom-0 left-0 right-0 w-full md:left-1/2 md:-translate-x-1/2 md:max-w-2xl z-[2000] bg-white rounded-t-[40px] px-8 pb-28 shadow-2xl border-t-4 border-blue-600">
             <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto my-4" />
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-5 text-left">
@@ -2026,7 +2271,7 @@ export default function MapPage() {
 
         {/* MÓDULO DE PAGAMENTO */}
         {matchSession?.status === 'payment' && (
-          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2000] bg-[#0f172a] rounded-t-[40px] px-8 pb-28 shadow-2xl border-t-4 border-green-500">
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="fixed bottom-0 left-0 right-0 w-full md:left-1/2 md:-translate-x-1/2 md:max-w-2xl z-[2000] bg-[#0f172a] rounded-t-[40px] px-8 pb-28 shadow-2xl border-t-4 border-green-500">
             <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto my-4" />
             {!isBarberView ? (
               <div className="text-center">
@@ -2110,7 +2355,7 @@ export default function MapPage() {
 
         {/* MODAL DE AVALIAÃ‡ÃƒO */}
         {matchSession?.status === 'finished' && (
-          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[3000] bg-white rounded-t-[40px] px-8 pb-28 shadow-2xl flex flex-col items-center">
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="fixed bottom-0 left-0 right-0 w-full md:left-1/2 md:-translate-x-1/2 md:max-w-2xl z-[3000] bg-white rounded-t-[40px] px-8 pb-28 shadow-2xl flex flex-col items-center">
             <div className="w-12 h-1.5 bg-gray-200 rounded-full my-4" /><h3 className="text-sm font-bold text-gray-800 mb-2">Como foi o atendimento?</h3><h2 className="text-2xl font-black text-blue-950 mb-6">{isBarberView ? matchSession.activeMatch?.client.name : 'Junior Vila'}</h2><div className="flex space-x-3 mb-8">{[1, 2, 3, 4, 5].map(s => (<Star key={s} size={42} onClick={() => setStars(s)} className={stars >= s ? 'text-yellow-400 fill-yellow-400 scale-110' : 'text-gray-200'} />))}</div>
             <div className="flex flex-col w-full space-y-3"><button onClick={() => setMatchSession((prev: any) => ({ ...prev, status: 'receipt' }))} className="w-full bg-black text-white py-6 rounded-2xl font-black text-sm uppercase shadow-xl">Avaliar profissional</button><button onClick={() => setMatchSession((prev: any) => ({ ...prev, status: 'receipt' }))} className="w-full py-4 text-gray-400 font-black text-[10px] uppercase">Não Avaliar agora</button></div>
           </motion.div>
@@ -2118,7 +2363,7 @@ export default function MapPage() {
 
         {/* TELA DE RECIBO */}
         {matchSession?.status === 'receipt' && (
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[4000] bg-blue-950 flex flex-col items-center p-6 text-center overflow-y-auto no-scrollbar pb-16">
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="fixed inset-0 w-full z-[4000] bg-blue-950 flex flex-col items-center p-6 text-center overflow-y-auto no-scrollbar pb-16">
             <div className="mt-8 bg-white w-full rounded-[40px] p-6 shadow-2xl relative overflow-hidden text-left">
               <div className="text-center mb-4">
                 <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-2 text-green-500">
@@ -2196,8 +2441,8 @@ export default function MapPage() {
 
         {/* SELECTION DRAWER */}
         {isRequesting && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2000] flex items-end justify-center bg-blue-950/40 backdrop-blur-sm">
-            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[50px] pt-2 pb-12 shadow-2xl flex flex-col max-h-[85vh]">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 w-full z-[2000] flex items-end justify-center bg-blue-950/40 backdrop-blur-sm">
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full md:max-w-2xl bg-white rounded-t-[50px] pt-2 pb-12 shadow-2xl flex flex-col max-h-[85vh]">
               <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto my-4" />
               <div className="px-8 flex justify-between items-center mb-8">
                 <h3 className="text-3xl font-black text-blue-950 uppercase italic">Serviços</h3>
@@ -2246,7 +2491,7 @@ export default function MapPage() {
               if (info.offset.y > 50) setIsDrawerMinimized(true);
               else if (info.offset.y < -50) setIsDrawerMinimized(false);
             }}
-            className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[2000] bg-white rounded-t-[40px] px-6 pb-28 shadow-2xl border-t border-gray-100 max-h-[85vh] overflow-y-auto no-scrollbar"
+            className="fixed bottom-0 left-0 right-0 w-full md:left-1/2 md:-translate-x-1/2 md:max-w-2xl z-[2000] bg-white rounded-t-[40px] px-6 pb-28 shadow-2xl border-t border-gray-100 max-h-[85vh] overflow-y-auto no-scrollbar"
           >
             <button 
               onPointerDown={(e) => dragControls.start(e)}
@@ -2280,12 +2525,12 @@ export default function MapPage() {
 
         {/* CONFIRMAÇÃO DE CANCELAMENTO */}
         {showCancelConfirm && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[5000] bg-black/60 backdrop-blur-md flex items-center justify-center p-8"><motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white rounded-[40px] p-8 w-full max-w-sm text-center shadow-2xl"><div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={32} className="text-red-500" /></div><h3 className="text-2xl font-black text-blue-950 uppercase italic mb-4">Atenção!</h3><p className="text-sm text-gray-400 font-medium mb-8">Deseja cancelar este atendimento?</p><div className="flex flex-col space-y-3"><button onClick={handleFinalCancel} className="w-full py-5 bg-red-500 text-white rounded-2xl font-black text-xs uppercase">Sim, cancelar</button><button onClick={() => setShowCancelConfirm(false)} className="w-full py-5 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase">Não, manter</button></div></motion.div></motion.div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 w-full z-[5000] bg-black/60 backdrop-blur-md flex items-center justify-center p-8"><motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white rounded-[40px] p-8 w-full max-w-sm text-center shadow-2xl"><div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={32} className="text-red-500" /></div><h3 className="text-2xl font-black text-blue-950 uppercase italic mb-4">Atenção!</h3><p className="text-sm text-gray-400 font-medium mb-8">Deseja cancelar este atendimento?</p><div className="flex flex-col space-y-3"><button onClick={handleFinalCancel} className="w-full py-5 bg-red-500 text-white rounded-2xl font-black text-xs uppercase">Sim, cancelar</button><button onClick={() => setShowCancelConfirm(false)} className="w-full py-5 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase">Não, manter</button></div></motion.div></motion.div>
         )}
 
         {/* TOAST CANCELADO */}
         {showCancelledToast && (
-          <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 100, opacity: 1 }} exit={{ y: -50, opacity: 0 }} className="fixed top-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[6000] flex justify-center px-8 pt-4"><div className="bg-gray-900 text-white px-8 py-4 rounded-full shadow-2xl flex items-center space-x-3 border-2 border-white/10"><AlertTriangle size={18} className="text-yellow-400" /><span className="font-black uppercase italic tracking-widest text-[10px]">Atendimento Cancelado</span></div></motion.div>
+          <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 100, opacity: 1 }} exit={{ y: -50, opacity: 0 }} className="fixed top-0 left-0 right-0 w-full md:left-1/2 md:-translate-x-1/2 md:max-w-lg z-[6000] flex justify-center px-8 pt-4"><div className="bg-gray-900 text-white px-8 py-4 rounded-full shadow-2xl flex items-center space-x-3 border-2 border-white/10"><AlertTriangle size={18} className="text-yellow-400" /><span className="font-black uppercase italic tracking-widest text-[10px]">Atendimento Cancelado</span></div></motion.div>
         )}
 
         {/* FILA DE AGENDAMENTO SUCCESS MODAL */}

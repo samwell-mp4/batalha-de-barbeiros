@@ -14,6 +14,10 @@ import Seguranca from './pages/Seguranca';
 import Configuracoes from './pages/Configuracoes';
 import Aparencia from './pages/Aparencia';
 import Ajuda from './pages/Ajuda';
+import CityPage from './pages/CityPage';
+import BarberSeoPage from './pages/BarberSeoPage';
+import ServiceCityPage from './pages/ServiceCityPage';
+import NeighborhoodPage from './pages/NeighborhoodPage';
 
 function App() {
   return (
@@ -36,6 +40,11 @@ function App() {
           <Route path="aparencia" element={<Aparencia />} />
           <Route path="ajuda" element={<Ajuda />} />
         </Route>
+        {/* SEO / Public Routes */}
+        <Route path="/barbearias/:stateSlug/:citySlug" element={<CityPage />} />
+        <Route path="/barbearias/:stateSlug/:citySlug/:neighborhoodSlug" element={<NeighborhoodPage />} />
+        <Route path="/barbeiro/:slug" element={<BarberSeoPage />} />
+        <Route path="/servicos/:service/:stateSlug/:citySlug" element={<ServiceCityPage />} />
       </Routes>
     </BrowserRouter>
   );

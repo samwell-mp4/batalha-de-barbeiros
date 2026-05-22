@@ -64,7 +64,7 @@ export default function Messages() {
    };
 
    return (
-      <div className="w-full h-screen bg-gray-50 flex flex-col font-inter relative pb-20">
+      <div className="w-full h-full bg-gray-50 flex flex-col font-inter relative pb-20 min-h-full">
          {!activeChatUser ? (
             /* CONVERSATIONS LIST */
             <div className="flex-1 flex flex-col overflow-hidden h-full">

@@ -639,7 +639,7 @@ export default function League() {
   };
 
   const renderCreate = () => (
-    <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[6000] bg-gradient-to-b from-white to-slate-50 flex flex-col shadow-2xl">
+    <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-0 w-full z-[6000] bg-gradient-to-b from-white to-slate-50 flex flex-col shadow-2xl">
       <div className="px-6 py-8 flex items-center justify-between border-b border-slate-200/60 bg-white/80 backdrop-blur-xl">
         <button onClick={() => { if(createStep > 0) setCreateStep(s=>s-1); else setView('home'); }} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-2xl text-slate-900 transition-colors"><ChevronLeft size={24} /></button>
         <div className="text-center"><p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Passo {createStep + 1} de 3</p><h2 className="text-sm font-black text-slate-900 uppercase italic font-orbitron">Novo Campeonato</h2></div>
@@ -935,7 +935,7 @@ export default function League() {
     }
 
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[5500] bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col shadow-2xl">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 w-full z-[5500] bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col shadow-2xl">
         {loading && <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-[999] flex items-center justify-center"><div className="w-10 h-10 border-[3px] border-blue-600/20 border-t-blue-600 rounded-full animate-spin" /></div>}
         <div className="px-6 py-6 flex items-center justify-between bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
           <button onClick={() => setView('home')} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-2xl text-slate-900 transition-colors"><ChevronLeft size={24} /></button>
@@ -1281,7 +1281,7 @@ export default function League() {
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
         exit={{ opacity: 0 }} 
-        className="fixed inset-0 w-full max-w-md mx-auto z-[7000] bg-gradient-to-b from-zinc-950 via-black to-zinc-950 flex flex-col overflow-hidden text-white"
+        className="fixed inset-0 w-full mx-auto z-[7000] bg-gradient-to-b from-zinc-950 via-black to-zinc-950 flex flex-col overflow-hidden text-white"
       >
         <div className="absolute top-4 inset-x-4 flex space-x-1.5 z-50">
           <div className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
@@ -1494,7 +1494,7 @@ export default function League() {
     const winnerVotes = votes1 >= votes2 ? votes1 : votes2;
 
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-y-0 w-full max-w-md left-1/2 -translate-x-1/2 z-[8000] bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex flex-col items-center justify-center text-center p-8 overflow-hidden shadow-2xl">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 w-full z-[8000] bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 flex flex-col items-center justify-center text-center p-8 overflow-hidden shadow-2xl">
          <div className="absolute inset-0"><div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-gradient-to-br from-blue-600/20 to-indigo-600/20 blur-[120px] rounded-full animate-pulse" /></div>
          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-yellow-400/5 via-transparent to-transparent" />
          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', bounce: 0.5, delay: 0.2 }} className="relative z-10 mb-12">

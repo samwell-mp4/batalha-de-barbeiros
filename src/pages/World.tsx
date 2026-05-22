@@ -634,7 +634,7 @@ export default function World() {
                  if (info.offset.y > 50) setIsCommentsMinimized(true);
                  else if (info.offset.y < -50) setIsCommentsMinimized(false);
               }}
-              className="fixed inset-x-0 bottom-0 max-w-md mx-auto h-[65%] bg-white rounded-t-[45px] shadow-[0_-20px_60px_rgba(0,0,0,0.2)] z-[9500] flex flex-col overflow-hidden text-blue-950 relative"
+              className="fixed inset-x-0 bottom-0 md:max-w-2xl md:mx-auto h-[65%] bg-white rounded-t-[45px] shadow-[0_-20px_60px_rgba(0,0,0,0.2)] z-[9500] flex flex-col overflow-hidden text-blue-950 relative"
             >
               <button 
                  onPointerDown={(e) => commentsDragControls.start(e)}

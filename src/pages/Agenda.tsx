@@ -666,8 +666,8 @@ export default function Agenda() {
 
 
   return (
-    <div className="flex flex-col bg-white min-h-full font-inter text-blue-950 pb-44 overflow-y-auto no-scrollbar items-center relative">
-      <div className="w-full max-w-md flex flex-col min-h-full bg-white relative">
+    <div className="flex flex-col bg-white min-h-full font-inter text-blue-950 pb-44 overflow-y-auto no-scrollbar relative">
+      <div className="w-full max-w-md md:max-w-6xl flex flex-col min-h-full bg-white relative mx-auto">
 
         {/* HEADER SECTION */}
         <div className="px-6 py-6 bg-white border-b border-gray-100 sticky top-0 z-50 backdrop-blur-md">
@@ -1626,7 +1626,7 @@ export default function Agenda() {
         {/* MODAL GESTÃO BARBEIRO (MÚLTIPLOS PEDIDOS) */}
         {selectedSlot && isBarberView && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[5000] bg-blue-950/60 backdrop-blur-md flex items-end justify-center">
-            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[55px] p-10 shadow-2xl">
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full md:max-w-2xl bg-white rounded-t-[55px] p-10 shadow-2xl">
               <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-10" />
 
               {selectedSlot.requests?.length > 0 ? (
@@ -1972,7 +1972,7 @@ export default function Agenda() {
         {/* NOTIFICATIONS CENTER */}
         {showNotifications && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] bg-blue-950/60 backdrop-blur-md flex items-end justify-center">
-            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[55px] p-10 shadow-2xl">
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full md:max-w-2xl bg-white rounded-t-[55px] p-10 shadow-2xl">
               <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-10" />
               <h3 className="text-2xl font-black text-blue-950 uppercase italic text-center mb-10">Solicitações Recentes</h3>
               <div className="space-y-4 max-h-[450px] overflow-y-auto no-scrollbar pb-10">

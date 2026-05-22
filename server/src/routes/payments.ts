@@ -246,4 +246,137 @@ router.put('/barber-pix-key', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/financeiro/:barberId', async (req: Request, res: Response) => {
+  try {
+    const { barberId } = req.params;
+
+    const appointments = await (prisma as any).appointment.findMany({
+      where: { barberId, status: { in: ['COMPLETED', 'PAYMENT'] } },
+      include: { client: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const totalRevenue = appointments
+      .filter((a: any) => a.status === 'COMPLETED')
+      .reduce((sum: number, a: any) => sum + a.price, 0);
+
+    const monthlyAppointments = appointments.filter((a: any) => {
+      const d = new Date(a.createdAt);
+      const now = new Date();
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+
+    const monthlyRevenue = monthlyAppointments
+      .filter((a: any) => a.status === 'COMPLETED')
+      .reduce((sum: number, a: any) => sum + a.price, 0);
+
+    const totalFees = appointments
+      .filter((a: any) => a.status === 'COMPLETED')
+      .reduce((sum: number, a: any) => sum + 1.0, 0);
+
+    const completedCount = appointments.filter((a: any) => a.status === 'COMPLETED').length;
+    const paymentCount = appointments.filter((a: any) => a.status === 'PAYMENT').length;
+    const prevMonth = new Date();
+    prevMonth.setMonth(prevMonth.getMonth() - 1);
+    const prevMonthCount = appointments.filter((a: any) => {
+      const d = new Date(a.createdAt);
+      return d.getMonth() === prevMonth.getMonth() && d.getFullYear() === prevMonth.getFullYear() && a.status === 'COMPLETED';
+    }).length;
+
+    return res.json({
+      balance: totalRevenue - totalFees,
+      monthlyRevenue,
+      totalRevenue,
+      totalFees,
+      completedAppointments: completedCount,
+      pendingPayments: paymentCount,
+      averageTicket: completedCount > 0 ? Math.round((totalRevenue / completedCount) * 100) / 100 : 0,
+      conversionRate: completedCount > 0 ? Math.round((completedCount / (completedCount + paymentCount)) * 100) : 0,
+      growth: prevMonthCount > 0 ? Math.round(((completedCount - prevMonthCount) / prevMonthCount) * 100) : 0,
+      history: appointments.slice(0, 20).map((a: any) => ({
+        id: a.id,
+        date: new Date(a.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+        desc: `${a.services?.join(', ') || 'Serviços'} - ${a.client?.name || 'Cliente'}`,
+        value: a.price,
+        type: a.status === 'COMPLETED' ? 'income' : 'pending',
+        clientName: a.client?.name,
+      })),
+    });
+  } catch (error: any) {
+    console.error('[PAYMENTS] Erro ao buscar financeiro:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/notifications/:userId', async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    const appointments = await (prisma as any).appointment.findMany({
+      where: {
+        OR: [{ clientId: userId }, { barber: { userId } }],
+        status: { in: ['COMPLETED', 'PAYMENT', 'CONFIRMED', 'IN_SERVICE'] },
+      },
+      include: { client: true, barber: { include: { user: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    const payments = await (prisma as any).payment.findMany({
+      where: { clientId: userId, status: { in: ['APPROVED', 'PENDING'] } },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    const notifications: any[] = [];
+
+    appointments.forEach((a: any) => {
+      if (a.status === 'COMPLETED') {
+        notifications.push({
+          type: 'check',
+          title: 'Atendimento Concluído',
+          desc: `Serviço finalizado com ${a.client?.name || 'cliente'} - R$ ${a.price},00`,
+          time: new Date(a.createdAt).toLocaleDateString('pt-BR'),
+          read: false,
+        });
+      }
+      if (a.status === 'PAYMENT') {
+        notifications.push({
+          type: 'zap',
+          title: 'Pagamento Pendente',
+          desc: `Aguardando pagamento de R$ ${a.price},00`,
+          time: new Date(a.createdAt).toLocaleDateString('pt-BR'),
+          read: false,
+        });
+      }
+      if (a.status === 'CONFIRMED') {
+        notifications.push({
+          type: 'calendar',
+          title: 'Agendamento Confirmado',
+          desc: `${a.services?.join(', ') || 'Serviço'} confirmado para ${a.date ? new Date(a.date).toLocaleDateString('pt-BR') : 'em breve'}`,
+          time: new Date(a.createdAt).toLocaleDateString('pt-BR'),
+          read: false,
+        });
+      }
+    });
+
+    payments.forEach((p: any) => {
+      notifications.push({
+        type: 'dollar',
+        title: p.status === 'APPROVED' ? 'Pagamento Aprovado' : 'Pagamento Pendente',
+        desc: `R$ ${p.amount},00 - ${p.status === 'APPROVED' ? 'Recebido' : 'Processando'}`,
+        time: p.paidAt ? new Date(p.paidAt).toLocaleDateString('pt-BR') : new Date(p.createdAt).toLocaleDateString('pt-BR'),
+        read: p.status !== 'APPROVED',
+      });
+    });
+
+    notifications.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+    return res.json(notifications.slice(0, 30));
+  } catch (error: any) {
+    console.error('[PAYMENTS] Erro ao buscar notificações:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

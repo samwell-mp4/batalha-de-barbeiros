@@ -39,6 +39,40 @@ router.post('/register', async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Auto-resolve cityId + neighborhoodId for BARBER registration
+    let cityId: number | null = null;
+    let neighborhoodId: number | null = null;
+    if (role === 'BARBER' && city && state) {
+      const foundCity = await (prisma as any).city.findFirst({
+        where: {
+          name: { contains: city, mode: 'insensitive' },
+          state: { sigla: state }
+        }
+      });
+      if (foundCity) {
+        cityId = foundCity.id;
+        if (neighborhood) {
+          let hood = await (prisma as any).neighborhood.findFirst({
+            where: {
+              name: { contains: neighborhood, mode: 'insensitive' },
+              cityId: foundCity.id
+            }
+          });
+          if (!hood) {
+            hood = await (prisma as any).neighborhood.create({
+              data: {
+                name: neighborhood,
+                slug: neighborhood.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+                cityId: foundCity.id,
+                barbers_count: 0
+              }
+            });
+          }
+          neighborhoodId = hood.id;
+        }
+      }
+    }
+
     // Create user
     const user = await prisma.user.create({
       data: {
@@ -62,7 +96,9 @@ router.post('/register', async (req, res) => {
             schedule,
             workingHours,
             bio: bio || '',
-            isOnline: true
+            isOnline: true,
+            cityId,
+            neighborhoodId,
           }
         } : undefined
       },

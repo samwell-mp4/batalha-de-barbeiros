@@ -1,18 +1,63 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Shield, Key, Lock, Smartphone, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Shield, Key, Lock, Smartphone, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { api } from '../services/api';
 
 export default function Seguranca() {
   const navigate = useNavigate();
   const [showPasswords, setShowPasswords] = useState(false);
   const [passwords, setPasswords] = useState({ current: '', newPass: '', confirm: '' });
   const [twoFactor, setTwoFactor] = useState(false);
-  const [sessions] = useState([
-    { device: 'iPhone 15 Pro', local: 'São Paulo, SP', active: true, current: true },
-    { device: 'Chrome - Windows', local: 'Rio de Janeiro, RJ', active: true, current: false },
-    { device: 'Samsung Galaxy S24', local: 'Belo Horizonte, MG', active: false, current: false },
-  ]);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState('');
+
+  const user = useMemo(() => {
+    const saved = localStorage.getItem('user');
+    if (!saved || saved === 'undefined' || saved === 'null') return null;
+    try { const p = JSON.parse(saved); return p?.id ? p : null; } catch { return null; }
+  }, []);
+
+  const handleChangePassword = async () => {
+    if (!passwords.current || !passwords.newPass || !passwords.confirm) {
+      setPasswordMsg('Preencha todos os campos');
+      return;
+    }
+    if (passwords.newPass !== passwords.confirm) {
+      setPasswordMsg('Nova senha e confirmação não conferem');
+      return;
+    }
+    if (passwords.newPass.length < 6) {
+      setPasswordMsg('A senha deve ter no mínimo 6 caracteres');
+      return;
+    }
+    if (!user) {
+      setPasswordMsg('Usuário não encontrado');
+      return;
+    }
+    setChangingPassword(true);
+    setPasswordMsg('');
+    try {
+      const result = await api.changePassword(user.id, {
+        currentPassword: passwords.current,
+        newPassword: passwords.newPass,
+      });
+      if (result.error) {
+        setPasswordMsg(result.error);
+      } else {
+        setPasswordMsg('Senha alterada com sucesso!');
+        setPasswords({ current: '', newPass: '', confirm: '' });
+      }
+    } catch (e: any) {
+      setPasswordMsg('Erro ao alterar senha: ' + (e.message || 'Erro de conexão'));
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const sessions = [
+    { device: 'Dispositivo Atual', local: navigator.language || 'pt-BR', active: true, current: true },
+  ];
 
   return (
     <div className="p-5 space-y-5">
@@ -77,8 +122,17 @@ export default function Seguranca() {
             />
             <Lock size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" />
           </div>
-          <button className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-xl font-medium transition-all text-sm shadow-sm">
-            Atualizar Senha
+          {passwordMsg && (
+            <p className={`text-xs font-medium text-center ${passwordMsg.includes('sucesso') ? 'text-emerald-600' : 'text-red-500'}`}>
+              {passwordMsg}
+            </p>
+          )}
+          <button
+            onClick={handleChangePassword}
+            disabled={changingPassword}
+            className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-xl font-medium transition-all text-sm shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            {changingPassword ? <><Loader2 size={14} className="animate-spin" /> Alterando...</> : 'Atualizar Senha'}
           </button>
         </div>
       </div>
@@ -121,11 +175,6 @@ export default function Seguranca() {
                   <p className="text-[10px] text-gray-400">{s.local}</p>
                 </div>
               </div>
-              {s.active && !s.current && (
-                <button className="text-xs text-red-500 font-medium px-3 py-1.5 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
-                  Sair
-                </button>
-              )}
             </div>
           ))}
         </div>

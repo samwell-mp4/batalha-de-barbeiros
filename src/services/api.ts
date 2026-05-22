@@ -292,4 +292,26 @@ export const api = {
     });
     return res.json();
   },
+  getFinanceiro: async (barberId: string) => {
+    const res = await fetch(`${API_URL}/payments/financeiro/${barberId}`);
+    if (!res.ok) return null;
+    return res.json();
+  },
+  getNotifications: async (userId: string) => {
+    const res = await fetch(`${API_URL}/payments/notifications/${userId}`);
+    if (!res.ok) return [];
+    return res.json();
+  },
+  // CITIES
+  searchCities: async (q: string) => {
+    if (!q || q.length < 2) return [];
+    const res = await fetch(`${API_URL}/cities/search?q=${encodeURIComponent(q)}`);
+    if (!res.ok) return [];
+    return res.json();
+  },
+  getTopCities: async () => {
+    const res = await fetch(`${API_URL}/cities/top`);
+    if (!res.ok) return [];
+    return res.json();
+  },
 };

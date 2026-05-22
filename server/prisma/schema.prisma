@@ -54,6 +54,7 @@ model Barber {
   userId        String    @unique
   user          User      @relation(fields: [userId], references: [id])
   barberShop    String
+  slug          String?   @unique
   latitude      Float
   longitude     Float
   specialties   String[]
@@ -70,8 +71,12 @@ model Barber {
   followersCount Int     @default(0)
   servicesConfig String?   @db.Text
   pixKey        String?
+  cityId        Int?
+  neighborhoodId Int?
 
   // Relations
+  city          City?         @relation(fields: [cityId], references: [id])
+  neighborhood  Neighborhood? @relation(fields: [neighborhoodId], references: [id])
   appointments  Appointment[] @relation("BarberAppointments")
   posts         Post[]
   championships Championship[] @relation("BarberParticipants")
@@ -108,6 +113,46 @@ enum AppointmentStatus {
   PAYMENT
   COMPLETED
   CANCELLED
+}
+
+// --- LOCAL SEO ---
+
+model State {
+  id     Int    @id
+  sigla  String @unique
+  nome   String
+  slug   String @unique
+  cities City[]
+}
+
+model City {
+  id            Int             @id // Código IBGE
+  name          String
+  slug          String
+  stateId       Int
+  state         State           @relation(fields: [stateId], references: [id])
+  latitude      Float?
+  longitude     Float?
+  barbers_count Int             @default(0)
+  avg_price     Float?
+  top_services  String[]
+  seo_enabled   Boolean         @default(false)
+  neighborhoods Neighborhood[]
+  barbers       Barber[]
+
+  @@unique([stateId, slug])
+}
+
+model Neighborhood {
+  id            Int      @id @default(autoincrement())
+  name          String
+  slug          String
+  cityId        Int
+  city          City     @relation(fields: [cityId], references: [id])
+  barbers_count Int      @default(0)
+  barbers       Barber[]
+
+  @@unique([cityId, slug])
 }
 
 // --- PAGAMENTOS ---

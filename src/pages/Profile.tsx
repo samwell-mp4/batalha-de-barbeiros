@@ -1611,7 +1611,7 @@ export default function Profile() {
          <AnimatePresence>
             {showServicesConfig && (
                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] flex items-center justify-center bg-blue-950/40 backdrop-blur-sm p-4">
-                  <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white w-full max-w-md rounded-[40px] p-6 shadow-2xl flex flex-col max-h-[85vh]">
+                  <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white w-full md:max-w-2xl rounded-[40px] p-6 shadow-2xl flex flex-col max-h-[85vh]">
                      <div className="flex justify-between items-center mb-6">
                         <h3 className="text-xl font-black text-blue-950 uppercase italic">Grade de Serviços</h3>
                         <button onClick={() => setShowServicesConfig(false)} className="p-2 bg-gray-50 rounded-xl text-gray-400"><X size={20} /></button>
@@ -1669,7 +1669,7 @@ export default function Profile() {
          <AnimatePresence>
             {selectedPost && (
                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6500] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-                  <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white w-full max-w-md rounded-[35px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+                  <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white w-full md:max-w-3xl rounded-[35px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
                      {/* Header */}
                      <div className="p-4 border-b border-gray-100 flex items-center justify-between relative">
                         <div className="flex items-center space-x-3 text-left">
@@ -1840,7 +1840,7 @@ export default function Profile() {
          <AnimatePresence>
             {showFullPortfolio && (
                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[6000] bg-blue-950/60 backdrop-blur-md flex items-end justify-center">
-                  <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-[#fcfcfd] rounded-t-[45px] h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+                  <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full md:max-w-2xl bg-[#fcfcfd] rounded-t-[45px] h-[90vh] flex flex-col shadow-2xl overflow-hidden">
                      <div className="w-12 h-1.5 bg-gray-150 rounded-full mx-auto my-4" />
 
                      {/* Header */}
