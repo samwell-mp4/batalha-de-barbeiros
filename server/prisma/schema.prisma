@@ -54,7 +54,7 @@ model Barber {
   userId        String    @unique
   user          User      @relation(fields: [userId], references: [id])
   barberShop    String
-  slug          String?   @unique
+  slug          String?
   latitude      Float
   longitude     Float
   specialties   String[]
