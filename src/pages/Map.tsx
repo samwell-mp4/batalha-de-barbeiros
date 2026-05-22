@@ -1467,7 +1467,7 @@ export default function MapPage() {
                     >
                       <Calendar size={20} className="text-cyan-400" /> <span>Agendar Horário</span>
                     </button>
-                    <button onClick={() => navigate(`/profile/${selectedBarber.id}`)} className="w-full py-6 bg-white text-blue-950 border-2 border-gray-100 rounded-[32px] font-black text-sm uppercase italic tracking-widest flex items-center justify-center space-x-3 transition-transform active:scale-95">
+                    <button onClick={() => navigate(`/app/profile/${selectedBarber.id}`)} className="w-full py-6 bg-white text-blue-950 border-2 border-gray-100 rounded-[32px] font-black text-sm uppercase italic tracking-widest flex items-center justify-center space-x-3 transition-transform active:scale-95">
                       <User size={20} className="text-blue-600" /> <span>Ver Perfil Completo</span>
                     </button>
                   </div>
