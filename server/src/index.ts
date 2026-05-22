@@ -44,7 +44,13 @@ if (!fs.existsSync(path.join(distPath, 'index.html'))) {
     console.warn('[SERVER] dist/index.html not found. Building frontend...');
     execSync('npm run build', { cwd: rootPath, stdio: 'inherit' });
   } catch (e) {
-    console.error('[SERVER] Frontend build failed:', e);
+    console.error('[SERVER] Frontend build failed on first attempt. Installing deps and retrying...', e);
+    try {
+      execSync('npm install', { cwd: rootPath, stdio: 'inherit' });
+      execSync('npm run build', { cwd: rootPath, stdio: 'inherit' });
+    } catch (e2) {
+      console.error('[SERVER] Frontend build failed after install:', e2);
+    }
   }
 }
 
