@@ -176,9 +176,9 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
     });
 
     const barbers = await (prisma as any).barber.findMany({
-      where: { slug: { not: null }, isOnline: true },
+      where: { slug: { not: null } },
       select: { slug: true },
-      take: 500,
+      take: 2000,
     });
 
     const today = new Date().toISOString().split('T')[0];

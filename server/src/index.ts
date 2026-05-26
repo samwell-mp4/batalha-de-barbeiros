@@ -69,7 +69,7 @@ for (const p of [assetsPath, path.join(rootPath, 'public')]) {
 
 const indexFile = fs.existsSync(path.join(distPath, 'index.html'))
   ? path.join(distPath, 'index.html')
-  : path.join(rootPath, 'index.html');
+  : path.join(rootPath, 'public', 'index.html');
 
 const CRAWLER_REGEX = /googlebot|bingbot|yandexbot|duckduckbot|baiduspider|slurp|facebookexternalhit|twitterbot|whatsapp|facebot|telegrambot|slackbot|discordbot/i;
 
@@ -337,6 +337,9 @@ app.get(/.*/, (req, res) => {
     return res.status(404).send('File not found');
   }
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  if (!fs.existsSync(indexFile)) {
+    return res.status(200).type('html').send('<!DOCTYPE html><html><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Battle Barber</title></head><body><div id="root"></div></body></html>');
+  }
   res.sendFile(indexFile);
 });
 
