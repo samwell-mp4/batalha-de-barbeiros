@@ -177,7 +177,7 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
 
     const barbers = await (prisma as any).barber.findMany({
       where: { slug: { not: null }, isOnline: true },
-      select: { slug: true, updatedAt: true },
+      select: { slug: true },
       take: 500,
     });
 
@@ -191,13 +191,15 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
 
     // City pages
     for (const city of cities) {
-      const stateSlug = city.state.slug;
+      const stateSlug = city.state?.slug;
       const citySlug = city.slug;
+      if (!stateSlug) continue;
       const prio = city.barbers_count >= 50 ? '0.9' : city.barbers_count >= 20 ? '0.8' : '0.7';
       xml += `  <url><loc>${baseUrl}/barbearias/${stateSlug}/${citySlug}</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>${prio}</priority></url>\n`;
 
       // Neighborhood pages (if has enough barbers)
       for (const hood of city.neighborhoods) {
+        if (!hood.slug) continue;
         xml += `  <url><loc>${baseUrl}/barbearias/${stateSlug}/${citySlug}/${hood.slug}</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>\n`;
       }
     }
@@ -205,15 +207,17 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
     // Service + city pages
     const services = ['corte-degrade', 'barba', 'corte-infantil', 'corte-masculino', 'hot-towel'];
     for (const city of cities.slice(0, 100)) {
+      const stateSlug = city.state?.slug;
+      if (!stateSlug) continue;
       for (const svc of services) {
-        xml += `  <url><loc>${baseUrl}/servicos/${svc}/${city.state.slug}/${city.slug}</loc><lastmod>${today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>\n`;
+        xml += `  <url><loc>${baseUrl}/servicos/${svc}/${stateSlug}/${city.slug}</loc><lastmod>${today}</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>\n`;
       }
     }
 
     // Barber pages
     for (const barber of barbers) {
-      const lastmod = barber.updatedAt ? new Date(barber.updatedAt).toISOString().split('T')[0] : today;
-      xml += `  <url><loc>${baseUrl}/barbeiro/${barber.slug}</loc><lastmod>${lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>\n`;
+      if (!barber.slug) continue;
+      xml += `  <url><loc>${baseUrl}/barbeiro/${barber.slug}</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>\n`;
     }
 
     xml += '</urlset>';
