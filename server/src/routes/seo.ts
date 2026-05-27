@@ -70,6 +70,12 @@ router.get('/city/:stateSlug/:citySlug', async (req: Request, res: Response) => 
 
     const highlightedBarbers = barbers.filter((b: any) => b.isPremium || b.rating >= 4.8).slice(0, 6);
 
+    const leads = citySlug ? await (prisma as any).barberLead.findMany({
+      where: { citySlug, claimed: false },
+      orderBy: { rating: 'desc' },
+      take: 20,
+    }) : [];
+
     const nearbyCities = ibgeState ? (await getCitiesByState(ibgeState.id))
       .filter((c: BrazilCity) => c.slug !== citySlug)
       .slice(0, 12)
@@ -119,6 +125,11 @@ router.get('/city/:stateSlug/:citySlug', async (req: Request, res: Response) => 
         id: c.id,
         name: c.name,
         status: c.status,
+      })),
+      leads: leads.map((l: any) => ({
+        id: l.id, name: l.name, slug: l.slug,
+        rating: l.rating, reviewCount: l.reviewCount,
+        address: l.address, neighborhood: l.neighborhood,
       })),
       nearbyCities,
     });

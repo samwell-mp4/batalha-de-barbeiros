@@ -113,36 +113,36 @@ export function renderCityPage(data: any): string {
   ${aggregateJson ? `<script type="application/ld+json">${aggregateJson}</script>` : ''}
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0f; color: #e0e0e0; line-height: 1.6; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.6; }
     .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-    header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 60px 0 40px; text-align: center; }
+    header { background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); padding: 60px 0 40px; text-align: center; }
     header h1 { font-size: 2.5rem; margin-bottom: 10px; color: #fff; }
     header p { font-size: 1.2rem; opacity: .9; color: #fff; }
     .stats { display: flex; justify-content: center; gap: 40px; margin-top: 30px; }
     .stat { text-align: center; }
     .stat-number { font-size: 2rem; font-weight: 700; color: #fff; }
     .stat-label { font-size: .9rem; opacity: .8; color: #fff; }
-    h2 { font-size: 1.8rem; margin: 40px 0 20px; color: #fff; }
+    h2 { font-size: 1.8rem; margin: 40px 0 20px; color: #1e293b; }
     .neighborhood-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
-    .neighborhood-card { background: #1a1a2e; border-radius: 12px; padding: 20px; text-decoration: none; color: #e0e0e0; transition: transform .2s; }
-    .neighborhood-card:hover { transform: translateY(-2px); }
-    .neighborhood-card h3 { font-size: 1.1rem; margin-bottom: 6px; color: #fff; }
-    .neighborhood-card span { font-size: .9rem; opacity: .7; }
+    .neighborhood-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; text-decoration: none; color: #1e293b; transition: box-shadow .2s; }
+    .neighborhood-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+    .neighborhood-card h3 { font-size: 1.1rem; margin-bottom: 6px; color: #1e293b; }
+    .neighborhood-card span { font-size: .9rem; color: #64748b; }
     .barber-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-    .barber-card { background: #1a1a2e; border-radius: 12px; padding: 20px; display: flex; gap: 16px; }
+    .barber-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; display: flex; gap: 16px; }
     .barber-avatar, .barber-avatar-placeholder { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-    .barber-avatar-placeholder { background: #333; }
+    .barber-avatar-placeholder { background: #e2e8f0; }
     .barber-info { flex: 1; }
-    .barber-info h3 a { color: #667eea; text-decoration: none; }
+    .barber-info h3 a { color: #2563eb; text-decoration: none; }
     .barber-info h3 a:hover { text-decoration: underline; }
-    .barber-shop { font-size: .9rem; opacity: .7; margin: 4px 0; }
-    .rating { margin: 8px 0; font-size: .9rem; }
-    .rating span:first-child { color: #ffd700; }
+    .barber-shop { font-size: .9rem; color: #64748b; margin: 4px 0; }
+    .rating { margin: 8px 0; font-size: .9rem; color: #64748b; }
+    .rating span:first-child { color: #f59e0b; }
     .specialties { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-    .tag { background: #2a2a3e; padding: 4px 10px; border-radius: 6px; font-size: .8rem; }
-    footer { text-align: center; padding: 40px 0; opacity: .5; font-size: .9rem; margin-top: 60px; border-top: 1px solid #222; }
-    .btn { display: inline-block; background: #667eea; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; margin-top: 20px; font-weight: 600; }
-    .btn:hover { background: #5a6fd6; }
+    .tag { background: #eff6ff; color: #1d4ed8; padding: 4px 10px; border-radius: 6px; font-size: .8rem; }
+    footer { text-align: center; padding: 40px 0; color: #94a3b8; font-size: .9rem; margin-top: 60px; border-top: 1px solid #e2e8f0; }
+    .btn { display: inline-block; background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; margin-top: 20px; font-weight: 600; }
+    .btn:hover { background: #1d4ed8; }
     @media (max-width: 768px) {
       header { padding: 40px 0 30px; }
       header h1 { font-size: 1.8rem; }

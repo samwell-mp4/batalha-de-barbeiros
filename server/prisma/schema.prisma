@@ -10,6 +10,36 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- LEADS (importados de Google Maps) ---
+
+model BarberLead {
+  id              String    @id @default(uuid())
+  name            String
+  phone           String
+  address         String
+  rating          Float     @default(0)
+  reviewCount     Int       @default(0)
+  website         String?
+  category        String?
+  city            String
+  citySlug        String?
+  state           String    @default("MG")
+  neighborhood    String?
+  street          String?
+  slug            String    @unique
+  source          String    @default("google_maps")
+  campaign        String?
+  claimed         Boolean   @default(false)
+  claimedAt       DateTime?
+  claimedById     String?
+  verified        Boolean   @default(false)
+  verifiedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  claimedBy       User?     @relation(fields: [claimedById], references: [id])
+}
+
 // --- CORE MODULES ---
 
 model User {
@@ -41,6 +71,7 @@ model User {
   matchLikes      MatchLike[]
   matchComments   MatchComment[]
   payments       Payment[] @relation("ClientPayments")
+  claimedLeads    BarberLead[]
 }
 
 enum Role {

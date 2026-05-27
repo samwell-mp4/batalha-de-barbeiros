@@ -19,6 +19,8 @@ import StatePage from './pages/StatePage';
 import BarberSeoPage from './pages/BarberSeoPage';
 import ServiceCityPage from './pages/ServiceCityPage';
 import NeighborhoodPage from './pages/NeighborhoodPage';
+import LeadPage from './pages/LeadPage';
+import ClaimForm from './pages/ClaimForm';
 
 function App() {
   return (
@@ -47,6 +49,8 @@ function App() {
         <Route path="/barbearias/:stateSlug/:citySlug/:neighborhoodSlug" element={<NeighborhoodPage />} />
         <Route path="/barbeiro/:slug" element={<BarberSeoPage />} />
         <Route path="/servicos/:service/:stateSlug/:citySlug" element={<ServiceCityPage />} />
+        <Route path="/perfil/:slug" element={<LeadPage />} />
+        <Route path="/perfil/:slug/reivindicar" element={<ClaimForm />} />
       </Routes>
     </BrowserRouter>
   );

@@ -135,6 +135,48 @@ const db: Record<string, any[]> = {
   matchlike: [],
   matchcomment: [],
   payment: [],
+  barberlead: [
+    {
+      id: 'lead-1',
+      name: 'Barbearia do Zé',
+      phone: '(31) 99999-9999',
+      address: 'Rua Exemplo, 123 - Centro, Mateus Leme - MG, 35670-000',
+      rating: 4.9,
+      reviewCount: 15,
+      website: 'https://instagram.com/barbearia_ze',
+      category: 'Barbearia',
+      city: 'Mateus Leme',
+      citySlug: 'mateus-leme',
+      state: 'MG',
+      neighborhood: 'Centro',
+      street: 'Rua Exemplo, 123',
+      slug: 'barbearia-do-ze',
+      source: 'google_maps',
+      campaign: 'Barbearia - Mateus Leme',
+      claimed: false,
+      verified: false,
+    },
+    {
+      id: 'lead-2',
+      name: 'Barber Shop Elite',
+      phone: '(31) 98888-8888',
+      address: 'Av. Principal, 456 - Londrina, Mateus Leme - MG, 35670-000',
+      rating: 4.8,
+      reviewCount: 23,
+      website: null,
+      category: 'Barbearia',
+      city: 'Mateus Leme',
+      citySlug: 'mateus-leme',
+      state: 'MG',
+      neighborhood: 'Londrina',
+      street: 'Av. Principal, 456',
+      slug: 'barber-shop-elite',
+      source: 'google_maps',
+      campaign: 'Barbearia - Mateus Leme',
+      claimed: false,
+      verified: false,
+    },
+  ],
 };
 
 realPrisma.$connect()
@@ -340,6 +382,7 @@ function getModelName(propKey: string | symbol): string | null {
     matchlike: 'matchlike',
     matchcomment: 'matchcomment',
     payment: 'payment',
+    barberlead: 'barberlead',
   };
   return modelMap[str] || null;
 }

@@ -27,18 +27,18 @@ export function renderServiceCityPage(data: any): string {
   <script type="application/ld+json">${breadcrumbJson}</script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0f; color: #e0e0e0; line-height: 1.6; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.6; }
     .container { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
-    header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 60px 0 40px; text-align: center; }
+    header { background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); padding: 60px 0 40px; text-align: center; }
     header h1 { font-size: 2rem; margin-bottom: 10px; color: #fff; }
     header p { color: rgba(255,255,255,.9); }
     .barber-list { display: flex; flex-direction: column; gap: 16px; margin: 40px 0; }
-    .barber-card { background: #1a1a2e; border-radius: 12px; padding: 20px; display: flex; gap: 16px; align-items: center; }
+    .barber-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; display: flex; gap: 16px; align-items: center; }
     .barber-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; }
-    .barber-card h3 a { color: #667eea; text-decoration: none; }
-    h2 { color: #fff; margin: 40px 0 20px; }
-    .btn { display: inline-block; background: #667eea; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; margin-top: 20px; font-weight: 600; }
-    footer { text-align: center; padding: 40px 0; opacity: .5; margin-top: 60px; border-top: 1px solid #222; }
+    .barber-card h3 a { color: #2563eb; text-decoration: none; }
+    h2 { color: #1e293b; margin: 40px 0 20px; }
+    .btn { display: inline-block; background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; margin-top: 20px; font-weight: 600; }
+    footer { text-align: center; padding: 40px 0; color: #94a3b8; margin-top: 60px; border-top: 1px solid #e2e8f0; }
   </style>
 </head>
 <body>

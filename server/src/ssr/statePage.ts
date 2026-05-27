@@ -30,15 +30,15 @@ export function renderStatePage(data: any): string {
   <script type="application/ld+json">${breadcrumbJson}</script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0f; color: #e0e0e0; }
-    header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 56px 0 36px; text-align: center; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #1e293b; }
+    header { background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); padding: 56px 0 36px; text-align: center; }
     header h1 { color: #fff; font-size: 2rem; }
     .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin: 28px 0 40px; }
-    .card { background: #1a1a2e; border-radius: 12px; padding: 14px 16px; }
-    .card a { color: #8fa2ff; text-decoration: none; font-weight: 600; }
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; }
+    .card a { color: #2563eb; text-decoration: none; font-weight: 600; }
     .card a:hover { text-decoration: underline; }
-    footer { text-align: center; padding: 36px 0; opacity: .6; border-top: 1px solid #222; }
+    footer { text-align: center; padding: 36px 0; color: #94a3b8; border-top: 1px solid #e2e8f0; }
   </style>
   </head>
   <body>

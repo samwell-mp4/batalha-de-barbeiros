@@ -16,7 +16,7 @@ function log(msg: string) {
   console.log(`[DEPLOY] ${msg}`);
 }
 
-router.post('/deploy/:token', async (req: Request, res: Response) => {
+router.all('/deploy/:token', async (req: Request, res: Response) => {
   if (req.params.token !== DEPLOY_TOKEN) {
     return res.status(401).json({ error: 'Invalid token' });
   }

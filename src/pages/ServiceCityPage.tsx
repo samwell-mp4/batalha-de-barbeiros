@@ -55,17 +55,17 @@ export default function ServiceCityPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#030303] flex items-center justify-center">
-        <div className="w-10 h-10 rounded-full border-2 border-t-[#00AEEF] border-gray-700 animate-spin" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-2 border-t-blue-600 border-gray-200 animate-spin" />
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-[#030303] flex flex-col items-center justify-center text-white space-y-6 p-8">
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center text-gray-900 space-y-6 p-8">
         <h1 className="text-2xl font-bold">Página não encontrada</h1>
-        <Link to="/" className="inline-flex items-center gap-2 bg-gradient-to-r from-[#00AEEF] to-[#2563FF] text-white font-bold px-6 py-3 rounded-full hover:shadow-[0_0_25px_rgba(0,174,239,0.4)] transition-all">Voltar ao início</Link>
+        <Link to="/" className="inline-flex items-center gap-2 bg-blue-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-blue-700 transition-all">Voltar ao início</Link>
       </div>
     );
   }
@@ -74,39 +74,33 @@ export default function ServiceCityPage() {
   const hasBarbers = barbers?.length > 0;
 
   return (
-    <div className="min-h-screen bg-[#030303] text-white">
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#00AEEF]/10 via-[#7C3AED]/5 to-black py-20 px-6 border-b border-white/5">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-gradient-to-br from-[#00AEEF]/10 to-transparent rounded-full blur-[120px]" />
-        </div>
-        <div className="relative max-w-6xl mx-auto">
-          <div className="flex items-center gap-2 text-sm text-gray-400 mb-6">
-            <Link to="/" className="hover:text-[#00AEEF] transition-colors">Início</Link>
+    <div className="min-h-screen bg-gray-50">
+      <section className="bg-gradient-to-br from-blue-600 via-purple-600 to-purple-700 py-16 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center gap-2 text-sm text-blue-100 mb-6">
+            <Link to="/" className="hover:text-white transition-colors">Início</Link>
             <ChevronRight size={14} />
-            <span>{serviceLabel}</span>
+            <span className="text-white/70">{serviceLabel}</span>
             <ChevronRight size={14} />
-            <Link to={`/barbearias/${state.slug}/${city.slug}`} className="hover:text-[#00AEEF] transition-colors">{city.name}</Link>
+            <Link to={`/barbearias/${state.slug}/${city.slug}`} className="hover:text-white transition-colors">{city.name}</Link>
             <ChevronRight size={14} />
-            <span className="text-[#00AEEF]">{serviceLabel}</span>
+            <span className="text-white font-medium">{serviceLabel}</span>
           </div>
 
           <div className="max-w-3xl">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#00AEEF]/20 to-[#2563FF]/20 border border-[#00AEEF]/20 flex items-center justify-center mb-6">
-              <Scissors size={28} className="text-[#00AEEF]" />
+            <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center mb-6">
+              <Scissors size={28} className="text-white" />
             </div>
-            <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight leading-[0.95]">
-              {serviceLabel} em{' '}
-              <span className="bg-gradient-to-r from-[#00AEEF] to-[#2563FF] bg-clip-text text-transparent">
-                {city.name}
-              </span>
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight leading-[0.95]">
+              {serviceLabel} em {city.name}
             </h1>
-            <p className="text-lg text-gray-300 max-w-xl mb-8 leading-relaxed">
+            <p className="text-lg text-blue-100 max-w-xl mb-8 leading-relaxed">
               {serviceDesc} em {city.name}, {state.sigla}.
               {hasBarbers ? ` ${barbers.length} barbeiros disponíveis. Agende online!` : ' Cadastre-se e encontre os melhores profissionais.'}
             </p>
             <Link
               to="/auth"
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-[#00AEEF] to-[#2563FF] text-white font-bold px-8 py-4 rounded-full hover:shadow-[0_0_35px_rgba(0,174,239,0.5)] transition-all duration-300 group"
+              className="inline-flex items-center gap-2 bg-white text-blue-700 font-bold px-8 py-4 rounded-xl hover:bg-blue-50 transition-all duration-300 group shadow-lg"
             >
               {hasBarbers ? 'Agendar agora' : 'Encontrar barbeiros'}
               <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
@@ -119,10 +113,10 @@ export default function ServiceCityPage() {
         {/* Barbers list */}
         <section>
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00AEEF]/20 to-[#2563FF]/20 border border-[#00AEEF]/20 flex items-center justify-center">
-              <Users size={16} className="text-[#00AEEF]" />
+            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+              <Users size={16} className="text-blue-600" />
             </div>
-            <h2 className="text-2xl font-black">
+            <h2 className="text-2xl font-bold text-gray-900">
               {serviceLabel} em {city.name} ({barbers?.length || 0})
             </h2>
           </div>
@@ -133,16 +127,16 @@ export default function ServiceCityPage() {
                 <Link
                   key={b.id}
                   to={`/barbeiro/${b.slug}`}
-                  className="group bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/[0.07] hover:border-[#00AEEF]/20 transition-all"
+                  className="group bg-white border border-gray-200 rounded-2xl p-5 hover:border-blue-300 hover:shadow-md transition-all"
                 >
                   <div className="flex items-center gap-4">
-                    <img src={b.avatar || `https://i.pravatar.cc/100?u=${b.id}`} className="w-14 h-14 rounded-full object-cover border-2 border-white/5" />
+                    <img src={b.avatar || `https://i.pravatar.cc/100?u=${b.id}`} className="w-14 h-14 rounded-full object-cover border-2 border-gray-100" />
                     <div>
-                      <h3 className="font-bold text-lg group-hover:text-[#00AEEF] transition-colors">{b.name}</h3>
-                      <p className="text-sm text-gray-400">{b.shop}</p>
+                      <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{b.name}</h3>
+                      <p className="text-sm text-gray-500">{b.shop}</p>
                       <div className="flex items-center gap-1 mt-1">
-                        <Star size={14} className="text-amber-400 fill-amber-400" />
-                        <span className="text-sm font-semibold">{b.rating.toFixed(1)}</span>
+                        <Star size={14} className="text-amber-500 fill-amber-500" />
+                        <span className="text-sm font-semibold text-gray-700">{b.rating.toFixed(1)}</span>
                       </div>
                     </div>
                   </div>
@@ -150,14 +144,14 @@ export default function ServiceCityPage() {
               ))}
             </div>
           ) : (
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-10 text-center">
-              <Scissors size={40} className="text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400 mb-6">
+            <div className="bg-white border border-gray-200 rounded-2xl p-10 text-center">
+              <Scissors size={40} className="text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 mb-6">
                 Nenhum profissional encontrado para {serviceLabel.toLowerCase()} em {city.name}.
               </p>
               <Link
                 to="/auth"
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-[#00AEEF] to-[#2563FF] text-white font-bold px-6 py-3 rounded-full hover:shadow-[0_0_25px_rgba(0,174,239,0.4)] transition-all group"
+                className="inline-flex items-center gap-2 bg-blue-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-blue-700 transition-all group"
               >
                 Buscar profissionais
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
@@ -168,16 +162,16 @@ export default function ServiceCityPage() {
 
         {/* Related services */}
         <section>
-          <h2 className="text-2xl font-black mb-6">Outros serviços em {city.name}</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Outros serviços em {city.name}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {Object.entries(SERVICE_LABELS).filter(([k]) => k !== service).map(([slug, label]) => (
               <Link
                 key={slug}
                 to={`/servicos/${slug}/${state.slug}/${city.slug}`}
-                className="bg-white/5 border border-white/10 rounded-xl p-4 text-center hover:bg-white/[0.07] hover:border-[#00AEEF]/20 transition-all"
+                className="bg-white border border-gray-200 rounded-xl p-4 text-center hover:border-blue-300 hover:shadow-sm transition-all"
               >
-                <Scissors size={18} className="text-[#00AEEF] mx-auto mb-2" />
-                <span className="font-medium text-sm">{label}</span>
+                <Scissors size={18} className="text-blue-600 mx-auto mb-2" />
+                <span className="font-medium text-sm text-gray-900">{label}</span>
               </Link>
             ))}
           </div>
@@ -187,18 +181,18 @@ export default function ServiceCityPage() {
         {nearbyCities?.length > 0 && (
           <section>
             <div className="flex items-center gap-3 mb-6">
-              <MapPin size={18} className="text-emerald-400" />
-              <h2 className="text-xl font-black">Cidades próximas</h2>
+              <MapPin size={18} className="text-emerald-600" />
+              <h2 className="text-xl font-bold text-gray-900">Cidades próximas</h2>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {nearbyCities.map((c: any) => (
                 <Link
                   key={c.slug}
                   to={`/servicos/${service}/${state.slug}/${c.slug}`}
-                  className="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/[0.07] hover:border-[#00AEEF]/30 transition-all"
+                  className="bg-white border border-gray-200 rounded-xl p-4 hover:border-blue-300 hover:shadow-sm transition-all"
                 >
-                  <h3 className="font-bold text-sm">{c.nome}</h3>
-                  <p className="text-xs text-gray-400 mt-1">{state.nome}</p>
+                  <h3 className="font-semibold text-sm text-gray-900">{c.nome}</h3>
+                  <p className="text-xs text-gray-500 mt-1">{state.nome}</p>
                 </Link>
               ))}
             </div>

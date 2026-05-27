@@ -26,6 +26,8 @@ import { renderCityPage } from './ssr/cityPage';
 import { renderStatePage } from './ssr/statePage';
 import { renderBarberPage } from './ssr/barberPage';
 import { renderServiceCityPage } from './ssr/servicePage';
+import { renderLeadPage } from './ssr/leadPage';
+import leadRoutes from './routes/leads';
 import { getStates, findStateBySlug, getCitiesByState, loadAllCities, findCity, BrazilState, BrazilCity } from './data/brazil';
 
 const app = express();
@@ -314,7 +316,19 @@ async function fetchCityData(stateSlug: string, citySlug: string) {
 
   const highlighted = barbers.filter((b: any) => b.isPremium || b.rating >= 4.8).slice(0, 6);
 
+  const leads = citySlug ? await (prisma as any).barberLead.findMany({
+    where: { citySlug: citySlug, claimed: false },
+    orderBy: { rating: 'desc' },
+    take: 20,
+  }) : [];
+
   return {
+    leads: leads.map((l: any) => ({
+      id: l.id, name: l.name, slug: l.slug,
+      rating: l.rating, reviewCount: l.reviewCount,
+      address: l.address, neighborhood: l.neighborhood,
+      city: l.city, state: l.state,
+    })),
     city: {
       id: city?.id || ibgeCity?.id || 0,
       name: city?.name || ibgeCity?.nome || citySlug,
@@ -479,6 +493,39 @@ app.get('/barbeiro/:slug', async (req, res) => {
   }
 });
 
+// SSR: Lead page
+app.get('/perfil/:slug', async (req, res) => {
+  try {
+    if (!isCrawler(req.headers['user-agent'])) {
+      return res.sendFile(indexFile);
+    }
+
+    const lead = await (prisma as any).barberLead.findUnique({
+      where: { slug: req.params.slug },
+    });
+    if (!lead) return res.sendFile(indexFile);
+
+    const data = {
+      name: lead.name,
+      address: lead.address,
+      rating: lead.rating,
+      reviewCount: lead.reviewCount,
+      slug: lead.slug,
+      city: lead.city,
+      state: lead.state,
+      neighborhood: lead.neighborhood,
+      claimed: lead.claimed,
+      verified: lead.verified,
+    };
+
+    const html = renderLeadPage(data);
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.send(html);
+  } catch {
+    res.sendFile(indexFile);
+  }
+});
+
 // SSR: Service + City page
 app.get('/servicos/:service/:stateSlug/:citySlug', async (req, res) => {
   try {
@@ -552,6 +599,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/seo', seoRoutes);
 app.use('/api/cities', cityRoutes);
+app.use('/api/leads', leadRoutes);
 app.use('/api', deployRoutes);
 
 // Health Check
