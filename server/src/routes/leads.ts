@@ -140,24 +140,49 @@ router.post('/:slug/verify', authenticate, async (req: Request, res: Response) =
   }
 });
 
-// Admin: list all unclaimed leads
+// List all leads (public, with pagination + search)
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { city, claimed, page = '1', limit = '50' } = req.query;
+    const { city, claimed, search, page, limit: limitStr, offset: offsetStr } = req.query;
     const where: any = {};
     if (city) where.citySlug = city;
     if (claimed === 'true') where.claimed = true;
     else if (claimed === 'false') where.claimed = false;
+    if (search) {
+      where.OR = [
+        { name: { contains: search as string, mode: 'insensitive' } },
+        { city: { contains: search as string, mode: 'insensitive' } },
+      ];
+    }
 
     const total = await (prisma as any).barberLead.count({ where });
+
+    let skip = 0;
+    let take = parseInt(limitStr as string) || 50;
+    if (offsetStr) {
+      skip = parseInt(offsetStr as string);
+    } else if (page) {
+      skip = (parseInt(page as string) - 1) * take;
+    }
+
     const leads = await (prisma as any).barberLead.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
-      skip: (parseInt(page as string) - 1) * parseInt(limit as string),
-      take: parseInt(limit as string),
+      orderBy: { rating: 'desc' },
+      skip,
+      take,
+      select: {
+        name: true,
+        slug: true,
+        city: true,
+        neighborhood: true,
+        rating: true,
+        reviewCount: true,
+        claimed: true,
+        verified: true,
+      },
     });
 
-    return res.json({ leads, total, page: parseInt(page as string), totalPages: Math.ceil(total / parseInt(limit as string)) });
+    return res.json({ leads, total });
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
   }

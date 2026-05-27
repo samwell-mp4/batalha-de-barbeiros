@@ -414,6 +414,11 @@ const mockPrisma = new Proxy({}, {
             }
           }
           
+          // Handle skip
+          if (args?.skip) {
+            items = items.slice(args.skip);
+          }
+          
           // Handle take
           if (args?.take) {
             items = items.slice(0, args.take);
