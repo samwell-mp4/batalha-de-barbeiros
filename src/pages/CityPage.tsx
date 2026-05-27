@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MapPin, Star, Scissors, ChevronRight, Users, TrendingUp } from 'lucide-react';
+import { MapPin, Star, Scissors, ChevronRight, Users, TrendingUp, Search } from 'lucide-react';
+
+const SERVICES = [
+  { slug: 'corte-masculino', label: 'Corte Masculino' },
+  { slug: 'corte-degrade', label: 'Corte Degradê' },
+  { slug: 'barba', label: 'Barba' },
+  { slug: 'corte-infantil', label: 'Corte Infantil' },
+  { slug: 'hot-towel', label: 'Hot Towel' },
+];
 
 export default function CityPage() {
   const { stateSlug, citySlug } = useParams();
@@ -45,7 +53,8 @@ export default function CityPage() {
     );
   }
 
-  const { city, state, barbers, neighborhoods, highlighted } = data;
+  const { city, state, barbers, neighborhoods, highlighted, nearbyCities } = data;
+  const hasBarbers = barbers?.length > 0;
 
   return (
     <div className="min-h-screen bg-[#030303] text-white">
@@ -55,7 +64,7 @@ export default function CityPage() {
           <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
             <Link to="/" className="hover:text-blue-400">Início</Link>
             <ChevronRight size={14} />
-            <span className="text-gray-300">{state.nome}</span>
+            <Link to={`/barbearias/${state.slug}`} className="hover:text-blue-400">{state.nome}</Link>
             <ChevronRight size={14} />
             <span className="text-blue-400">{city.name}</span>
           </div>
@@ -63,8 +72,9 @@ export default function CityPage() {
             Barbearias em <span className="text-blue-500">{city.name}</span>
           </h1>
           <p className="text-lg text-gray-300 max-w-2xl mb-8">
-            Encontre as melhores barbearias em {city.name}, {state.sigla}. {city.barbers_count || 0} barbearias disponíveis
-            {city.avg_price ? ` com preço médio de R$ ${city.avg_price.toFixed(2).replace('.', ',')}` : ''}.
+            {hasBarbers
+              ? `Encontre as melhores barbearias em ${city.name}, ${state.sigla}. ${city.barbers_count || 0} barbearias disponíveis${city.avg_price ? ` com preço médio de R$ ${city.avg_price.toFixed(2).replace('.', ',')}` : ''}.`
+              : `Encontre barbearias e barbeiros em ${city.name}, ${state.sigla}. Agende seu horário online pelo Battle Barber.`}
           </p>
           <div className="flex flex-wrap gap-8">
             <div className="flex items-center gap-3">
@@ -127,49 +137,89 @@ export default function CityPage() {
         )}
 
         {/* All Barbers */}
-        <section>
-          <h2 className="text-2xl font-black mb-6">
-            Todos os barbeiros em {city.name}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {barbers?.map((b: any) => (
-              <Link
-                key={b.id}
-                to={`/barbeiro/${b.slug}`}
-                className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all"
-              >
-                <div className="flex items-center gap-4">
-                  <img
-                    src={b.avatar || `https://i.pravatar.cc/100?u=${b.id}`}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold truncate">{b.name}</h3>
-                    <p className="text-sm text-gray-400 truncate">{b.shop}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="flex items-center gap-1">
-                        <Star size={12} className="text-yellow-500 fill-yellow-500" />
-                        <span className="text-xs font-semibold">{b.rating.toFixed(1)}</span>
+        {hasBarbers && (
+          <section>
+            <h2 className="text-2xl font-black mb-6">
+              Todos os barbeiros em {city.name}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {barbers?.map((b: any) => (
+                <Link
+                  key={b.id}
+                  to={`/barbeiro/${b.slug}`}
+                  className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-all"
+                >
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={b.avatar || `https://i.pravatar.cc/100?u=${b.id}`}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold truncate">{b.name}</h3>
+                      <p className="text-sm text-gray-400 truncate">{b.shop}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-1">
+                          <Star size={12} className="text-yellow-500 fill-yellow-500" />
+                          <span className="text-xs font-semibold">{b.rating.toFixed(1)}</span>
+                        </div>
+                        <span className="text-xs text-gray-500">({b.reviewsCount})</span>
                       </div>
-                      <span className="text-xs text-gray-500">({b.reviewsCount})</span>
                     </div>
                   </div>
-                </div>
-                {b.specialties?.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {b.specialties.slice(0, 3).map((s: string) => (
-                      <span key={s} className="text-xs bg-blue-600/20 text-blue-400 px-2.5 py-1 rounded-full">
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                  {b.specialties?.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {b.specialties.slice(0, 3).map((s: string) => (
+                        <span key={s} className="text-xs bg-blue-600/20 text-blue-400 px-2.5 py-1 rounded-full">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* No barbers - show default content */}
+        {!hasBarbers && (
+          <section>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
+              <Search size={48} className="text-blue-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold mb-2">Barbearias em {city.name}</h2>
+              <p className="text-gray-400 max-w-xl mx-auto mb-6">
+                Ainda não temos barbearias cadastradas em {city.name}. 
+                Enquanto isso, confira os serviços disponíveis ou veja cidades próximas.
+              </p>
+              <Link
+                to={`/barbearias/${state.slug}`}
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-2xl transition-all"
+              >
+                <MapPin size={18} />
+                Ver cidades em {state.nome}
+              </Link>
+            </div>
+          </section>
+        )}
+
+        {/* Services Grid */}
+        <section>
+          <h2 className="text-2xl font-black mb-6 flex items-center gap-2">
+            <Scissors size={20} className="text-blue-500" />
+            Serviços em {city.name}
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {SERVICES.map((s) => (
+              <Link
+                key={s.slug}
+                to={`/servicos/${s.slug}/${state.slug}/${city.slug}`}
+                className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-4 text-center transition-all"
+              >
+                <Scissors size={20} className="text-blue-400 mx-auto mb-2" />
+                <span className="font-medium text-sm">{s.label}</span>
               </Link>
             ))}
           </div>
-          {barbers?.length === 0 && (
-            <p className="text-gray-500 text-center py-12">Nenhum barbeiro online encontrado nesta cidade.</p>
-          )}
         </section>
 
         {/* Neighborhoods */}
@@ -194,8 +244,8 @@ export default function CityPage() {
           </section>
         )}
 
-        {/* Top Services */}
-        {city.top_services?.length > 0 && (
+        {/* Top Services from DB */}
+        {city.top_services?.length > 0 && hasBarbers && (
           <section>
             <h2 className="text-2xl font-black mb-6 flex items-center gap-2">
               <Scissors size={20} className="text-blue-500" />
@@ -209,6 +259,28 @@ export default function CityPage() {
                   className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-5 py-3 transition-all"
                 >
                   <span className="font-medium">{s}</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Nearby Cities Footer */}
+        {nearbyCities?.length > 0 && (
+          <section>
+            <h2 className="text-2xl font-black mb-6 flex items-center gap-2">
+              <MapPin size={20} className="text-green-500" />
+              Cidades próximas a {city.name}
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {nearbyCities.map((c: any) => (
+                <Link
+                  key={c.slug}
+                  to={`/barbearias/${state.slug}/${c.slug}`}
+                  className="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 hover:border-blue-500/30 transition-all"
+                >
+                  <h3 className="font-bold text-sm">{c.nome}</h3>
+                  <p className="text-xs text-gray-400 mt-1">{state.nome}</p>
                 </Link>
               ))}
             </div>

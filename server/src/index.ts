@@ -23,8 +23,10 @@ import seoRoutes from './routes/seo';
 import cityRoutes from './routes/cities';
 import deployRoutes from './routes/deploy';
 import { renderCityPage } from './ssr/cityPage';
+import { renderStatePage } from './ssr/statePage';
 import { renderBarberPage } from './ssr/barberPage';
 import { renderServiceCityPage } from './ssr/servicePage';
+import { getStates, findStateBySlug, getCitiesByState, loadAllCities, findCity, BrazilState, BrazilCity } from './data/brazil';
 
 const app = express();
 import { prisma } from './lib/prisma';
@@ -83,8 +85,193 @@ app.get('/robots.txt', (_req, res) => {
   const baseUrl = process.env.APP_URL || 'https://battlebarber.com.br';
   res.type('text/plain').send(`User-agent: *
 Allow: /
-Sitemap: ${baseUrl}/api/seo/sitemap.xml
+Sitemap: ${baseUrl}/sitemap.xml
 `);
+});
+
+// --- SITEMAPS (Programmatic, segmented) ---
+
+function xmlHeaderUrlset(): string {
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" ' +
+    'xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" ' +
+    'xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
+  );
+}
+
+function xmlHeaderIndex(): string {
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+  );
+}
+
+function getBaseUrl(req: express.Request): string {
+  return process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+}
+
+app.get('/sitemap.xml', async (req, res) => {
+  const baseUrl = getBaseUrl(req);
+  let xml = xmlHeaderIndex();
+  const parts = [
+    'sitemap-estados.xml',
+    'sitemap-cidades.xml',
+    'sitemap-servicos.xml',
+    'sitemap-barbeiros.xml',
+    'sitemap-campeonatos.xml',
+    'sitemap-ranking.xml',
+    'sitemap-blog.xml',
+    'sitemap-images.xml',
+  ];
+  const today = new Date().toISOString().split('T')[0];
+  for (const p of parts) {
+    xml += `  <sitemap><loc>${baseUrl}/${p}</loc><lastmod>${today}</lastmod></sitemap>\n`;
+  }
+  xml += '</sitemapindex>';
+  res.header('Content-Type', 'application/xml');
+  res.send(xml);
+});
+
+app.get('/sitemap-estados.xml', async (req, res) => {
+  const baseUrl = getBaseUrl(req);
+  const today = new Date().toISOString().split('T')[0];
+  const states = getStates();
+  let xml = xmlHeaderUrlset();
+  // Estado pages use our current pattern /barbearias/:stateSlug
+  for (const st of states) {
+    xml += `  <url><loc>${baseUrl}/barbearias/${st.slug}</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>\n`;
+  }
+  xml += '</urlset>';
+  res.header('Content-Type', 'application/xml');
+  res.send(xml);
+});
+
+app.get('/sitemap-cidades.xml', async (req, res) => {
+  const baseUrl = getBaseUrl(req);
+  const today = new Date().toISOString().split('T')[0];
+  await loadAllCities();
+  let xml = xmlHeaderUrlset();
+  for (const st of getStates()) {
+    const cities = await getCitiesByState(st.id);
+    for (const c of cities) {
+      xml += `  <url><loc>${baseUrl}/barbearias/${st.slug}/${c.slug}</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>\n`;
+    }
+  }
+  xml += '</urlset>';
+  res.header('Content-Type', 'application/xml');
+  res.send(xml);
+});
+
+app.get('/sitemap-servicos.xml', async (req, res) => {
+  const baseUrl = getBaseUrl(req);
+  const today = new Date().toISOString().split('T')[0];
+  const services = ['corte-degrade', 'barba', 'corte-infantil', 'corte-masculino', 'hot-towel'];
+  await loadAllCities();
+  let xml = xmlHeaderUrlset();
+  for (const st of getStates()) {
+    const cities = await getCitiesByState(st.id);
+    for (const c of cities) {
+      for (const svc of services) {
+        xml += `  <url><loc>${baseUrl}/servicos/${svc}/${st.slug}/${c.slug}</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>\n`;
+      }
+    }
+  }
+  xml += '</urlset>';
+  res.header('Content-Type', 'application/xml');
+  res.send(xml);
+});
+
+app.get('/sitemap-barbeiros.xml', async (req, res) => {
+  const baseUrl = getBaseUrl(req);
+  const today = new Date().toISOString().split('T')[0];
+  let xml = xmlHeaderUrlset();
+  try {
+    const barbers = await (prisma as any).barber.findMany({
+      where: { slug: { not: null } },
+      include: { user: { select: { name: true, avatar: true } } },
+      take: 50000,
+    });
+    for (const b of barbers) {
+      const img = b.user?.avatar;
+      xml += `  <url><loc>${baseUrl}/barbeiro/${b.slug}</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority>`;
+      if (img) {
+        const title = (b.user?.name || 'Barbeiro').replace(/&/g, '&amp;');
+        xml += `<image:image><image:loc>${img}</image:loc><image:title>${title}</image:title></image:image>`;
+      }
+      xml += `</url>\n`;
+    }
+  } catch (e) {
+    console.error('[SITEMAP] Erro ao listar barbeiros', e);
+  }
+  xml += '</urlset>';
+  res.header('Content-Type', 'application/xml');
+  res.send(xml);
+});
+
+app.get('/sitemap-campeonatos.xml', async (req, res) => {
+  const baseUrl = getBaseUrl(req);
+  const today = new Date().toISOString().split('T')[0];
+  let xml = xmlHeaderUrlset();
+  try {
+    const champs = await (prisma as any).championship.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 50000,
+    });
+    for (const c of champs) {
+      xml += `  <url><loc>${baseUrl}/campeonato/${c.id}</loc><lastmod>${today}</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>\n`;
+    }
+  } catch {}
+  xml += '</urlset>';
+  res.header('Content-Type', 'application/xml');
+  res.send(xml);
+});
+
+app.get('/sitemap-ranking.xml', async (req, res) => {
+  const baseUrl = getBaseUrl(req);
+  const today = new Date().toISOString().split('T')[0];
+  let xml = xmlHeaderUrlset();
+  xml += `  <url><loc>${baseUrl}/ranking/brasil</loc><lastmod>${today}</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>\n`;
+  for (const st of getStates()) {
+    xml += `  <url><loc>${baseUrl}/ranking/${st.slug}</loc><lastmod>${today}</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>\n`;
+  }
+  xml += '</urlset>';
+  res.header('Content-Type', 'application/xml');
+  res.send(xml);
+});
+
+app.get('/sitemap-blog.xml', async (req, res) => {
+  // Placeholder: no blog posts model with slug yet
+  let xml = xmlHeaderUrlset();
+  xml += '</urlset>';
+  res.header('Content-Type', 'application/xml');
+  res.send(xml);
+});
+
+app.get('/sitemap-images.xml', async (req, res) => {
+  const baseUrl = getBaseUrl(req);
+  const today = new Date().toISOString().split('T')[0];
+  let xml = xmlHeaderUrlset();
+  try {
+    const barbers = await (prisma as any).barber.findMany({
+      where: { slug: { not: null } },
+      include: { user: { select: { name: true, avatar: true } } },
+      take: 20000,
+    });
+    for (const b of barbers) {
+      const loc = `${baseUrl}/barbeiro/${b.slug}`;
+      const img = b.user?.avatar;
+      xml += `  <url><loc>${loc}</loc><lastmod>${today}</lastmod>`;
+      if (img) {
+        const title = (b.user?.name || 'Barbeiro').replace(/&/g, '&amp;');
+        xml += `<image:image><image:loc>${img}</image:loc><image:title>${title}</image:title></image:image>`;
+      }
+      xml += `</url>\n`;
+    }
+  } catch {}
+  xml += '</urlset>';
+  res.header('Content-Type', 'application/xml');
+  res.send(xml);
 });
 
 app.get('/api/seo/cities', async (req, res) => {
@@ -107,6 +294,9 @@ app.get('/api/seo/cities', async (req, res) => {
 });
 
 async function fetchCityData(stateSlug: string, citySlug: string) {
+  const ibgeState = findStateBySlug(stateSlug);
+  const ibgeCity = ibgeState ? await findCity(citySlug, ibgeState.id) : null;
+
   const city = await (prisma as any).city.findFirst({
     where: { slug: citySlug, state: { slug: stateSlug } },
     include: {
@@ -114,27 +304,34 @@ async function fetchCityData(stateSlug: string, citySlug: string) {
       neighborhoods: { where: { barbers_count: { gte: 1 } }, orderBy: { barbers_count: 'desc' }, take: 30 },
     },
   });
-  if (!city) return null;
 
-  const barbers = await (prisma as any).barber.findMany({
+  const barbers = city ? await (prisma as any).barber.findMany({
     where: { cityId: city.id, isOnline: true },
     include: { user: { select: { name: true, avatar: true } } },
     orderBy: [{ rating: 'desc' }, { followersCount: 'desc' }],
     take: 50,
-  });
+  }) : [];
 
   const highlighted = barbers.filter((b: any) => b.isPremium || b.rating >= 4.8).slice(0, 6);
 
   return {
     city: {
-      id: city.id, name: city.name, slug: city.slug,
-      barbers_count: city.barbers_count, avg_price: city.avg_price,
-      top_services: city.top_services, seo_enabled: city.seo_enabled,
+      id: city?.id || ibgeCity?.id || 0,
+      name: city?.name || ibgeCity?.nome || citySlug,
+      slug: citySlug,
+      barbers_count: city?.barbers_count || 0,
+      avg_price: city?.avg_price || null,
+      top_services: city?.top_services || [],
+      seo_enabled: true,
     },
-    state: { sigla: city.state.sigla, nome: city.state.nome, slug: city.state.slug },
-    neighborhoods: city.neighborhoods.map((n: any) => ({
+    state: {
+      sigla: city?.state?.sigla || ibgeState?.sigla || stateSlug,
+      nome: city?.state?.nome || ibgeState?.nome || stateSlug,
+      slug: stateSlug,
+    },
+    neighborhoods: city ? city.neighborhoods.map((n: any) => ({
       name: n.name, slug: n.slug, barbers_count: n.barbers_count,
-    })),
+    })) : [],
     barbers: barbers.map((b: any) => ({
       id: b.id, name: b.user.name, avatar: b.user.avatar,
       shop: b.barberShop, slug: b.slug, rating: b.rating,
@@ -145,6 +342,10 @@ async function fetchCityData(stateSlug: string, citySlug: string) {
       id: b.id, name: b.user.name, avatar: b.user.avatar,
       slug: b.slug, rating: b.rating, shop: b.barberShop,
     })),
+    nearbyCities: ibgeState ? (await getCitiesByState(ibgeState.id))
+      .filter((c: BrazilCity) => c.slug !== citySlug)
+      .slice(0, 12)
+      .map((c: BrazilCity) => ({ nome: c.nome, slug: c.slug })) : [],
   };
 }
 
@@ -172,22 +373,40 @@ async function fetchBarberData(slug: string) {
 // SSR: City page
 app.get('/barbearias/:stateSlug/:citySlug', async (req, res) => {
   try {
-    if (!isCrawler(req.headers['user-agent'])) {
-      return res.sendFile(indexFile);
-    }
-
     const data = await fetchCityData(req.params.stateSlug, req.params.citySlug);
     if (!data) {
       return res.sendFile(indexFile);
     }
 
-    if (!data.city.seo_enabled) {
-      return res.sendFile(indexFile);
-    }
-
     const html = renderCityPage(data);
     res.set('Cache-Control', 'public, max-age=3600');
-    res.send(html);
+
+    if (isCrawler(req.headers['user-agent'])) {
+      res.send(html);
+    } else {
+      res.sendFile(indexFile);
+    }
+  } catch {
+    res.sendFile(indexFile);
+  }
+});
+
+// SSR: State page
+app.get('/barbearias/:stateSlug', async (req, res) => {
+  try {
+    const brState = findStateBySlug(req.params.stateSlug);
+    if (!brState) return res.sendFile(indexFile);
+
+    const cities = await getCitiesByState(brState.id);
+    const data = { state: brState, cities };
+    const html = renderStatePage(data);
+    res.set('Cache-Control', 'public, max-age=3600');
+
+    if (isCrawler(req.headers['user-agent'])) {
+      res.send(html);
+    } else {
+      res.sendFile(indexFile);
+    }
   } catch {
     res.sendFile(indexFile);
   }
@@ -276,13 +495,15 @@ app.get('/servicos/:service/:stateSlug/:citySlug', async (req, res) => {
       'hot-towel': 'Hot Towel',
     };
 
+    const ibgeState = findStateBySlug(stateSlug);
+    const ibgeCity = ibgeState ? await findCity(citySlug, ibgeState.id) : null;
+
     const city = await (prisma as any).city.findFirst({
       where: { slug: citySlug, state: { slug: stateSlug } },
       include: { state: true },
     });
-    if (!city || !city.seo_enabled) return res.sendFile(indexFile);
 
-    const barbers = await (prisma as any).barber.findMany({
+    const barbers = city ? await (prisma as any).barber.findMany({
       where: {
         cityId: city.id,
         isOnline: true,
@@ -291,13 +512,20 @@ app.get('/servicos/:service/:stateSlug/:citySlug', async (req, res) => {
       include: { user: { select: { name: true, avatar: true } } },
       orderBy: [{ rating: 'desc' }],
       take: 50,
-    });
+    }) : [];
 
     const data = {
       service,
       serviceLabel: serviceLabels[service] || service,
-      city: { name: city.name, slug: city.slug, barbers_count: city.barbers_count },
-      state: { sigla: city.state.sigla, slug: city.state.slug },
+      city: {
+        name: city?.name || ibgeCity?.nome || citySlug,
+        slug: citySlug,
+        barbers_count: city?.barbers_count || 0,
+      },
+      state: {
+        sigla: city?.state?.sigla || ibgeState?.sigla || stateSlug,
+        slug: stateSlug,
+      },
       barbers: barbers.map((b: any) => ({
         id: b.id, name: b.user.name, avatar: b.user.avatar,
         shop: b.barberShop, slug: b.slug, rating: b.rating,
