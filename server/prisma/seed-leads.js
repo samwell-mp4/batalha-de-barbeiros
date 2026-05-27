@@ -13,31 +13,51 @@ function slugify(text) {
     .replace(/-+/g, '-');
 }
 
-function parseAddress(address) {
+function parseAddress(raw) {
   const parts = { street: '', neighborhood: '', city: '', state: 'MG' };
-  if (!address) return parts;
+  if (!raw) return parts;
 
-  // Extract " - City - MG, CEP"
-  const cityMatch = address.match(/- ([A-Za-zÀ-ÿ\s]+) - ([A-Z]{2}),/);
-  if (cityMatch) {
-    parts.city = cityMatch[1].trim();
-    parts.state = cityMatch[2].trim();
-  }
+  // Normalize: remove leading emoji/icon chars
+  let addr = raw.replace(/^[^\w\s]{1,3}/, '').trim();
 
-  // Extract neighborhood before city
-  const hoodMatch = address.match(/- ([A-Za-zÀ-ÿ\s]+) - [A-Za-zÀ-ÿ\s]+ - [A-Z]{2}/);
-  if (hoodMatch) {
-    parts.neighborhood = hoodMatch[1].trim();
-  }
+  // Split by " - " (space dash space)
+  const segments = addr.split(' - ').map(s => s.trim()).filter(Boolean);
 
-  // Street is the first part before first " - "
-  const streetMatch = address.match(/^(.*?)(?: - |$)/);
-  if (streetMatch) {
-    parts.street = streetMatch[1].trim();
+  if (segments.length >= 3) {
+    // Last segment: "MG, 35670-000" or "MG"
+    const last = segments[segments.length - 1];
+    const stateMatch = last.match(/^([A-Z]{2})/);
+    if (stateMatch) parts.state = stateMatch[1];
+
+    // Second to last: "Central, Mateus Leme" or just "Mateus Leme"
+    const citySeg = segments[segments.length - 2];
+    const cityParts = citySeg.split(',').map(s => s.trim());
+    if (cityParts.length >= 2) {
+      parts.neighborhood = cityParts[0];
+      parts.city = cityParts.slice(1).join(', ').trim();
+    } else {
+      parts.city = citySeg;
+    }
+
+    // First segment: street + number
+    parts.street = segments[0];
+  } else if (segments.length === 2) {
+    const last = segments[1];
+    const stateMatch = last.match(/^([A-Z]{2})/);
+    if (stateMatch) parts.state = stateMatch[1];
+    parts.street = segments[0];
+  } else {
+    parts.street = addr;
   }
 
   return parts;
 }
+
+const COMMON_SERVICES = [
+  'Corte Masculino', 'Corte Degradê', 'Barba', 'Corte Infantil',
+  'Hot Towel', 'Barboterapia', 'Design Capilar', 'Hidratação',
+  'Corte Navalhado', 'Pigmentação Capilar', 'Sobrancelha', 'Depilação',
+];
 
 async function importLeads() {
   console.log('[SEED-LEADS] Iniciando importação...');
@@ -45,25 +65,24 @@ async function importLeads() {
   const possiblePaths = [
     path.join(__dirname, '..', '..', 'md', 'leads_barbearia_filtrado.csv'),
     path.join('/app', 'md', 'leads_barbearia_filtrado.csv'),
-    path.join('/app', 'server', '..', 'md', 'leads_barbearia_filtrado.csv'),
   ];
   const csvPath = possiblePaths.find(p => fs.existsSync(p));
   if (!csvPath) {
-    console.error('[SEED-LEADS] Arquivo CSV não encontrado. Caminhos tentados:', possiblePaths);
+    console.error('[SEED-LEADS] CSV não encontrado:', possiblePaths);
     process.exit(1);
   }
-  const raw = fs.readFileSync(csvPath, 'utf-8');
+  console.log('[SEED-LEADS] Lendo:', csvPath);
 
-  const lines = raw.split('\n').filter(l => l.trim());
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  const raw = fs.readFileSync(csvPath, 'utf-8');
+  const allLines = raw.split('\n').filter(l => l.trim());
+  const headers = allLines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
 
   let imported = 0;
   let skipped = 0;
 
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = 1; i < allLines.length; i++) {
     try {
-      const line = lines[i].trim();
-      // Handle multi-line fields: find first unquoted comma
+      const line = allLines[i].trim();
       let vals = [];
       let current = '';
       let inQuotes = false;
@@ -86,11 +105,10 @@ async function importLeads() {
       if (!name || !address) { skipped++; continue; }
 
       const parsed = parseAddress(address);
-      const citySlug = slugify(parsed.city);
+      const citySlug = slugify(parsed.city || 'sem-cidade');
       let baseSlug = slugify(name);
       let slug = baseSlug;
 
-      // Ensure unique slug
       let exists = await prisma.barberLead.findUnique({ where: { slug } });
       let counter = 1;
       while (exists) {
@@ -105,8 +123,8 @@ async function importLeads() {
             name,
             phone,
             address,
-            rating,
-            reviewCount,
+            rating: isNaN(rating) ? 0 : rating,
+            reviewCount: isNaN(reviewCount) ? 0 : reviewCount,
             website,
             category,
             city: parsed.city || '',
@@ -122,11 +140,10 @@ async function importLeads() {
         imported++;
       } catch (e) {
         if (e.code === 'P2002') { skipped++; continue; }
-        console.error(`[SEED-LEADS] Erro ao importar ${name}:`, e.message);
         skipped++;
       }
 
-      if (imported % 100 === 0) {
+      if (imported % 500 === 0) {
         console.log(`[SEED-LEADS] ${imported} importados...`);
       }
     } catch (e) {
@@ -134,7 +151,7 @@ async function importLeads() {
     }
   }
 
-  console.log(`[SEED-LEADS] Importação concluída! ${imported} leads importados, ${skipped} ignorados.`);
+  console.log(`[SEED-LEADS] Concluído! ${imported} importados, ${skipped} ignorados.`);
 }
 
 importLeads()
