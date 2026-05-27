@@ -43,7 +43,8 @@ const rootPath = path.join(__dirname, '..', '..');
 const distPath = path.join(rootPath, 'dist');
 
 // Auto-build frontend if dist is missing (useful on cPanel where only server is installed)
-if (!fs.existsSync(path.join(distPath, 'index.html'))) {
+const rootPackageJson = path.join(rootPath, 'package.json');
+if (!fs.existsSync(path.join(distPath, 'index.html')) && fs.existsSync(rootPackageJson)) {
   try {
     console.warn('[SERVER] dist/index.html not found. Building frontend...');
     execSync('npm run build', { cwd: rootPath, stdio: 'inherit' });
@@ -218,7 +219,6 @@ app.get('/sitemap-perfis.xml', async (req, res) => {
   let xml = xmlHeaderUrlset();
   try {
     const leads = await (prisma as any).barberLead.findMany({
-      where: { slug: { not: null } },
       select: { slug: true },
       take: 50000,
     });
