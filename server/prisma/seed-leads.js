@@ -3,6 +3,7 @@ const path = require('path');
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
+const SHOULD_CLEAR = process.argv.includes('--clear');
 
 function slugify(text) {
   return text
@@ -13,24 +14,98 @@ function slugify(text) {
     .replace(/-+/g, '-');
 }
 
+function parseCsvRows(text) {
+  const rows = [];
+  const lines = text.split('\n');
+  let currentLines = [];
+  let inQuotes = false;
+
+  for (const line of lines) {
+    const trimmed = line.replace(/\r$/, '');
+    currentLines.push(trimmed);
+
+    let quoteCount = 0;
+    for (let i = 0; i < trimmed.length; i++) {
+      if (trimmed[i] === '"') {
+        if (i + 1 < trimmed.length && trimmed[i + 1] === '"') { i++; continue; }
+        quoteCount++;
+      }
+    }
+
+    if (quoteCount % 2 === 1) inQuotes = !inQuotes;
+
+    if (!inQuotes && currentLines.length > 0) {
+      rows.push(currentLines.join('\n'));
+      currentLines = [];
+    }
+  }
+
+  if (currentLines.length > 0) rows.push(currentLines.join('\n'));
+  return rows;
+}
+
+function parseCsvLine(line) {
+  const fields = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && i + 1 < line.length && line[i + 1] === '"') { current += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (ch === ',' && !inQuotes) {
+      fields.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  fields.push(current.trim());
+
+  return fields;
+}
+
+function cleanField(str) {
+  if (!str) return '';
+  return str
+    .replace(/[®‚°ƒˆ]/g, '')
+    .replace(/[\u2500-\u257F\u2580-\u259F\u0E00-\u0E7F]/g, '')
+    .replace(/[^ -~À-ÿªº]/g, '')
+    .trim();
+}
+
+function cleanPhone(str) {
+  if (!str) return '';
+  return str.replace(/\D/g, '');
+}
+
+function extractCityState(str) {
+  const result = { city: '', state: '' };
+  // Match: "Cidade, STATE, zip" or "Cidade, STATE"
+  const m = str.match(/^([^,]+),\s*([A-Z]{2})(?:,\s*\d{5}-?\d{3})?\s*$/);
+  if (m) { result.city = m[1].trim(); result.state = m[2]; }
+  // Match: "Cidade - STATE, zip"
+  const m2 = str.match(/^([^,]+?)\s*-\s*([A-Z]{2})(?:,\s*\d{5}-?\d{3})?\s*$/);
+  if (m2) { result.city = m2[1].trim(); result.state = m2[2]; }
+  return result;
+}
+
 function parseAddress(raw) {
   const parts = { street: '', neighborhood: '', city: '', state: 'MG' };
   if (!raw) return parts;
 
-  // Remove leading emoji/icon chars (like , )
-  let addr = raw.replace(/^[^\w\s]{1,5}/, '').trim();
-  // Remove trailing commas/spaces
-  addr = addr.replace(/^[,\s]+|[,\s]+$/g, '');
+  let addr = cleanField(raw);
+  addr = addr.replace(/^[,\s\.]+|[,\s\.]+$/g, '');
+  if (!addr) return parts;
 
   const segments = addr.split(' - ').map(s => s.trim()).filter(Boolean);
 
   if (segments.length >= 3) {
-    // Last: "MG, 35670-000"
     const last = segments[segments.length - 1];
     const stateMatch = last.match(/^([A-Z]{2})/);
     if (stateMatch) parts.state = stateMatch[1];
 
-    // Second-to-last: "Bairro, Cidade"
     const citySeg = segments[segments.length - 2];
     const commaIdx = citySeg.lastIndexOf(',');
     if (commaIdx !== -1) {
@@ -40,14 +115,36 @@ function parseAddress(raw) {
       parts.city = citySeg;
     }
 
-    parts.street = segments[0];
+    parts.street = segments.slice(0, segments.length - 2).join(' - ');
   } else if (segments.length === 2) {
     parts.street = segments[0];
-    const last = segments[1];
-    const stateMatch = last.match(/^([A-Z]{2})/);
-    if (stateMatch) parts.state = stateMatch[1];
+    const cs = extractCityState(segments[1]);
+    if (cs.state) parts.state = cs.state;
+    if (cs.city) {
+      parts.city = cs.city;
+    } else if (/^[A-Z]{2}/.test(segments[1])) {
+      // seg[1] is just state (+zip) → seg[0] is the city
+      parts.city = parts.street;
+      parts.street = '';
+    } else {
+      // Check end of street for embedded city
+      const lastComma = parts.street.lastIndexOf(',');
+      if (lastComma !== -1) {
+        const possible = parts.street.substring(lastComma + 1).trim();
+        if (possible && !/^\d/.test(possible) && possible.length > 2) {
+          parts.city = possible;
+          parts.street = parts.street.substring(0, lastComma).trim();
+        }
+      }
+    }
   } else {
     parts.street = addr;
+    // Try single-segment: "Cidade, STATE, zip"
+    const cs = extractCityState(addr);
+    if (cs.city) {
+      parts.city = cs.city;
+      if (cs.state) parts.state = cs.state;
+    }
   }
 
   return parts;
@@ -55,6 +152,12 @@ function parseAddress(raw) {
 
 async function importLeads() {
   console.log('[SEED-LEADS] Iniciando importação...');
+
+  if (SHOULD_CLEAR) {
+    console.log('[SEED-LEADS] Removendo registros existentes...');
+    const { count } = await prisma.barberLead.deleteMany({});
+    console.log(`[SEED-LEADS] ${count} registros removidos`);
+  }
 
   const possiblePaths = [
     path.join(__dirname, '..', '..', 'md', 'leads_barbearia_filtrado.csv'),
@@ -68,53 +171,33 @@ async function importLeads() {
   console.log('[SEED-LEADS] Lendo:', csvPath);
 
   const raw = fs.readFileSync(csvPath, 'utf-8');
-  const lines = raw.split('\n');
+  const rows = parseCsvRows(raw);
+  console.log(`[SEED-LEADS] Total de linhas (header + dados): ${rows.length}`);
 
-  // CSV structure: each record spans exactly 3 lines
-  // Line 1: Nome,"emoji
-  // Line 2:  telefone","emoji
-  // Line 3:  endereço",rating,reviews,site,categoria,campanha
+  const dataRows = rows.slice(1);
 
   let imported = 0;
   let skipped = 0;
+  let noAddress = 0;
+  let noName = 0;
 
-  // Start from line 1 (skip header)
-  for (let i = 1; i < lines.length - 2; i += 3) {
+  for (const row of dataRows) {
     try {
-      const line1 = lines[i] || '';
-      const line2 = lines[i + 1] || '';
-      const line3 = lines[i + 2] || '';
+      const fields = parseCsvLine(row);
 
-      // Parse: line1 = Nome,"emoji
-      const nameMatch = line1.match(/^"?(.*?)","?.*/);
-      const name = nameMatch ? nameMatch[1].trim() : '';
+      const name = cleanField(fields[0]) || '';
+      const phone = cleanPhone(fields[1] || '');
+      const rawAddress = cleanField(fields[2] || '');
+      const rating = parseFloat(fields[3]) || 0;
+      const reviewCount = parseInt(fields[4]) || 0;
+      const website = fields[5] || null;
+      const category = fields[6] || null;
+      const campaign = fields[7] || null;
 
-      // Parse: line2 = telefone","emoji
-      const phoneMatch = line2.match(/^"?\s*(.*?)"?\s*","?/);
-      const phone = phoneMatch ? phoneMatch[1].trim() : '';
+      if (!name) { noName++; skipped++; continue; }
+      if (!rawAddress) { noAddress++; skipped++; continue; }
 
-      // Parse: line3 = endereço",rating,reviews,site,categoria,campanha
-      // The address ends at the first ", followed by comma-separated values
-      const addrEnd = line3.indexOf('",');
-      let address = '';
-      let restFields = '';
-      if (addrEnd !== -1) {
-        address = line3.substring(0, addrEnd).replace(/^"/, '').replace(/^[^\w\s]{1,5}/, '').trim();
-        restFields = line3.substring(addrEnd + 2);
-      } else {
-        restFields = line3;
-      }
-
-      const fields = restFields.split(',').map(f => f.trim());
-      const rating = parseFloat(fields[0]) || 0;
-      const reviewCount = parseInt(fields[1]) || 0;
-      const website = fields[2] || null;
-      const category = fields[3] || null;
-      const campaign = fields[4] || null;
-
-      if (!name || !address) { skipped++; continue; }
-
-      const parsed = parseAddress(address);
+      const parsed = parseAddress(rawAddress);
       const citySlug = slugify(parsed.city || 'sem-cidade');
       let baseSlug = slugify(name);
       let slug = baseSlug;
@@ -131,8 +214,8 @@ async function importLeads() {
         await prisma.barberLead.create({
           data: {
             name,
-            phone,
-            address,
+            phone: phone || null,
+            address: rawAddress,
             rating: isNaN(rating) ? 0 : rating,
             reviewCount: isNaN(reviewCount) ? 0 : reviewCount,
             website: website || null,
@@ -161,7 +244,7 @@ async function importLeads() {
     }
   }
 
-  console.log(`[SEED-LEADS] Concluído! ${imported} importados, ${skipped} ignorados.`);
+  console.log(`[SEED-LEADS] Concluído! ${imported} importados, ${skipped} ignorados (sem nome: ${noName}, sem endereço: ${noAddress})`);
 }
 
 importLeads()

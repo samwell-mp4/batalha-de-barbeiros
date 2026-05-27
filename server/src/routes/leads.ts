@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate } from '../middleware/auth';
+import { getStates, findStateBySlug, getCitiesByState } from '../data/brazil';
 
 const router = Router();
 
@@ -40,6 +41,19 @@ router.get('/:slug', async (req: Request, res: Response) => {
     });
     if (!lead) return res.status(404).json({ error: 'Perfil não encontrado' });
 
+    // Find nearby cities in the same state
+    let nearbyCities: { nome: string; slug: string }[] = [];
+    if (lead.state) {
+      const brState = findStateBySlug(lead.state.toLowerCase());
+      if (brState) {
+        const cities = await getCitiesByState(brState.id);
+        nearbyCities = cities
+          .filter((c: any) => c.slug !== lead.citySlug)
+          .slice(0, 8)
+          .map((c: any) => ({ nome: c.nome, slug: c.slug }));
+      }
+    }
+
     return res.json({
       id: lead.id,
       name: lead.name,
@@ -55,9 +69,11 @@ router.get('/:slug', async (req: Request, res: Response) => {
       street: lead.street,
       city: lead.city,
       state: lead.state,
+      citySlug: lead.citySlug,
       campaign: lead.campaign,
       source: lead.source,
       createdAt: lead.createdAt,
+      nearbyCities,
     });
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
