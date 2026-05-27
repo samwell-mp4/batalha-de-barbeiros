@@ -121,6 +121,7 @@ app.get('/sitemap.xml', async (req, res) => {
     'sitemap-cidades.xml',
     'sitemap-servicos.xml',
     'sitemap-barbeiros.xml',
+    'sitemap-perfis.xml',
     'sitemap-campeonatos.xml',
     'sitemap-ranking.xml',
     'sitemap-blog.xml',
@@ -205,6 +206,27 @@ app.get('/sitemap-barbeiros.xml', async (req, res) => {
     }
   } catch (e) {
     console.error('[SITEMAP] Erro ao listar barbeiros', e);
+  }
+  xml += '</urlset>';
+  res.header('Content-Type', 'application/xml');
+  res.send(xml);
+});
+
+app.get('/sitemap-perfis.xml', async (req, res) => {
+  const baseUrl = getBaseUrl(req);
+  const today = new Date().toISOString().split('T')[0];
+  let xml = xmlHeaderUrlset();
+  try {
+    const leads = await (prisma as any).barberLead.findMany({
+      where: { slug: { not: null } },
+      select: { slug: true },
+      take: 50000,
+    });
+    for (const l of leads) {
+      xml += `  <url><loc>${baseUrl}/perfil/${l.slug}</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>\n`;
+    }
+  } catch (e) {
+    console.error('[SITEMAP] Erro perfis', e);
   }
   xml += '</urlset>';
   res.header('Content-Type', 'application/xml');

@@ -1987,7 +1987,7 @@ function Footer() {
             <a href="#features" className="hover:text-gray-600 transition-colors">Funcionalidades</a>
             <a href="#map" className="hover:text-gray-600 transition-colors">Mapa</a>
             <a href="#cta" className="hover:text-gray-600 transition-colors">App</a>
-            <span>contato@battlebarber.app</span>
+            <span>contato@battlebarber.com.br</span>
           </div>
         </div>
 

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
@@ -13,8 +13,57 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Battle Barber" />
     <link rel="apple-touch-startup-image" href="/apple-touch-icon.png" />
-    
+
     <title>Batalha de Barbeiro</title>
+
+    <!-- Schema.org: Sitelinks Search Box -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Battle Barber",
+      "url": "https://battlebarber.com.br",
+      "description": "Encontre os melhores barbeiros e barbearias perto de você. Agende online, veja avaliações reais.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://battlebarber.com.br/perfil?search={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+    <!-- Schema.org: Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Battle Barber",
+      "url": "https://battlebarber.com.br",
+      "description": "Plataforma que conecta clientes aos melhores barbeiros.",
+      "foundingDate": "2024",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "email": "contato@battlebarber.com.br",
+        "contactType": "customer service"
+      }
+    }
+    </script>
+
+    <!-- Schema.org: WebApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Battle Barber",
+      "url": "https://battlebarber.com.br",
+      "operatingSystem": "Web",
+      "applicationCategory": "LifestyleApplication",
+      "description": "Agende horários com barbeiros, participe de campeonatos e descubra barbearias próximas."
+    }
+    </script>
   </head>
   <body>
     <div id="root">

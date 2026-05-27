@@ -6,7 +6,7 @@ const router = Router();
 
 const NOTIFICATION_URL = process.env.APP_URL
   ? `${process.env.APP_URL}/api/payments/webhook`
-  : 'https://battlebarber.app/api/payments/webhook';
+  : 'https://battlebarber.com.br/api/payments/webhook';
 
 router.post('/create-pix', async (req: Request, res: Response) => {
   try {
