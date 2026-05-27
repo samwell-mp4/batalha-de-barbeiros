@@ -42,7 +42,16 @@ function parseAddress(address) {
 async function importLeads() {
   console.log('[SEED-LEADS] Iniciando importação...');
 
-  const csvPath = path.join(__dirname, '..', '..', 'md', 'leads_barbearia_filtrado.csv');
+  const possiblePaths = [
+    path.join(__dirname, '..', '..', 'md', 'leads_barbearia_filtrado.csv'),
+    path.join('/app', 'md', 'leads_barbearia_filtrado.csv'),
+    path.join('/app', 'server', '..', 'md', 'leads_barbearia_filtrado.csv'),
+  ];
+  const csvPath = possiblePaths.find(p => fs.existsSync(p));
+  if (!csvPath) {
+    console.error('[SEED-LEADS] Arquivo CSV não encontrado. Caminhos tentados:', possiblePaths);
+    process.exit(1);
+  }
   const raw = fs.readFileSync(csvPath, 'utf-8');
 
   const lines = raw.split('\n').filter(l => l.trim());

@@ -59,6 +59,22 @@ router.all('/deploy/:token', async (req: Request, res: Response) => {
     run('npx prisma db push --accept-data-loss', SERVER);
     send('Banco sincronizado');
 
+    // 4.5 Seed leads (auto-import, apenas se vazio)
+    send('Verificando leads...');
+    try {
+      const count = run(`node -e "const{PrismaClient}=require('@prisma/client');new PrismaClient().barberLead.count().then(c=>console.log(c))"`, SERVER);
+      const leadCount = parseInt(count, 10);
+      if (leadCount === 0) {
+        send('Importando leads do CSV...');
+        run('node prisma/seed-leads.js', SERVER);
+        send('Leads importados com sucesso');
+      } else {
+        send(`Leads já importados (${leadCount} registros)`);
+      }
+    } catch (e: any) {
+      send(`Seed leads: ${e.message} (ignorado)`);
+    }
+
     // 5. Build frontend
     send('Buildando frontend...');
     run('npm run build', ROOT);
