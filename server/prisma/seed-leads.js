@@ -17,47 +17,41 @@ function parseAddress(raw) {
   const parts = { street: '', neighborhood: '', city: '', state: 'MG' };
   if (!raw) return parts;
 
-  // Normalize: remove leading emoji/icon chars
-  let addr = raw.replace(/^[^\w\s]{1,3}/, '').trim();
+  // Remove leading emoji/icon chars (like , )
+  let addr = raw.replace(/^[^\w\s]{1,5}/, '').trim();
+  // Remove trailing commas/spaces
+  addr = addr.replace(/^[,\s]+|[,\s]+$/g, '');
 
-  // Split by " - " (space dash space)
   const segments = addr.split(' - ').map(s => s.trim()).filter(Boolean);
 
   if (segments.length >= 3) {
-    // Last segment: "MG, 35670-000" or "MG"
+    // Last: "MG, 35670-000"
     const last = segments[segments.length - 1];
     const stateMatch = last.match(/^([A-Z]{2})/);
     if (stateMatch) parts.state = stateMatch[1];
 
-    // Second to last: "Central, Mateus Leme" or just "Mateus Leme"
+    // Second-to-last: "Bairro, Cidade"
     const citySeg = segments[segments.length - 2];
-    const cityParts = citySeg.split(',').map(s => s.trim());
-    if (cityParts.length >= 2) {
-      parts.neighborhood = cityParts[0];
-      parts.city = cityParts.slice(1).join(', ').trim();
+    const commaIdx = citySeg.lastIndexOf(',');
+    if (commaIdx !== -1) {
+      parts.neighborhood = citySeg.substring(0, commaIdx).trim();
+      parts.city = citySeg.substring(commaIdx + 1).trim();
     } else {
       parts.city = citySeg;
     }
 
-    // First segment: street + number
     parts.street = segments[0];
   } else if (segments.length === 2) {
+    parts.street = segments[0];
     const last = segments[1];
     const stateMatch = last.match(/^([A-Z]{2})/);
     if (stateMatch) parts.state = stateMatch[1];
-    parts.street = segments[0];
   } else {
     parts.street = addr;
   }
 
   return parts;
 }
-
-const COMMON_SERVICES = [
-  'Corte Masculino', 'Corte Degradê', 'Barba', 'Corte Infantil',
-  'Hot Towel', 'Barboterapia', 'Design Capilar', 'Hidratação',
-  'Corte Navalhado', 'Pigmentação Capilar', 'Sobrancelha', 'Depilação',
-];
 
 async function importLeads() {
   console.log('[SEED-LEADS] Iniciando importação...');
@@ -74,33 +68,49 @@ async function importLeads() {
   console.log('[SEED-LEADS] Lendo:', csvPath);
 
   const raw = fs.readFileSync(csvPath, 'utf-8');
-  const allLines = raw.split('\n').filter(l => l.trim());
-  const headers = allLines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  const lines = raw.split('\n');
+
+  // CSV structure: each record spans exactly 3 lines
+  // Line 1: Nome,"emoji
+  // Line 2:  telefone","emoji
+  // Line 3:  endereço",rating,reviews,site,categoria,campanha
 
   let imported = 0;
   let skipped = 0;
 
-  for (let i = 1; i < allLines.length; i++) {
+  // Start from line 1 (skip header)
+  for (let i = 1; i < lines.length - 2; i += 3) {
     try {
-      const line = allLines[i].trim();
-      let vals = [];
-      let current = '';
-      let inQuotes = false;
-      for (const ch of line) {
-        if (ch === '"') { inQuotes = !inQuotes; continue; }
-        if (ch === ',' && !inQuotes) { vals.push(current.trim()); current = ''; continue; }
-        current += ch;
-      }
-      vals.push(current.trim());
+      const line1 = lines[i] || '';
+      const line2 = lines[i + 1] || '';
+      const line3 = lines[i + 2] || '';
 
-      const name = vals[0]?.replace(/^"|"$/g, '')?.trim() || '';
-      const phone = vals[1]?.replace(/^"|"$/g, '')?.trim() || '';
-      const address = vals[2]?.replace(/^"|"$/g, '')?.trim() || '';
-      const rating = parseFloat(vals[3]?.replace(/^"|"$/g, '')?.trim()) || 0;
-      const reviewCount = parseInt(vals[4]?.replace(/^"|"$/g, '')?.trim()) || 0;
-      const website = vals[5]?.replace(/^"|"$/g, '')?.trim() || null;
-      const category = vals[6]?.replace(/^"|"$/g, '')?.trim() || null;
-      const campaign = vals[7]?.replace(/^"|"$/g, '')?.trim() || null;
+      // Parse: line1 = Nome,"emoji
+      const nameMatch = line1.match(/^"?(.*?)","?.*/);
+      const name = nameMatch ? nameMatch[1].trim() : '';
+
+      // Parse: line2 = telefone","emoji
+      const phoneMatch = line2.match(/^"?\s*(.*?)"?\s*","?/);
+      const phone = phoneMatch ? phoneMatch[1].trim() : '';
+
+      // Parse: line3 = endereço",rating,reviews,site,categoria,campanha
+      // The address ends at the first ", followed by comma-separated values
+      const addrEnd = line3.indexOf('",');
+      let address = '';
+      let restFields = '';
+      if (addrEnd !== -1) {
+        address = line3.substring(0, addrEnd).replace(/^"/, '').replace(/^[^\w\s]{1,5}/, '').trim();
+        restFields = line3.substring(addrEnd + 2);
+      } else {
+        restFields = line3;
+      }
+
+      const fields = restFields.split(',').map(f => f.trim());
+      const rating = parseFloat(fields[0]) || 0;
+      const reviewCount = parseInt(fields[1]) || 0;
+      const website = fields[2] || null;
+      const category = fields[3] || null;
+      const campaign = fields[4] || null;
 
       if (!name || !address) { skipped++; continue; }
 
@@ -125,8 +135,8 @@ async function importLeads() {
             address,
             rating: isNaN(rating) ? 0 : rating,
             reviewCount: isNaN(reviewCount) ? 0 : reviewCount,
-            website,
-            category,
+            website: website || null,
+            category: category || null,
             city: parsed.city || '',
             citySlug,
             state: parsed.state || 'MG',
@@ -134,7 +144,7 @@ async function importLeads() {
             street: parsed.street || null,
             slug,
             source: 'google_maps',
-            campaign,
+            campaign: campaign || null,
           },
         });
         imported++;
